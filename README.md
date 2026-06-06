@@ -1,129 +1,100 @@
-<p align="center">
-  <a href="https://opencode.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
-    </picture>
-  </a>
-</p>
-<p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
-</p>
+# doc.haus
 
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
-</p>
+**Open-source legal-agent platform, built as a true fork of [OpenCode](https://github.com/anomalyco/opencode).**
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+doc.haus retargets OpenCode's agent harness from code/git onto **legal documents**.
+The concepts map almost 1:1, so we inherit the engine — sessions, agents,
+subagents, tools, permissions, skills, the provider abstraction, and the
+server/client + SSE stack — and add a thin legal layer on top.
 
----
+| Legal concept       | OpenCode primitive          |
+| ------------------- | --------------------------- |
+| Matter              | project (a directory)       |
+| Document            | a file in the matter dir    |
+| Conversation        | session                     |
+| Legal agent         | agent                       |
+| Multi-agent review  | primary agent + Task subagents |
+| Retrieval / citation | a custom tool              |
 
-### Installation
+Matter and Document are labels in the UI and our config; the core primitives
+(`project`, `file`, `session`) are never renamed. We fork rather than reimplement
+so we keep pulling upstream innovation via `git merge upstream/dev`.
 
-```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
+## Architecture
 
-# Package managers
-npm i -g opencode-ai@latest        # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
-```
+Everything legal is **additive** — it lives outside upstream packages so merges
+stay clean. Three processes at runtime:
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+1. **`opencode serve`** — the unmodified OpenCode engine. Scopes every session
+   and tool to a matter via the `x-opencode-directory` header.
+2. **`services/ingest/`** — standalone Bun + Hono service. Creates matters and
+   turns uploaded DOCX into embeddings: `mammoth` extract → sectionize →
+   local MiniLM (`@xenova/transformers`, all-MiniLM-L6-v2, 384-dim) → per-matter
+   `<matter>/.dochaus/legal.db` (`bun:sqlite`). Exists because OpenCode has no
+   upload endpoint and plugins cannot add HTTP routes.
+3. **`apps/web/`** — React + Vite frontend on the OpenCode SDK + the ingest API.
 
-### Desktop App (BETA)
+The legal config layer lives in **`dochaus/`** and is loaded by pointing the
+server at it with `OPENCODE_CONFIG_DIR=<repo>/dochaus`, so the upstream
+`.opencode/` dev config is never touched. It contains:
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+- **`opencode.json`** — Google Vertex (Gemini) provider, models, permissions.
+- **`agent/`** — five legal agents: `qa` (cited Q&A), `legal-review`
+  (orchestrator), and its subagents `legal-reviewer`, `assumption-challenger`,
+  `summarizer`. The review pipeline is agent-driven via the built-in Task tool —
+  reviewer → challenger → summarizer — not hardcoded in app logic.
+- **`tool/search-document.ts`** — retrieval + citations. Reads the matter's
+  `legal.db`, embeds the query locally, cosine-ranks chunks, returns
+  `{ documentName, section, excerpt, score }[]`. Read-only.
+- **`skill/`** — `contract-risk-checklist`, `clause-library`.
+- **`command/review.md`** — runs the `legal-review` orchestrator.
 
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe` |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+## Quick start
+
+Prerequisites: [Bun](https://bun.sh), a Google Cloud project with Vertex AI
+enabled, and ADC auth.
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/opencode-desktop
+bun install
+
+# Auth — Vertex uses Application Default Credentials, no API keys.
+gcloud auth application-default login
+export GOOGLE_VERTEX_PROJECT=<your-project>
+export GOOGLE_VERTEX_LOCATION=global   # Gemini 3.x models are global-only
+
+# Where matters live (independent of this repo)
+export WORKSPACE_ROOT=<path-to-matters>
+
+# 1. The engine, pointed at the legal config layer
+OPENCODE_CONFIG_DIR=$PWD/dochaus bun run packages/opencode/src/index.ts serve
+
+# 2. The ingest service (separate terminal)
+cd services/ingest && bun run src/server.ts
+
+# 3. The web app (separate terminal)
+cd apps/web && bun run dev
 ```
 
-#### Installation Directory
+Then: create a matter → upload a `.docx` contract → ask cited questions in chat →
+run a legal review → answers and history persist.
 
-The install script respects the following priority order for the installation path:
+## Models
 
-1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
-2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
-3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
-4. `$HOME/.opencode/bin` - Default fallback
+Configured in `dochaus/opencode.json` and per-agent frontmatter as **defaults
+only** — users pick provider/model per session or agent in the UI (OpenCode's
+multi-model selector is inherited). The provider reads project and location from
+env (`{env:GOOGLE_VERTEX_PROJECT}` / `{env:GOOGLE_VERTEX_LOCATION}`); nothing is
+hardcoded.
 
-```bash
-# Examples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
-```
+## Mergeability
 
-### Agents
+The fork touches a minimal set of upstream-tracked files (this README, `AGENTS.md`).
+All legal functionality lives in new paths upstream does not have (`dochaus/`,
+`services/`, `apps/`), so `git merge upstream/dev` cannot conflict outside those
+few edge files. See `FUTURE.md` for the extension seams (custom tools, plugin
+hooks, vector scale) the MVP deliberately leaves open.
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
+## Credits
 
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
-
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
-
-Learn more about [agents](https://opencode.ai/docs/agents).
-
-### Documentation
-
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/docs).
-
-### Contributing
-
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
-
-### Building on OpenCode
-
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
-
----
-
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+Built on [OpenCode](https://github.com/anomalyco/opencode). doc.haus is not
+affiliated with or endorsed by the OpenCode team.
