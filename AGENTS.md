@@ -1,3 +1,47 @@
+# doc.haus
+
+doc.haus is an **open-source legal-agent platform built as a true fork of
+[OpenCode](https://github.com/anomalyco/opencode)**. It retargets OpenCode's agent
+harness from code/git onto **legal documents** — the concepts map almost 1:1
+(a *matter* is a project directory, a *document* is a file, a *conversation* is
+a session). We fork rather than reimplement so we keep pulling upstream
+innovation via `git merge upstream/dev`.
+
+<principles>
+- **Mergeability first.** Keep edits to upstream packages (`packages/core`,
+  `server`, `llm`, `sdk`, `opencode`) at ~zero so upstream merges stay clean. A
+  core edit is allowed only with a strong, written justification, isolated in one
+  clearly-marked commit. Default to building elsewhere first.
+- **Build additively.** All legal functionality lives outside upstream packages:
+  - `dochaus/` — the legal config layer (provider/models in `opencode.json`,
+    agents, the `search-document` tool, skills, commands). Loaded by pointing the
+    server at it via `OPENCODE_CONFIG_DIR=<repo>/dochaus`, so the upstream
+    `.opencode/` dev config is never touched.
+  - `services/ingest/` — separate Bun+Hono service that creates matters and turns
+    uploaded DOCX into embeddings (OpenCode has no upload endpoint and plugins
+    cannot add HTTP routes, so ingestion must live out-of-band).
+  - `apps/web/` — React+Vite frontend talking to the OpenCode SDK + ingest API.
+- **Domain mapping is presentation-only.** Matter = project directory, Document =
+  file. Relabel in the UI and our config; never rename core primitives.
+- **No edge case handling, ever.**
+</principles>
+
+<runtime>
+Three processes: (1) unmodified `opencode serve` (the engine), (2)
+`services/ingest`, (3) `apps/web`. Provider is Google Vertex (Gemini) via ADC —
+`gcloud auth application-default login` plus `GOOGLE_VERTEX_PROJECT` and
+`GOOGLE_VERTEX_LOCATION`. Matters live under `WORKSPACE_ROOT`, independent of this
+repo; the server scopes every session/tool to a matter via the
+`x-opencode-directory` header.
+</runtime>
+
+---
+
+The rest of this file is OpenCode's upstream contributor guide. It applies when
+working inside upstream packages — follow it there to keep diffs mergeable.
+
+---
+
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - The default branch in this repo is `dev`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
