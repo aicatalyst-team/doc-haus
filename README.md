@@ -68,8 +68,18 @@ concern, not code: `opencode.json` and per-agent frontmatter set **defaults only
 users switch provider/model per session or agent in the UI via OpenCode's inherited
 multi-model selector.
 
-Out of the box we ship a **Google Vertex (Gemini)** config because that's what we test
-against. It reads project and location from env, so nothing is hardcoded:
+Out of the box we ship a **Google Vertex (Gemini)** config: affordable for testing,
+capable, and fast — a good default for getting started. For production use, pick the
+provider that matches your priorities:
+
+- **Privacy / security** — run an **open-source / self-hosted model** (e.g. via Ollama
+  or vLLM) so document content never leaves your infrastructure. Legal work is
+  sensitive; this keeps inference local.
+- **Accuracy / intelligence** — use **OpenAI** or **Anthropic** frontier models for the
+  strongest reasoning on complex contracts.
+- **Affordable / fast** — stay on **Vertex (Gemini)**, the shipped default.
+
+The Vertex config reads project and location from env, so nothing is hardcoded:
 
 ```jsonc
 // dochaus/opencode.json (excerpt)
