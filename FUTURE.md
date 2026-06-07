@@ -1,75 +1,34 @@
-# doc.haus — Future Seams
+# doc.haus — Future Seams (DEPRECATED)
 
-This file documents the extension points that the MVP deliberately leaves as
-seams. None of these are implemented; each note records *where* the hook lives
-and *what already exists* to make it cheap to add later. The MVP rule still
-holds: build additively, keep upstream packages untouched.
+> **Deprecated 2026-06-07.** The seams once tracked here now live as GitHub
+> issues in [`sure-scale/doc-haus`](https://github.com/sure-scale/doc-haus/issues).
+> Track and discuss the work there; this file is kept only as a redirect.
+> The MVP rule still holds: build additively, keep upstream packages untouched.
 
-## Custom tools (drop-in files under `dochaus/tool/`)
+The DOCX redline track (word-integration / tracked-changes / redline / viewer)
+standardizes on **[Docxodus](https://github.com/JSv4/Docxodus)** (MIT;
+TypeScript/WASM; edits addressable by char offset *and* anchor ID, which lines up
+with our citation `doc_path` + `char_start`/`char_end`). Validate it under Bun and
+confirm offset alignment first — see the spike issue.
 
-The tool loader globs `{tool,tools}/*.{js,ts}` over every config directory
-(including `OPENCODE_CONFIG_DIR=dochaus`); a default export becomes a tool whose
-id is the filename. Adding a tool is one file — no core edit, no registration.
+## Seam → issue
 
-- **word-integration** — read/write `.docx` in place (open in Word, round-trip
-  edits). The ingest service already writes the canonical `.docx` into the matter
-  dir, so a tool can operate on that same file.
-- **tracked-changes** — emit Word tracked-changes (`w:ins`/`w:del`) so a redline
-  is reviewable in Word. Pairs with word-integration.
-- **redline** — propose clause rewrites as a structured diff against the source
-  span. The citation objects already carry `doc_path` + `char_start`/`char_end`,
-  so a redline can target an exact source range.
+| Former section | Issue |
+|---|---|
+| Docxodus validation (new gate) | [#1 spike: validate Docxodus under Bun + align offsets](https://github.com/sure-scale/doc-haus/issues/1) |
+| Custom tools / word-integration | [#2 word-integration tool](https://github.com/sure-scale/doc-haus/issues/2) |
+| Custom tools / tracked-changes | [#3 tracked-changes tool](https://github.com/sure-scale/doc-haus/issues/3) |
+| Custom tools / redline | [#4 redline tool](https://github.com/sure-scale/doc-haus/issues/4) |
+| Redline review surface (new) | [#5 web DOCX redline viewer](https://github.com/sure-scale/doc-haus/issues/5) |
+| Plugin hooks / tool.execute.after | [#6 citation-verification hook](https://github.com/sure-scale/doc-haus/issues/6) |
+| Plugin hooks / permission.ask | [#7 edit gating](https://github.com/sure-scale/doc-haus/issues/7) |
+| Skills / privilege-review | [#8 privilege-review skill](https://github.com/sure-scale/doc-haus/issues/8) |
+| Skills / precedent-search | [#9 precedent-search skill](https://github.com/sure-scale/doc-haus/issues/9) |
+| Retrieval at scale | [#10 sqlite-vec/ANN behind search-document](https://github.com/sure-scale/doc-haus/issues/10) |
+| Confidentiality / data residency | [#11 on-prem inference swap](https://github.com/sure-scale/doc-haus/issues/11) |
+| Single-user → multi-tenant | [#12 multi-tenant](https://github.com/sure-scale/doc-haus/issues/12) |
 
-## Skills (drop-in dirs under `dochaus/skill/<name>/SKILL.md`)
-
-Skills are markdown knowledge packs referenced by agents by name. Two already
-ship (`contract-risk-checklist`, `clause-library`). Future slots:
-
-- **precedent-search** — a skill describing how to find and compare comparable
-  clauses/matters. Would lean on a future cross-matter index (see Vector scale).
-- **privilege-review** — a checklist for attorney-client privilege / work-product
-  flags before anything leaves the workspace.
-
-## Plugin hooks (`dochaus/plugin/legal.ts` — create only when first used)
-
-No plugin ships in the MVP: the search-document tool opens `legal.db` directly,
-ingestion lives in `services/ingest`, and Vertex auth is config-driven. The
-plugin file is reserved as the seam for:
-
-- **`tool.execute.after`** — citation-verification. After `search-document` (or a
-  future answer-with-citations tool) runs, validate each citation's `doc_path` +
-  `char_start`/`char_end` against the source file and reject/flag hallucinated
-  spans. The citation payload is already shaped for this (stable path + offsets).
-- **`permission.ask`** — redlining / edit gating. Route edit-class tools through a
-  human approval step before they touch a document.
-
-## Retrieval at scale
-
-The MVP ranks chunks with a JS cosine loop over a BLOB `embedding` column in each
-matter's `legal.db`. Fine for a single contract; not for large corpora. Future:
-`sqlite-vec` (or a real ANN index) behind the same `search-document` interface —
-the tool's return shape (`{ documentName, section, excerpt, score }[]`) stays
-constant, so the UI and agents don't change.
-
-Per-matter DBs (`<matterDir>/.dochaus/legal.db`) keep matters isolated for
-confidentiality. A future cross-matter precedent index would be a separate,
-explicitly-scoped store — not a widening of the per-matter DB.
-
-## Confidentiality / data residency
-
-Embeddings are computed locally (MiniLM), but inference is remote (Vertex sends
-document content to Google). For privileged work this is a real consideration.
-Seam: the provider is pure `opencode.json` config, so swapping in an on-prem /
-self-hosted model is a config change, not a code change.
-
-## Single-user → multi-tenant
-
-OpenCode is local, single-user. Legal SaaS concerns (auth, tenant isolation,
-audit trail) are out of scope. The matter-per-directory model and per-matter DB
-are the natural tenant boundary when that work begins; the `x-opencode-directory`
-header already scopes every session and tool to one matter.
-
-## Mergeability
+## Mergeability (unchanged, not an issue)
 
 The fork touches exactly one upstream-tracked file (`AGENTS.md`, a prepended
 section). All legal functionality lives in new paths upstream does not have
