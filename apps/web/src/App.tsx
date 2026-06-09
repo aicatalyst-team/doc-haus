@@ -1,13 +1,17 @@
 import { Link, Route, Routes } from "react-router-dom"
 import Matters from "./pages/Matters"
 import MatterDetail from "./pages/MatterDetail"
+import logo from "./assets/dochaus-logo.svg"
 
 export default function App() {
   return (
     <>
       <header className="app-header">
         <h1>
-          <Link to="/">doc.haus</Link>
+          <Link to="/">
+            <img src={logo} className="app-logo" alt="" />
+            doc.haus
+          </Link>
         </h1>
         <span className="tag">legal agent workspace</span>
       </header>
