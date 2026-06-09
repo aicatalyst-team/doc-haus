@@ -148,6 +148,12 @@ const TOOL_VERBS: Record<string, string> = {
 
 const basename = (s: string) => s.split("/").filter(Boolean).pop() ?? s
 
+// A real answer always contains at least one letter or digit. When a turn
+// settles with text that is only braces or punctuation (e.g. a lone "}" leaked
+// from a truncated or malformed generation), it is not an answer — render a
+// retry affordance instead of the garbage. Citations still show below.
+const isEmptyAnswer = (text?: string) => !text || !/[\p{L}\p{N}]/u.test(text)
+
 // The matter's internal bookkeeping files are plumbing, not legal work — name
 // them in plain language instead of leaking raw filenames into the timeline.
 const INTERNAL_FILES: Record<string, string> = {
@@ -549,9 +555,23 @@ export default function ChatPanel({
           ) : (
             <div key={i} className="msg assistant">
               {t.agent && <div className="msg-agent">{agentLabel(t.agent)}</div>}
-              <StepsPanel steps={t.steps} busy={false} answered={Boolean(t.text)} />
-              {t.text && <Markdown>{t.text}</Markdown>}
+              <StepsPanel steps={t.steps} busy={false} answered={!isEmptyAnswer(t.text)} />
+              {t.text && !isEmptyAnswer(t.text) && <Markdown>{t.text}</Markdown>}
               {t.error && <div className="msg-error">{t.error}</div>}
+              {!t.error && isEmptyAnswer(t.text) && t.redlines.length === 0 && (
+                <div className="msg-error">
+                  No answer was produced for this question.{" "}
+                  <button
+                    style={{ background: "none", border: 0, padding: 0, color: "inherit", textDecoration: "underline", cursor: "pointer", font: "inherit" }}
+                    onClick={() => {
+                      const prev = turns[i - 1]
+                      if (prev) resendFrom(prev, i - 1, prev.text)
+                    }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
               <CitationView citations={t.citations} />
               <RedlineView redlines={t.redlines} onView={onViewDocument} />
             </div>

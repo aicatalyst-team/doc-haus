@@ -31,6 +31,16 @@ function dot(a: Float32Array, b: Float32Array) {
   return sum
 }
 
+// Per-session memory of the most recent result-sets. A model in a search loop
+// keeps rephrasing the query but gets back the *same* passages every time (e.g.
+// hunting a section that does not exist). When an incoming result-set matches
+// one already returned in the last few calls, we short-circuit and steer the
+// model to answer from what it has rather than searching again. Upstream's V2
+// runner does not yet bound repeated identical tool calls (see runner/llm.ts),
+// so the bound lives here at the tool boundary.
+const RECENT_LIMIT = 5
+const recentBySession = new Map<string, string[]>()
+
 export default tool({
   description:
     "Search the current matter's documents for passages relevant to a query and return them as citations. Use this before answering any question about a document.",
@@ -74,6 +84,13 @@ export default tool({
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, k)
+
+    const signature = ranked.map(({ row }) => `${row.doc_name}§${row.section}`).join("|")
+    const recent = recentBySession.get(ctx.sessionID) ?? []
+    if (recent.includes(signature)) {
+      return "These passages were already returned by an earlier search this turn — the same results matched again, so searching further will not surface anything new. Answer from the passages you have already retrieved; if they do not address the question, say the documents do not cover it. Do not repeat this search."
+    }
+    recentBySession.set(ctx.sessionID, [signature, ...recent].slice(0, RECENT_LIMIT))
 
     const citations = ranked.map(({ row, score }) => ({
       documentName: row.doc_name,
