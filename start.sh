@@ -23,7 +23,9 @@ pids=()
 cleanup() { kill "${pids[@]}" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
+WEB_URL="http://localhost:5173"
 echo "doc.haus: starting engine, ingest, web (workspace: $WORKSPACE_ROOT)"
+echo "doc.haus: web UI will be at $WEB_URL"
 
 OPENCODE_CONFIG_DIR="$PWD/dochaus" bun run packages/opencode/src/index.ts serve &
 pids+=($!)
@@ -33,6 +35,21 @@ pids+=($!)
 
 (cd apps/web && bun run dev) &
 pids+=($!)
+
+# Open the web UI once vite is actually serving (poll the port via bash's /dev/tcp
+# so it works without curl). Opt out with NO_OPEN=1; harmless if no opener exists.
+if [ -z "${NO_OPEN:-}" ]; then
+  (
+    for _ in $(seq 1 60); do
+      (exec 3<>/dev/tcp/127.0.0.1/5173) 2>/dev/null && { exec 3>&- 3<&-; break; }
+      sleep 0.5
+    done
+    if command -v open >/dev/null 2>&1; then open "$WEB_URL"
+    elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$WEB_URL" >/dev/null 2>&1
+    fi
+  ) &
+  pids+=($!)
+fi
 
 # Block until interrupted (Ctrl-C), then the trap tears every process down. Plain
 # `wait` keeps this portable to the bash 3.2 that ships on macOS (`wait -n` is 4.0+).
