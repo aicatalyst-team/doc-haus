@@ -19,15 +19,48 @@ mkdir -p "$WORKSPACE_ROOT"
 # provider — set GOOGLE_VERTEX_PROJECT then, or leave them unset for any other.
 export GOOGLE_VERTEX_LOCATION="${GOOGLE_VERTEX_LOCATION:-global}"
 
+# The three fixed ports the stack binds: engine (web hardcodes :4096), ingest
+# (services/ingest defaults :4500), web (vite :5173). The engine prefers 4096 but
+# silently falls back to a random port when 4096 is taken — the web app can only
+# reach 4096, so a stale listener there produces a "ghost engine" the UI talks to
+# while the fresh engine sits unreachable. Pin and reap to make that impossible.
+PORTS=(4096 4500 5173)
+
+# pids holds our direct children. `bun run dev`/`bun run start` fork grandchildren
+# (vite, the ingest server) that a plain `kill $pids` would orphan — those orphans
+# are what squat the ports across restarts. So tear down the whole subtree.
 pids=()
-cleanup() { kill "${pids[@]}" 2>/dev/null || true; }
+kill_tree() {
+  local pid=$1 child
+  for child in $(pgrep -P "$pid" 2>/dev/null); do kill_tree "$child"; done
+  kill "$pid" 2>/dev/null || true
+}
+cleanup() { for pid in "${pids[@]}"; do kill_tree "$pid"; done; }
 trap cleanup EXIT INT TERM
+
+# Reboot semantics: before launching, evict anything already holding our ports —
+# a previous run whose grandchildren outlived their parent, or a second start.sh.
+for port in "${PORTS[@]}"; do
+  stale=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+  if [ -n "$stale" ]; then
+    echo "doc.haus: reaping stale process on port $port (pid $stale)"
+    kill $stale 2>/dev/null || true
+  fi
+done
+# Give TERM a moment to land, then hard-kill any survivor still on a port.
+sleep 1
+for port in "${PORTS[@]}"; do
+  stale=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+  [ -n "$stale" ] && kill -9 $stale 2>/dev/null || true
+done
 
 WEB_URL="http://localhost:5173"
 echo "doc.haus: starting engine, ingest, web (workspace: $WORKSPACE_ROOT)"
 echo "doc.haus: web UI will be at $WEB_URL"
 
-OPENCODE_CONFIG_DIR="$PWD/dochaus" bun run packages/opencode/src/index.ts serve &
+# Pin the engine to 4096 so it fails loudly if the port is still taken rather than
+# silently drifting to a random port the web app cannot reach.
+OPENCODE_CONFIG_DIR="$PWD/dochaus" bun run packages/opencode/src/index.ts serve --port 4096 &
 pids+=($!)
 
 (cd services/ingest && bun run start) &
