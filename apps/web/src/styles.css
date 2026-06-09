@@ -324,8 +324,49 @@ textarea {
 /* Assistant picker: a quiet link in the chat header opens a modal listing each
    assistant with its description, so the choice reads in plain terms. */
 .assistant-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
   white-space: nowrap;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.assistant-trigger:hover {
+  border-color: var(--accent);
+  background: var(--panel-hover, var(--panel));
+}
+
+.assistant-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.assistant-trigger-label {
+  font-weight: 500;
+}
+
+.assistant-caret {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.picker-group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 10px 4px 4px;
+}
+
+.picker-group:first-child {
+  padding-top: 2px;
 }
 
 .picker-panel {
@@ -629,13 +670,27 @@ textarea {
 }
 
 .workflow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.workflow-icon {
   color: var(--accent);
-  border-color: var(--border);
+  flex-shrink: 0;
 }
 
 .workflow-btn:hover {
   border-color: var(--accent);
+  background: var(--panel-hover, var(--panel));
 }
 
 .chat-log {
@@ -663,6 +718,17 @@ textarea {
 .msg.assistant {
   background: var(--bg);
   border: 1px solid var(--border);
+}
+
+/* Byline naming the agent that produced an answer, so a thread that mixes
+   agents (Q&A, then Redline) reads clearly rather than as one anonymous voice. */
+.msg-agent {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
 }
 
 /* Edit/retry actions on a user message: hidden until the bubble is hovered so
@@ -753,6 +819,21 @@ textarea {
   color: var(--text);
 }
 
+/* A subagent's own steps, nested beneath the task step that consulted it. The
+   indent and lighter rule mark it as a sub-thread without competing with the
+   top-level timeline. */
+.step .step-list {
+  margin: 8px 0 0;
+  padding-left: 6px;
+  gap: 8px;
+  border-left-color: var(--border-soft, var(--border));
+}
+
+.step .step .step-label,
+.step .thinking {
+  color: var(--muted);
+}
+
 .dot {
   position: absolute;
   left: -5px;
@@ -807,6 +888,23 @@ textarea {
   margin-bottom: 4px;
 }
 
+/* Sources: deduplicated citations behind a collapsed disclosure, so the answer
+   stays the focus and the evidence is one click away. */
+.sources {
+  margin-top: 10px;
+}
+
+.sources > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  list-style: none;
+}
+
+.sources > summary::-webkit-details-marker {
+  display: none;
+}
+
 .citation {
   border-left: 3px solid var(--accent);
   background: var(--accent-soft);
@@ -824,6 +922,56 @@ textarea {
   color: var(--muted);
   font-size: 13px;
   margin-top: 4px;
+}
+
+/* In-chat redline preview: a compact card per proposed change, the prior wording
+   struck red above the new wording in green — the same red/green the document
+   viewer paints — with a link into the full tracked-changes review. */
+.redlines {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.redline-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 10px;
+}
+
+.redline-doc {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.redline-old,
+.redline-new {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.redline-old {
+  color: var(--danger);
+  text-decoration: line-through;
+  margin-bottom: 4px;
+}
+
+.redline-new {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.redline-view {
+  margin-top: 8px;
+  font-size: 13px;
 }
 
 /* Empty chat: a quiet intro line plus clickable starter questions. */
@@ -965,9 +1113,145 @@ button.linklike:hover {
   font-weight: 600;
 }
 
+.viewer-bar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .viewer-body {
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+}
+
+/* The rendered document scrolls on its own; the review panel scrolls separately
+   so the change list stays in view while reading a long contract. */
+.viewer-doc {
+  flex: 1;
   overflow: auto;
   padding: 24px 28px;
+  min-width: 0;
+}
+
+.changes-panel {
+  width: 320px;
+  flex-shrink: 0;
+  overflow: auto;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  padding: 14px;
+}
+
+.changes-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.changes-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.changes-actions button {
+  flex: 1;
+}
+
+/* One proposed change: the prior wording struck red above the new wording in
+   green, mirroring the in-document redline, with per-change accept/reject. */
+.change-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+/* The change a chat link pointed at: outlined so it stands out when the viewer
+   scrolls it into view. */
+.change-card.focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.change-author {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.change-old,
+.change-new {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.change-old {
+  color: var(--danger);
+  text-decoration: line-through;
+  margin-bottom: 4px;
+}
+
+.change-new {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.change-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.change-buttons button {
+  flex: 1;
+}
+
+.btn-accept {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+}
+
+.btn-accept:disabled,
+.btn-reject:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-reject {
+  background: var(--panel);
+  color: var(--danger);
+  border: 1px solid var(--border);
+}
+
+/* Pending-change count beside a document in the rail / on the collapsed tab. */
+.redline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .docx-render {
@@ -996,6 +1280,13 @@ button.linklike:hover {
    would tint all body text — scope strictly to the comment column. */
 .docx-render .comment-margin-column {
   color: var(--warn);
+}
+
+/* With no comments Docxodus still emits an empty margin column that reserves its
+   fixed width, leaving a wide blank gutter right of the text. Collapse it when
+   empty so the document content flexes to full width. */
+.docx-render .comment-margin-column:empty {
+  display: none;
 }
 
 /* Markdown rendering for assistant answers and subagent reports. The .msg

@@ -32,7 +32,66 @@ export function openDb(matterDir: string): Database {
       embedding BLOB NOT NULL
     )
   `)
+  // Pending redline proposals. The canonical .docx stays clean (the accepted
+  // state); each redline a tool proposes is a row here until a reviewer accepts
+  // it (baked into the doc) or rejects it. scope drives how the edit is replayed:
+  // 'phrase' is a surgical find/replace, 'clause' rewrites a located paragraph.
+  // The redline tools (dochaus/tool/{redline,tracked-changes}.ts) create the same
+  // table independently, so keep this DDL in sync with them.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS redlines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      doc_path TEXT NOT NULL,
+      doc_name TEXT NOT NULL,
+      scope TEXT NOT NULL,
+      find_text TEXT NOT NULL,
+      old_text TEXT NOT NULL,
+      new_text TEXT NOT NULL,
+      author TEXT NOT NULL,
+      anchor_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL
+    )
+  `)
   return db
+}
+
+export type RedlineRow = {
+  id: number
+  doc_path: string
+  doc_name: string
+  scope: "phrase" | "clause"
+  find_text: string
+  old_text: string
+  new_text: string
+  author: string
+  anchor_id: string | null
+  status: "pending" | "accepted" | "rejected"
+  created_at: number
+}
+
+// Pending redlines for one document, oldest first — the order they are replayed
+// when building the redlined view and when accepting in bulk.
+export function listPendingRedlines(db: Database, docPath: string): RedlineRow[] {
+  return db
+    .query("SELECT * FROM redlines WHERE doc_path = ? AND status = 'pending' ORDER BY created_at, id")
+    .all(docPath) as RedlineRow[]
+}
+
+export function getRedline(db: Database, id: number): RedlineRow | null {
+  return (db.query("SELECT * FROM redlines WHERE id = ?").get(id) as RedlineRow) ?? null
+}
+
+export function setRedlineStatus(db: Database, id: number, status: "accepted" | "rejected") {
+  db.run("UPDATE redlines SET status = ? WHERE id = ?", [status, id])
+}
+
+// Per-document pending counts, keyed by absolute doc_path, for the docs-rail badge.
+export function pendingRedlineCounts(db: Database): Record<string, number> {
+  const rows = db
+    .query("SELECT doc_path, COUNT(*) AS n FROM redlines WHERE status = 'pending' GROUP BY doc_path")
+    .all() as { doc_path: string; n: number }[]
+  return Object.fromEntries(rows.map((r) => [r.doc_path, r.n]))
 }
 
 export function listDocuments(db: Database) {

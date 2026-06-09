@@ -5,7 +5,18 @@ import { INGEST_URL } from "../config"
 // OpenCode has no upload endpoint, so all document I/O goes through here.
 
 export type Matter = { id: string; title: string; reference?: string; dir: string; created_at: number }
-export type Document = { id: number; name: string; doc_path: string; created_at: number }
+export type Document = { id: number; name: string; doc_path: string; created_at: number; pending?: number }
+// A pending redline proposal: one tracked change awaiting accept/reject.
+export type Redline = {
+  id: number
+  doc_name: string
+  scope: "phrase" | "clause"
+  find_text: string
+  old_text: string
+  new_text: string
+  author: string
+  created_at: number
+}
 export type MatterDetail = Matter & { documents: Document[] }
 export type IngestResult = { name: string; docPath: string; sections: number; chunks: number }
 
@@ -81,4 +92,35 @@ export async function fetchDocumentBytes(id: string, name: string): Promise<Uint
   const res = await fetch(`${INGEST_URL}/matters/${id}/documents/content?name=${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`Could not load ${name} (${res.status})`)
   return new Uint8Array(await res.arrayBuffer())
+}
+
+// The redlined view: the clean .docx compared against itself with every pending
+// proposal applied, so the bytes carry native tracked changes the viewer paints
+// green/red. Identical to the clean bytes when nothing is pending.
+export async function fetchRedlinedBytes(id: string, name: string): Promise<Uint8Array> {
+  const res = await fetch(`${INGEST_URL}/matters/${id}/documents/redlined?name=${encodeURIComponent(name)}`)
+  if (!res.ok) throw new Error(`Could not load ${name} (${res.status})`)
+  return new Uint8Array(await res.arrayBuffer())
+}
+
+export async function fetchRedlines(id: string, name: string): Promise<Redline[]> {
+  const res = await fetch(`${INGEST_URL}/matters/${id}/redlines?name=${encodeURIComponent(name)}`)
+  if (!res.ok) throw new Error(`Could not load changes for ${name} (${res.status})`)
+  return res.json()
+}
+
+export async function acceptRedline(id: string, redlineId: number): Promise<void> {
+  await fetch(`${INGEST_URL}/matters/${id}/redlines/${redlineId}/accept`, { method: "POST" })
+}
+
+export async function rejectRedline(id: string, redlineId: number): Promise<void> {
+  await fetch(`${INGEST_URL}/matters/${id}/redlines/${redlineId}/reject`, { method: "POST" })
+}
+
+export async function acceptAllRedlines(id: string, name: string): Promise<void> {
+  await fetch(`${INGEST_URL}/matters/${id}/redlines/accept-all?name=${encodeURIComponent(name)}`, { method: "POST" })
+}
+
+export async function rejectAllRedlines(id: string, name: string): Promise<void> {
+  await fetch(`${INGEST_URL}/matters/${id}/redlines/reject-all?name=${encodeURIComponent(name)}`, { method: "POST" })
 }
