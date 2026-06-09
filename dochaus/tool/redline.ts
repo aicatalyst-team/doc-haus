@@ -2,10 +2,11 @@ import { tool } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
+import { recordRedline } from "../lib/redlines"
 
-// doc.haus redline tool. Rewrites a whole clause — the paragraph a
-// search-document citation points at — as a native Word tracked change, so a
-// reviewer accepts or rejects the new wording in Microsoft Word.
+// doc.haus redline tool. Proposes rewriting a whole clause — the paragraph a
+// search-document citation points at — as a tracked change a reviewer accepts or
+// rejects in the doc.haus app.
 //
 // This is the citation-driven, clause-level counterpart to the surgical
 // find/replace tools (word-integration, tracked-changes): `clause` locates the
@@ -15,13 +16,14 @@ import { docxodus } from "../lib/docxodus"
 // their spacing/char offsets don't align — so we only ever LOCATE the block, we
 // never offset-index into it.
 //
-// Session edits are always plain; native w:ins/w:del come only from
-// compareDocuments(original, edited, { authorName }). So we rewrite an in-memory
-// copy, then redline it against the on-disk original and write that back.
+// The proposal is recorded against the matter's index; the canonical .docx stays
+// clean (the accepted state) until a reviewer accepts, when ingest bakes the edit
+// in. So here we only locate the clause and capture its current text — we never
+// modify the file.
 
 export default tool({
   description:
-    "Rewrite a whole clause as a tracked change, using a passage retrieved from search-document. Locates the paragraph containing `clause` and replaces its entire text with `replacement`, recorded as a native Word revision attributed to an author (a reviewer accepts or rejects it in Word). Use this to redline a clause you found as a citation; use tracked-changes for a surgical word/phrase swap.",
+    "Propose rewriting a whole clause as a tracked change, using a passage retrieved from search-document. Locates the paragraph containing `clause` and proposes replacing its entire text with `replacement`, attributed to an author. The change is recorded as a pending redline the user reviews and accepts or rejects in the doc.haus app — the document is not modified until they accept. Use this to redline a clause you found as a citation; use tracked-changes for a surgical word/phrase swap.",
   args: {
     document: tool.schema.string().describe("Document file name within the matter (the docPath from a citation)"),
     clause: tool.schema
@@ -37,32 +39,32 @@ export default tool({
     if (!existsSync(file)) return `Document not found in this matter: ${args.document}`
 
     const dx = await docxodus()
-    const original = await Bun.file(file).bytes()
-    const session = dx.openDocxSession(original, {})
+    const session = dx.openDocxSession(await Bun.file(file).bytes(), {})
 
     const target = session.findByText(args.clause, { ignoreWhitespace: true })
     if (!target) {
       session.close()
       return `Clause not found in ${path.basename(file)}: ${JSON.stringify(args.clause)}`
     }
-
-    const result = session.replaceText(target.id, args.replacement)
-    if (!result.success) {
-      session.close()
-      return `Redline failed: ${result.error?.message ?? JSON.stringify(result.error)}`
-    }
-
-    const edited = session.save()
+    const oldText = session.projectAnchor(target.id).markdown.trim()
     session.close()
 
     const author = args.author ?? "doc.haus"
-    const redline = await dx.compareDocuments(original, edited, { authorName: author })
-    await Bun.write(file, redline)
+    const id = recordRedline(ctx.directory, {
+      docPath: file,
+      docName: path.basename(file),
+      scope: "clause",
+      findText: args.clause,
+      oldText,
+      newText: args.replacement,
+      author,
+      anchorId: target.id,
+    })
 
     return {
-      title: `Redlined a clause in ${path.basename(file)}`,
-      output: `Rewrote the clause matching ${JSON.stringify(args.clause)} in ${path.basename(file)}, recorded as a tracked change attributed to ${author}. Reviewer can accept or reject in Word.`,
-      metadata: { document: file, clause: args.clause, replacement: args.replacement, anchor: target.id, author },
+      title: `Proposed redline in ${path.basename(file)}`,
+      output: `Proposed rewriting the clause matching ${JSON.stringify(args.clause)} in ${path.basename(file)}, attributed to ${author}. Recorded as pending redline #${id} — the user reviews and accepts or rejects it in the doc.haus app.`,
+      metadata: { document: file, clause: args.clause, replacement: args.replacement, anchor: target.id, author, redline: id },
     }
   },
 })

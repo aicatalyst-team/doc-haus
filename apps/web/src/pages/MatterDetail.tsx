@@ -102,7 +102,9 @@ export default function MatterDetail() {
         </div>
       )}
 
-      {viewing && <DocumentViewer matterId={matter.id} name={viewing} onClose={() => setViewing(undefined)} />}
+      {viewing && (
+        <DocumentViewer matterId={matter.id} name={viewing} onClose={() => setViewing(undefined)} onChanged={refresh} />
+      )}
     </>
   )
 }

@@ -44,12 +44,15 @@ export default function DocumentUpload({
     toast("success", `Removed ${name}.`)
   }
 
+  const pending = documents.reduce((n, d) => n + (d.pending ?? 0), 0)
+
   if (collapsed) {
     return (
-      <button className="docs-tab" onClick={onToggle} title="Show documents">
+      <button className="docs-tab" onClick={onToggle} title={pending ? `${pending} pending changes to review` : "Show documents"}>
         <IconDocs />
         <span className="docs-tab-count">{documents.length}</span>
         <span className="docs-tab-label">Documents</span>
+        {pending > 0 && <span className="redline-badge">{pending}</span>}
       </button>
     )
   }
@@ -73,6 +76,11 @@ export default function DocumentUpload({
               <button className="linklike" onClick={() => onView(d.name)}>
                 {d.name}
               </button>
+              {d.pending ? (
+                <span className="redline-badge" title={`${d.pending} pending change${d.pending === 1 ? "" : "s"} to review`}>
+                  {d.pending}
+                </span>
+              ) : null}
               <span className="muted">{new Date(d.created_at).toLocaleDateString()}</span>
               <button className="doc-remove" onClick={() => onRemove(d.name)} title={`Remove ${d.name}`} disabled={busy}>
                 <IconTrash />

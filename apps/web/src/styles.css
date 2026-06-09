@@ -966,8 +966,131 @@ button.linklike:hover {
 }
 
 .viewer-body {
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+}
+
+/* The rendered document scrolls on its own; the review panel scrolls separately
+   so the change list stays in view while reading a long contract. */
+.viewer-doc {
+  flex: 1;
   overflow: auto;
   padding: 24px 28px;
+  min-width: 0;
+}
+
+.changes-panel {
+  width: 320px;
+  flex-shrink: 0;
+  overflow: auto;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  padding: 14px;
+}
+
+.changes-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.changes-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.changes-actions button {
+  flex: 1;
+}
+
+/* One proposed change: the prior wording struck red above the new wording in
+   green, mirroring the in-document redline, with per-change accept/reject. */
+.change-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.change-author {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.change-old,
+.change-new {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.change-old {
+  color: var(--danger);
+  text-decoration: line-through;
+  margin-bottom: 4px;
+}
+
+.change-new {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.change-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.change-buttons button {
+  flex: 1;
+}
+
+.btn-accept {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+}
+
+.btn-accept:disabled,
+.btn-reject:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-reject {
+  background: var(--panel);
+  color: var(--danger);
+  border: 1px solid var(--border);
+}
+
+/* Pending-change count beside a document in the rail / on the collapsed tab. */
+.redline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .docx-render {
