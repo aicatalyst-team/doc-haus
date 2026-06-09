@@ -20,3 +20,10 @@ class GlobalBusEmitter extends EventEmitter<{
 }
 
 export const GlobalBus = new GlobalBusEmitter()
+// GlobalBus is a process-wide broadcast bus: every concurrent SSE subscriber (the
+// /event and /global handlers each do GlobalBus.on("event", ...)) is one listener,
+// and a normal multi-client/multi-tab session legitimately exceeds Node's default
+// cap of 10. Without lifting it the runtime prints a spurious
+// "MaxListenersExceededWarning ... possible memory leak" on the 11th subscriber.
+// 0 = unlimited; subscribers are still released on disconnect via acquireRelease.
+GlobalBus.setMaxListeners(0)
