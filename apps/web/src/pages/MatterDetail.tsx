@@ -129,7 +129,9 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
         </div>
       )}
 
-      {view === "review" && <ReviewGrid matterId={matter.id} directory={matter.dir} documents={matter.documents} />}
+      {view === "review" && (
+        <ReviewGrid matterId={matter.id} title={matter.title} directory={matter.dir} documents={matter.documents} />
+      )}
 
       {view === "documents" && (
         <DocumentUpload

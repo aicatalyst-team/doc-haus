@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { utils, write } from "xlsx"
 import type { Part } from "@opencode-ai/sdk"
 import { getGrid, saveGrid, type Document, type Grid, type GridCellData } from "../api/ingest"
 import { createSession, getMessages, matterClient, sendPrompt, type Citation, type Client } from "../api/opencode"
@@ -45,7 +46,7 @@ function readAnswer(parts: Part[]) {
   return { text, citation }
 }
 
-export default function ReviewGrid({ matterId, directory, documents }: { matterId: string; directory: string; documents: Document[] }) {
+export default function ReviewGrid({ matterId, title, directory, documents }: { matterId: string; title: string; directory: string; documents: Document[] }) {
   const client = useMemo<Client>(() => matterClient(directory), [directory])
   const [grid, setGrid] = useState<Grid>({ columns: [], cells: {} })
   const gridRef = useRef<Grid>(grid)
@@ -149,16 +150,23 @@ export default function ReviewGrid({ matterId, directory, documents }: { matterI
     fill(targets)
   }
 
-  function exportCsv() {
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`
-    const header = ["Document", ...grid.columns.map((c) => c.question)].map(esc).join(",")
-    const rows = documents.map((doc) =>
-      [doc.name, ...grid.columns.map((c) => grid.cells[cellKey(doc.name, c.id)]?.answer ?? "")].map(esc).join(","),
+  function exportXlsx() {
+    const header = ["Document", ...grid.columns.map((c) => c.question)]
+    const rows = documents.map((doc) => [
+      doc.name,
+      ...grid.columns.map((c) => grid.cells[cellKey(doc.name, c.id)]?.answer ?? ""),
+    ])
+    const sheet = utils.aoa_to_sheet([header, ...rows])
+    const book = utils.book_new()
+    utils.book_append_sheet(book, sheet, "Tabular review")
+    const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "matter"
+    const buf = write(book, { type: "array", bookType: "xlsx" })
+    const url = URL.createObjectURL(
+      new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
     )
-    const url = URL.createObjectURL(new Blob([[header, ...rows].join("\n")], { type: "text/csv" }))
     const a = document.createElement("a")
     a.href = url
-    a.download = "tabular-review.csv"
+    a.download = `${slug}-tabular-review.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -176,8 +184,8 @@ export default function ReviewGrid({ matterId, directory, documents }: { matterI
           <button onClick={fillEmpty} disabled={grid.columns.length === 0 || running > 0}>
             Fill empty
           </button>
-          <button onClick={exportCsv} disabled={grid.columns.length === 0}>
-            Export CSV
+          <button onClick={exportXlsx} disabled={grid.columns.length === 0}>
+            Export Excel
           </button>
         </div>
       </div>
