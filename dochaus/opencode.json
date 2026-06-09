@@ -56,5 +56,11 @@
     "bash": "deny",
     "webfetch": "deny",
     "websearch": "deny"
+  },
+  "agent": {
+    "explore": { "disable": true },
+    "general": { "disable": true },
+    "build": { "disable": true },
+    "plan": { "disable": true }
   }
 }
