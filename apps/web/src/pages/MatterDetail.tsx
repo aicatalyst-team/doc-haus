@@ -5,7 +5,7 @@ import { listAgents, matterClient } from "../api/opencode"
 import DocumentUpload from "../components/DocumentUpload"
 import DocumentViewer from "../components/DocumentViewer"
 import ChatPanel from "../components/ChatPanel"
-import AgentPanel from "../components/AgentPanel"
+import WorkflowArtifact from "../components/WorkflowArtifact"
 
 type Agent = { name: string; description?: string; mode?: string }
 
@@ -15,6 +15,7 @@ export default function MatterDetail() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [agent, setAgent] = useState("qa")
   const [viewing, setViewing] = useState<string>()
+  const [workflow, setWorkflow] = useState<string>()
 
   function refresh() {
     if (id) getMatter(id).then(setMatter)
@@ -46,14 +47,22 @@ export default function MatterDetail() {
 
       <DocumentUpload matterId={matter.id} documents={matter.documents} onUploaded={refresh} onView={setViewing} />
 
-      <div className="grid">
+      <div className={`workspace${workflow ? " with-artifact" : ""}`}>
         <ChatPanel
           directory={matter.dir}
           agent={agent}
-          agents={agents.filter((a) => a.name !== "legal-review")}
+          available={new Set(agents.map((a) => a.name))}
           onAgentChange={setAgent}
+          onLaunchWorkflow={setWorkflow}
         />
-        <AgentPanel directory={matter.dir} />
+        {workflow && (
+          <WorkflowArtifact
+            key={workflow}
+            directory={matter.dir}
+            workflow={workflow}
+            onClose={() => setWorkflow(undefined)}
+          />
+        )}
       </div>
 
       {viewing && <DocumentViewer matterId={matter.id} name={viewing} onClose={() => setViewing(undefined)} />}

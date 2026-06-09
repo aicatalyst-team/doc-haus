@@ -11,8 +11,7 @@ import {
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
 import ModelSelector from "./ModelSelector"
-
-type Agent = { name: string; description?: string; mode?: string }
+import WorkflowLauncher from "./WorkflowLauncher"
 
 type Turn = { role: "user" | "assistant"; text: string; citations: Citation[] }
 
@@ -42,13 +41,15 @@ function readMessage(parts: Map<string, Part>, messageID: string) {
 export default function ChatPanel({
   directory,
   agent,
-  agents,
+  available,
   onAgentChange,
+  onLaunchWorkflow,
 }: {
   directory: string
   agent: string
-  agents: Agent[]
+  available: Set<string>
   onAgentChange: (name: string) => void
+  onLaunchWorkflow: (name: string) => void
 }) {
   const client = useMemo<Client>(() => matterClient(directory), [directory])
   const [turns, setTurns] = useState<Turn[]>([])
@@ -123,7 +124,7 @@ export default function ChatPanel({
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Ask the matter</h2>
-        <ModelSelector agents={agents} value={agent} onChange={onAgentChange} />
+        <ModelSelector available={available} value={agent} onChange={onAgentChange} />
       </div>
       <div className="chat-log" ref={logRef}>
         {turns.length === 0 && !busy && (
@@ -150,6 +151,9 @@ export default function ChatPanel({
             {live && <CitationView citations={live.citations} />}
           </div>
         )}
+      </div>
+      <div className="composer-tools">
+        <WorkflowLauncher available={available} onLaunch={onLaunchWorkflow} />
       </div>
       <div className="composer">
         <textarea

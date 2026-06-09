@@ -238,13 +238,45 @@ textarea {
   line-height: 1.45;
 }
 
-/* Matter workspace: chat is the primary surface, the review panel supports it —
-   give chat the wider column rather than equal weight. */
-.grid {
+/* Matter workspace: chat is the single primary surface and runs full-width. When
+   a workflow is launched, an artifact panel opens beside it on the right; the
+   chat yields the narrower-but-still-primary column rather than splitting evenly. */
+.workspace {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: start;
+}
+
+.workspace.with-artifact {
+  grid-template-columns: 1.5fr 1fr;
+}
+
+/* Artifact panel sticks in view while the chat scrolls, so a long review report
+   stays readable next to the conversation. */
+.artifact {
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-left: 3px solid var(--accent);
+}
+
+/* Tool strip above the composer holding the Workflows launcher. */
+.composer-tools {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.workflow-btn {
+  font-size: 13px;
+  color: var(--accent);
+  border-color: var(--border);
+}
+
+.workflow-btn:hover {
+  border-color: var(--accent);
 }
 
 .chat-log {
