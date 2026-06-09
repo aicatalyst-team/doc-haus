@@ -182,9 +182,11 @@ textarea {
   color: var(--muted);
 }
 
+/* Matter workspace: chat is the primary surface, the review panel supports it —
+   give chat the wider column rather than equal weight. */
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.5fr 1fr;
   gap: 16px;
   align-items: start;
 }
@@ -233,6 +235,33 @@ textarea {
   color: var(--muted);
   font-size: 13px;
   margin-top: 4px;
+}
+
+/* Empty chat: a quiet intro line plus clickable starter questions. */
+.chat-empty {
+  margin: auto 0;
+  padding: 8px 2px;
+}
+
+.chat-empty .starters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.starter {
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.starter:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .composer {

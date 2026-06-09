@@ -13,6 +13,14 @@ import Markdown from "./Markdown"
 
 type Turn = { role: "user" | "assistant"; text: string; citations: Citation[] }
 
+// Quiet starter prompts so a fresh matter is not a blank box — mirrors how Harvey
+// and Legora seat the lawyer with ready questions about the documents in scope.
+const STARTERS = [
+  "What are the key obligations of each party?",
+  "What termination rights does each party have?",
+  "Flag any unusual or one-sided clauses.",
+]
+
 // Pull the assistant's visible text + any search-document citations out of the
 // live part map for one message id.
 function readMessage(parts: Map<string, Part>, messageID: string) {
@@ -102,6 +110,18 @@ export default function ChatPanel({ directory, agent }: { directory: string; age
     <div className="card">
       <h2>Ask the matter</h2>
       <div className="chat-log" ref={logRef}>
+        {turns.length === 0 && !busy && (
+          <div className="chat-empty">
+            <p className="muted">Ask a question about this matter's documents. Every answer cites the source section.</p>
+            <div className="starters">
+              {STARTERS.map((s) => (
+                <button key={s} className="starter" onClick={() => setInput(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {turns.map((t, i) => (
           <div key={i} className={`msg ${t.role}`}>
             {t.role === "assistant" ? <Markdown>{t.text}</Markdown> : t.text}

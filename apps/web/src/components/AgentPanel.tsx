@@ -5,11 +5,26 @@ import Markdown from "./Markdown"
 
 type TaskPart = Extract<Part, { type: "tool" }>
 
-// One row per subagent the orchestrator spawns through the task tool.
+// Present the review roles in lawyer terms, not the raw subagent ids/statuses
+// the harness emits. The work is the same; the labels just stop leaking plumbing.
+const ROLE_LABELS: Record<string, string> = {
+  reviewer: "Reviewer",
+  challenger: "Challenger",
+  summarizer: "Summary",
+}
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Queued",
+  running: "Working",
+  completed: "Done",
+  error: "Failed",
+}
+
+// One row per reviewer the review coordinates through the task tool.
 function SubagentResult({ part }: { part: TaskPart }) {
   const input = part.state.status === "completed" || part.state.status === "running" ? part.state.input : {}
-  const name = (input as { subagent_type?: string }).subagent_type ?? part.tool
-  const status = part.state.status
+  const role = (input as { subagent_type?: string }).subagent_type ?? part.tool
+  const name = ROLE_LABELS[role] ?? role
+  const status = STATUS_LABELS[part.state.status] ?? part.state.status
   const output = part.state.status === "completed" ? part.state.output : ""
   return (
     <div className="agent-step">
@@ -83,14 +98,17 @@ export default function AgentPanel({ directory }: { directory: string }) {
 
   return (
     <div className="card">
-      <h2>Multi-agent review</h2>
+      <h2>Full review</h2>
+      <p className="muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
+        A reviewer, a challenger, and a summarizer read every document and return one combined report.
+      </p>
       <button className="primary" onClick={onRun} disabled={busy}>
-        {busy ? "Running review..." : "Run legal review"}
+        {busy ? "Running review..." : "Run full review"}
       </button>
 
       {ran && (
         <div style={{ marginTop: 16 }}>
-          {tasks.length === 0 && busy && <p className="muted">Orchestrator is spawning subagents...</p>}
+          {tasks.length === 0 && busy && <p className="muted">Starting review...</p>}
           {tasks.map((p) => (
             <SubagentResult key={p.id} part={p} />
           ))}

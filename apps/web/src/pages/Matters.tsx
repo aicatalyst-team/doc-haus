@@ -33,9 +33,9 @@ export default function Matters() {
   }
 
   const term = filter.trim().toLowerCase()
-  const visible = term
-    ? matters.filter((m) => m.title.toLowerCase().includes(term) || (m.reference ?? "").toLowerCase().includes(term))
-    : matters
+  const visible = [...matters]
+    .sort((a, b) => b.created_at - a.created_at)
+    .filter((m) => !term || m.title.toLowerCase().includes(term) || (m.reference ?? "").toLowerCase().includes(term))
 
   return (
     <>
