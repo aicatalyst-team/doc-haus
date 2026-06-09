@@ -324,8 +324,49 @@ textarea {
 /* Assistant picker: a quiet link in the chat header opens a modal listing each
    assistant with its description, so the choice reads in plain terms. */
 .assistant-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
   white-space: nowrap;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.assistant-trigger:hover {
+  border-color: var(--accent);
+  background: var(--panel-hover, var(--panel));
+}
+
+.assistant-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.assistant-trigger-label {
+  font-weight: 500;
+}
+
+.assistant-caret {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.picker-group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 10px 4px 4px;
+}
+
+.picker-group:first-child {
+  padding-top: 2px;
 }
 
 .picker-panel {
@@ -629,13 +670,27 @@ textarea {
 }
 
 .workflow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.workflow-icon {
   color: var(--accent);
-  border-color: var(--border);
+  flex-shrink: 0;
 }
 
 .workflow-btn:hover {
   border-color: var(--accent);
+  background: var(--panel-hover, var(--panel));
 }
 
 .chat-log {
@@ -753,6 +808,21 @@ textarea {
   color: var(--text);
 }
 
+/* A subagent's own steps, nested beneath the task step that consulted it. The
+   indent and lighter rule mark it as a sub-thread without competing with the
+   top-level timeline. */
+.step .step-list {
+  margin: 8px 0 0;
+  padding-left: 6px;
+  gap: 8px;
+  border-left-color: var(--border-soft, var(--border));
+}
+
+.step .step .step-label,
+.step .thinking {
+  color: var(--muted);
+}
+
 .dot {
   position: absolute;
   left: -5px;
@@ -805,6 +875,23 @@ textarea {
 
 .thinking[open] > summary {
   margin-bottom: 4px;
+}
+
+/* Sources: deduplicated citations behind a collapsed disclosure, so the answer
+   stays the focus and the evidence is one click away. */
+.sources {
+  margin-top: 10px;
+}
+
+.sources > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  list-style: none;
+}
+
+.sources > summary::-webkit-details-marker {
+  display: none;
 }
 
 .citation {

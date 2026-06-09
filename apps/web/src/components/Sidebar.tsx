@@ -13,13 +13,18 @@ const SURFACES = [
   { view: "chat", label: "Chat", Icon: IconChat },
   { view: "review", label: "Review", Icon: IconReview },
   { view: "documents", label: "Documents", Icon: IconDocsNav },
-  { view: "workflows", label: "Workflows", Icon: IconFlow },
 ] as const
 
 // Left rail. Holds the brand, primary nav, the open matter's conversation
 // history, and Settings. Collapses to an icons-only strip; the choice persists
 // per browser in localStorage (a single UI preference — no datastore needed).
-export default function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
+export default function Sidebar({
+  onOpenSettings,
+  sessionsVersion,
+}: {
+  onOpenSettings: () => void
+  sessionsVersion: number
+}) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("dh.sidebar") === "1")
   const matterId = useMatch("/matter/:id")?.params.id
   const [params] = useSearchParams()
@@ -61,7 +66,7 @@ export default function Sidebar({ onOpenSettings }: { onOpenSettings: () => void
     return () => {
       live = false
     }
-  }, [matterId, activeSession])
+  }, [matterId, activeSession, sessionsVersion])
 
   // Delete a conversation from the engine, then drop it from the list. If it was
   // the open one, fall back to a fresh chat so the canvas isn't left on a dead id.
@@ -185,16 +190,6 @@ function IconDocsNav() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
-    </svg>
-  )
-}
-
-function IconFlow() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="6" height="6" rx="1" />
-      <rect x="15" y="15" width="6" height="6" rx="1" />
-      <path d="M9 6h6a3 3 0 0 1 3 3v6" />
     </svg>
   )
 }
