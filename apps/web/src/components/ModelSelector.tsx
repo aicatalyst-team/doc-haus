@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 type Agent = { name: string; description?: string; mode?: string }
 
 // Lawyer-facing names for the primary agents. The agent ids are config-level
@@ -7,9 +9,9 @@ const LABELS: Record<string, string> = {
   "legal-review": "Full review",
 }
 
-// Plain-language blurbs shown under the picker. Presentation-only — the config
-// descriptions stay as-is so agent routing is unaffected; these just read better
-// to a lawyer than the orchestration wording the agents carry.
+// Plain-language blurbs shown beside each assistant. Presentation-only — the
+// config descriptions stay as-is so agent routing is unaffected; these just read
+// better to a lawyer than the orchestration wording the agents carry.
 const DESCRIPTIONS: Record<string, string> = {
   qa: "Answers questions about this matter's documents, always with citations.",
   "legal-review": "Reads every document and returns one combined report from a reviewer, challenger, and summarizer.",
@@ -20,9 +22,9 @@ function label(name: string) {
 }
 
 // Lets the user pick which primary agent answers chat. Agent definitions carry
-// their own model, so picking the agent is the model/behavior selector —
-// OpenCode's inherited per-agent model config does the rest. We surface the
-// agent's own description so the choice reads in plain terms.
+// their own model, so picking the agent is the model/behavior selector. A link
+// opens a modal that lists each assistant with its description, rather than a
+// bare dropdown — the choice reads in plain terms.
 export default function ModelSelector({
   agents,
   value,
@@ -33,22 +35,39 @@ export default function ModelSelector({
   onChange: (name: string) => void
 }) {
   const primary = agents.filter((a) => a.mode !== "subagent")
-  if (primary.length <= 1) return null
-  const selected = primary.find((a) => a.name === value)
-  const description = DESCRIPTIONS[value] ?? selected?.description
+  const [open, setOpen] = useState(false)
+  if (primary.length === 0) return null
+
   return (
-    <div className="agent-select">
-      <label className="row" style={{ gap: 6 }}>
-        <span className="muted">Assistant</span>
-        <select value={value} onChange={(e) => onChange(e.target.value)}>
-          {primary.map((a) => (
-            <option key={a.name} value={a.name}>
-              {label(a.name)}
-            </option>
-          ))}
-        </select>
-      </label>
-      {description && <p className="agent-desc muted">{description}</p>}
-    </div>
+    <>
+      <button className="linklike assistant-trigger" onClick={() => setOpen(true)}>
+        Assistant: {label(value)}
+      </button>
+      {open && (
+        <div className="viewer-overlay" onClick={() => setOpen(false)}>
+          <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="viewer-bar">
+              <span className="viewer-title">Choose an assistant</span>
+              <button onClick={() => setOpen(false)}>Close</button>
+            </div>
+            <div className="picker-body">
+              {primary.map((a) => (
+                <button
+                  key={a.name}
+                  className={`assistant-option${a.name === value ? " selected" : ""}`}
+                  onClick={() => {
+                    onChange(a.name)
+                    setOpen(false)
+                  }}
+                >
+                  <span className="assistant-name">{label(a.name)}</span>
+                  <span className="assistant-desc muted">{DESCRIPTIONS[a.name] ?? a.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

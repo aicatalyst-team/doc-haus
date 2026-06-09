@@ -182,20 +182,60 @@ textarea {
   color: var(--muted);
 }
 
-/* Agent picker: select on top, the agent's own description beneath, right-aligned
-   under the header so the choice reads in plain terms without crowding the row. */
-.agent-select {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+/* Assistant picker: a quiet link in the chat header opens a modal listing each
+   assistant with its description, so the choice reads in plain terms. */
+.assistant-trigger {
+  font-size: 13px;
+  white-space: nowrap;
 }
 
-.agent-desc {
-  margin: 0;
-  font-size: 12px;
-  max-width: 280px;
-  text-align: right;
+.picker-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-body {
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assistant-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.assistant-option:hover {
+  border-color: var(--accent);
+}
+
+.assistant-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.assistant-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.assistant-desc {
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 /* Matter workspace: chat is the primary surface, the review panel supports it —
