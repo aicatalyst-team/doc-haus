@@ -121,6 +121,13 @@ export async function sendPrompt(client: Client, sessionID: string, agent: strin
   })
 }
 
+// Revert a user message and everything after it, rolling the session back to
+// just before that turn. Used by edit/retry: revert, then send the new prompt
+// so the assistant answer is regenerated from the edited question.
+export async function revertMessage(client: Client, sessionID: string, messageID: string) {
+  return client.session.revert({ path: { id: sessionID }, body: { messageID } })
+}
+
 // Subscribe to the server event stream and invoke onEvent for each event.
 // Caller passes an AbortSignal to stop. Errors after abort are swallowed.
 export async function subscribeEvents(client: Client, onEvent: (e: Event) => void, signal: AbortSignal) {

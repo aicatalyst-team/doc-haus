@@ -630,6 +630,56 @@ textarea {
   border: 1px solid var(--border);
 }
 
+/* Edit/retry actions on a user message: hidden until the bubble is hovered so
+   the conversation stays clean, revealed as a small row below the text. */
+.msg.user {
+  position: relative;
+}
+
+.msg-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.msg.user:hover .msg-actions,
+.msg.user:focus-within .msg-actions {
+  opacity: 1;
+}
+
+.msg-actions .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 6px;
+}
+
+.msg-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msg-edit textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.msg-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 /* Reasoning timeline: a collapsible panel of thinking blocks and tool calls,
    each marked by a status dot on a vertical rail. */
 .steps {

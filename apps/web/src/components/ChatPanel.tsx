@@ -4,6 +4,7 @@ import {
   createSession,
   getMessages,
   matterClient,
+  revertMessage,
   sendPrompt,
   subscribeEvents,
   type Citation,
@@ -19,7 +20,10 @@ type Step =
   | { kind: "reasoning"; text: string; done: boolean }
   | { kind: "tool"; label: string; status: "running" | "done" | "error" }
 
-type Turn = { role: "user" | "assistant"; text: string; citations: Citation[]; steps: Step[] }
+// id is the server message id, carried on user turns so edit/retry can revert
+// the session back to that exact message. Optimistic turns added before a
+// finalize reload have no id, so their actions stay hidden until settled.
+type Turn = { role: "user" | "assistant"; text: string; citations: Citation[]; steps: Step[]; id?: string }
 
 // Quiet starter prompts so a fresh matter is not a blank box — mirrors how Harvey
 // and Legora seat the lawyer with ready questions about the documents in scope.
@@ -62,6 +66,24 @@ function humanizeTool(tool: string) {
   return tool.charAt(0).toUpperCase() + tool.slice(1).replace(/-/g, " ")
 }
 
+function IconPencil() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </svg>
+  )
+}
+
+function IconRetry() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="23 4 23 10 17 10" />
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+    </svg>
+  )
+}
+
 // Aggregate every assistant part received this turn. A tool-using turn produces
 // several assistant messages (one per model step), so tracking only the latest
 // id would blank the preview to "Thinking..." between steps and drop earlier
@@ -75,16 +97,17 @@ function readTurn(parts: Map<string, Part>, roles: Map<string, string>) {
 // Group stored messages into turns. A tool-using turn spans several consecutive
 // assistant messages (one per model step); merging their parts reconstructs the
 // whole reasoning timeline instead of showing only the final answer bubble.
-function toTurns(msgs: { info: { role: "user" | "assistant" }; parts: Part[] }[]): Turn[] {
-  const groups: { role: "user" | "assistant"; parts: Part[] }[] = []
+function toTurns(msgs: { info: { id: string; role: "user" | "assistant" }; parts: Part[] }[]): Turn[] {
+  const groups: { role: "user" | "assistant"; id: string; parts: Part[] }[] = []
   for (const m of msgs) {
     const last = groups[groups.length - 1]
     if (last && last.role === "assistant" && m.info.role === "assistant") last.parts.push(...m.parts)
-    else groups.push({ role: m.info.role, parts: [...m.parts] })
+    else groups.push({ role: m.info.role, id: m.info.id, parts: [...m.parts] })
   }
   return groups
     .map((g) => ({
       role: g.role,
+      id: g.id,
       ...contentOf(g.parts),
       steps: g.role === "assistant" ? partsToSteps(g.parts) : [],
     }))
@@ -119,6 +142,7 @@ export default function ChatPanel({
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState<{ index: number; draft: string } | null>(null)
   const [, bump] = useState(0)
 
   const sessionRef = useRef<string>("")
@@ -163,10 +187,11 @@ export default function ChatPanel({
     }
   }
 
-  function finalize() {
-    const { text, citations, steps } = readTurn(partsRef.current, rolesRef.current)
-    if (text || citations.length || steps.length)
-      setTurns((prev) => [...prev, { role: "assistant", text, citations, steps }])
+  // Reload the settled history from the server rather than appending the
+  // in-flight turn from refs. The reload gives every turn its authoritative
+  // message id, which edit/retry need to revert the session to a given turn.
+  async function finalize() {
+    if (sessionRef.current) setTurns(toTurns(await getMessages(client, sessionRef.current)))
     partsRef.current.clear()
     rolesRef.current.clear()
     setBusy(false)
@@ -183,6 +208,21 @@ export default function ChatPanel({
     // Create the session lazily, titled from this first message so it reads as a
     // distinct conversation in the rail rather than an interchangeable "Q&A".
     if (!sessionRef.current) sessionRef.current = (await createSession(client, titleFrom(text))).id
+    await sendPrompt(client, sessionRef.current, agent, text)
+  }
+
+  // Edit and retry both rewind the session to a user turn and re-ask: revert
+  // drops that message and everything after it server-side, then we re-send the
+  // (possibly edited) prompt so the assistant answer is regenerated. The UI is
+  // truncated to before the turn optimistically; finalize reloads the truth.
+  async function resendFrom(turn: Turn, index: number, text: string) {
+    if (!turn.id || !text.trim() || busy) return
+    setEditing(null)
+    setBusy(true)
+    partsRef.current.clear()
+    rolesRef.current.clear()
+    setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], steps: [] }])
+    await revertMessage(client, sessionRef.current, turn.id)
     await sendPrompt(client, sessionRef.current, agent, text)
   }
 
@@ -207,19 +247,57 @@ export default function ChatPanel({
             </div>
           </div>
         )}
-        {turns.map((t, i) => (
-          <div key={i} className={`msg ${t.role}`}>
-            {t.role === "assistant" ? (
-              <>
-                <StepsPanel steps={t.steps} busy={false} />
-                {t.text && <Markdown>{t.text}</Markdown>}
-              </>
-            ) : (
-              t.text
-            )}
-            <CitationView citations={t.citations} />
-          </div>
-        ))}
+        {turns.map((t, i) =>
+          t.role === "user" ? (
+            <div key={i} className="msg user">
+              {editing?.index === i ? (
+                <div className="msg-edit">
+                  <textarea
+                    autoFocus
+                    value={editing.draft}
+                    onChange={(e) => setEditing({ index: i, draft: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) resendFrom(t, i, editing.draft)
+                      if (e.key === "Escape") setEditing(null)
+                    }}
+                  />
+                  <div className="msg-edit-actions">
+                    <button className="icon-btn" onClick={() => setEditing(null)}>
+                      Cancel
+                    </button>
+                    <button className="primary" onClick={() => resendFrom(t, i, editing.draft)}>
+                      Save & send
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {t.text}
+                  {t.id && !busy && (
+                    <div className="msg-actions">
+                      <button
+                        className="icon-btn"
+                        title="Edit message"
+                        onClick={() => setEditing({ index: i, draft: t.text })}
+                      >
+                        <IconPencil />
+                      </button>
+                      <button className="icon-btn" title="Retry" onClick={() => resendFrom(t, i, t.text)}>
+                        <IconRetry />
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div key={i} className="msg assistant">
+              <StepsPanel steps={t.steps} busy={false} />
+              {t.text && <Markdown>{t.text}</Markdown>}
+              <CitationView citations={t.citations} />
+            </div>
+          ),
+        )}
         {busy && (
           <div className="msg assistant">
             <StepsPanel steps={live.steps} busy />
