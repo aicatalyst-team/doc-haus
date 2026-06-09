@@ -221,6 +221,34 @@ textarea {
   color: var(--danger);
 }
 
+/* Armed delete: a confirm pill that slides in from the right where the trash
+   icon sat. One click confirms; a click anywhere else disarms it. */
+.convo-confirm {
+  position: absolute;
+  right: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--danger);
+  border-radius: 5px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  animation: convo-confirm-in 160ms ease-out;
+}
+
+@keyframes convo-confirm-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .sidebar-foot {
   margin-top: auto;
   padding-top: 8px;

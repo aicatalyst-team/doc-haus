@@ -35,10 +35,21 @@ export default function Sidebar({
   const [convos, setConvos] = useState<Convo[]>([])
   const [matterTitle, setMatterTitle] = useState("")
   const [matterDir, setMatterDir] = useState("")
+  // The conversation whose delete is armed. Clicking the trash slides out an
+  // inline Confirm pill instead of blocking on window.confirm; any click
+  // elsewhere disarms it.
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   useEffect(() => {
     localStorage.setItem("dh.sidebar", collapsed ? "1" : "0")
   }, [collapsed])
+
+  useEffect(() => {
+    if (!confirmId) return
+    const dismiss = () => setConfirmId(null)
+    window.addEventListener("click", dismiss)
+    return () => window.removeEventListener("click", dismiss)
+  }, [confirmId])
 
   // When a matter is open, list its top-level chats (engine-persisted; we only
   // read them). Refetch when the active session changes so a new chat shows up.
@@ -72,7 +83,7 @@ export default function Sidebar({
   // the open one, fall back to a fresh chat so the canvas isn't left on a dead id.
   async function removeConvo(c: Convo) {
     if (!matterDir) return
-    if (!window.confirm(`Delete "${c.title}"? This cannot be undone.`)) return
+    setConfirmId(null)
     try {
       await deleteSession(matterClient(matterDir), c.id)
       setConvos((list) => list.filter((x) => x.id !== c.id))
@@ -137,13 +148,29 @@ export default function Sidebar({
                   >
                     {c.title}
                   </Link>
-                  <button
-                    className="convo-del"
-                    title="Delete conversation"
-                    onClick={() => removeConvo(c)}
-                  >
-                    <IconTrash />
-                  </button>
+                  {confirmId === c.id ? (
+                    <button
+                      className="convo-confirm"
+                      title="Confirm delete"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeConvo(c)
+                      }}
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    <button
+                      className="convo-del"
+                      title="Delete conversation"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmId(c.id)
+                      }}
+                    >
+                      <IconTrash />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
