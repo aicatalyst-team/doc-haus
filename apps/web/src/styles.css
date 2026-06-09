@@ -753,6 +753,18 @@ textarea {
   margin-bottom: 6px;
 }
 
+/* A failed turn's provider error, shown in the assistant bubble so a bad project,
+   quota, or auth failure reads as a clear message instead of the turn vanishing. */
+.msg-error {
+  border: 1px solid #d97777;
+  background: #fbeaea;
+  color: #8a1f1f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
 /* User message bubble plus its edit/retry actions, stacked so the actions sit
    below the bubble (outside the colored fill) and the whole group right-aligns. */
 .msg-user-wrap {

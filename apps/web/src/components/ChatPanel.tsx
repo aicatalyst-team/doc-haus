@@ -40,6 +40,12 @@ type Turn = {
   steps: Step[]
   id?: string
   agent?: string
+  // A failed assistant turn carries the provider's error message instead of an
+  // answer. Without surfacing it the turn has no text/steps and toTurns would
+  // drop it, so the chat would silently show nothing — the model appears to
+  // "think" then vanish. Render this so failures (bad project, quota, auth) are
+  // visible and actionable.
+  error?: string
 }
 
 // Quiet starter prompts so a fresh matter is not a blank box — mirrors how Harvey
@@ -234,28 +240,41 @@ function readTurn(parts: Map<string, Part>, roles: Map<string, string>, matter: 
 // assistant messages (one per model step); merging their parts reconstructs the
 // whole reasoning timeline instead of showing only the final answer bubble.
 function toTurns(
-  msgs: { info: { id: string; role: "user" | "assistant"; agent?: string }; parts: Part[] }[],
+  msgs: { info: { id: string; role: "user" | "assistant"; agent?: string; error?: MessageError }; parts: Part[] }[],
   matter: string,
 ): Turn[] {
-  const groups: { role: "user" | "assistant"; id: string; parts: Part[]; agent?: string }[] = []
+  const groups: { role: "user" | "assistant"; id: string; parts: Part[]; agent?: string; error?: string }[] = []
   // An assistant turn answers the most recent user turn, so it inherits that
   // user message's agent — the server only stamps the agent on user messages.
   let lastAgent: string | undefined
   for (const m of msgs) {
     if (m.info.role === "user" && m.info.agent) lastAgent = m.info.agent
     const last = groups[groups.length - 1]
-    if (last && last.role === "assistant" && m.info.role === "assistant") last.parts.push(...m.parts)
-    else groups.push({ role: m.info.role, id: m.info.id, parts: [...m.parts], agent: lastAgent })
+    if (last && last.role === "assistant" && m.info.role === "assistant") {
+      last.parts.push(...m.parts)
+      last.error = last.error ?? errorOf(m.info.error)
+    } else
+      groups.push({ role: m.info.role, id: m.info.id, parts: [...m.parts], agent: lastAgent, error: errorOf(m.info.error) })
   }
   return groups
     .map((g) => ({
       role: g.role,
       id: g.id,
       agent: g.agent,
+      error: g.error,
       ...contentOf(g.parts),
       steps: g.role === "assistant" ? partsToSteps(g.parts, matter) : [],
     }))
-    .filter((t) => t.text || t.citations.length || t.steps.length)
+    .filter((t) => t.text || t.citations.length || t.steps.length || t.error)
+}
+
+// The provider error the engine stamps on a failed assistant message. Shape is
+// { name, data: { message, ... } } (see the APIError surfaced by the prompt
+// route); fall back to the error name if no message string is present.
+type MessageError = { name?: string; data?: { message?: string } }
+function errorOf(error: MessageError | undefined) {
+  if (!error) return undefined
+  return error.data?.message ?? error.name ?? "The model returned an error."
 }
 
 // A session title from the first message: trimmed to a word boundary with an
@@ -532,6 +551,7 @@ export default function ChatPanel({
               {t.agent && <div className="msg-agent">{agentLabel(t.agent)}</div>}
               <StepsPanel steps={t.steps} busy={false} answered={Boolean(t.text)} />
               {t.text && <Markdown>{t.text}</Markdown>}
+              {t.error && <div className="msg-error">{t.error}</div>}
               <CitationView citations={t.citations} />
               <RedlineView redlines={t.redlines} onView={onViewDocument} />
             </div>

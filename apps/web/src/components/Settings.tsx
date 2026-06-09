@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react"
 import {
   addLocalProvider,
   getConfig,
+  getProviderOptions,
   listAuthMethods,
   listProviders,
   setDefaultModel,
   setDisabledProviders,
   setProviderKey,
+  setProviderOptions,
   settingsClient,
   type Client,
 } from "../api/opencode"
@@ -219,6 +221,27 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
             </div>
           </section>
 
+          {all.some((p) => CLOUD_SETUPS.some((c) => c.id === p.id)) && (
+            <section className="settings-section">
+              <h3>Cloud project &amp; region</h3>
+              <p className="settings-hint muted">
+                Vertex and Bedrock authenticate from the host sign-in (gcloud ADC / AWS), but still need to know which
+                project or region to call. Set them here — no environment variables required.
+              </p>
+              {CLOUD_SETUPS.filter((c) => all.some((p) => p.id === c.id)).map((c) => (
+                <CloudSetup
+                  key={c.id}
+                  spec={c}
+                  onSave={async (options) => {
+                    await setProviderOptions(c.id, options)
+                    setNotice(`Saved ${c.name} settings. Restart the engine to apply.`)
+                    await load()
+                  }}
+                />
+              ))}
+            </section>
+          )}
+
           <LocalEndpoint
             onAdd={async (input) => {
               await addLocalProvider(input)
@@ -240,6 +263,75 @@ function statusLabel(provider: Provider, methods: Methods) {
   if (m.some((x) => x.type === "api")) return "API key"
   if (m.some((x) => x.type === "oauth")) return "Signed in"
   return "Host credentials"
+}
+
+// The host-credential providers that still need a project/region to call. Each
+// field maps to a provider.options key the engine reads (see provider.ts):
+// google-vertex -> { project, location }, amazon-bedrock -> { region, profile }.
+type CloudField = { key: string; label: string; placeholder: string; required: boolean; fallback?: string }
+type CloudSpec = { id: string; name: string; fields: CloudField[] }
+const CLOUD_SETUPS: CloudSpec[] = [
+  {
+    id: "google-vertex",
+    name: "Google Vertex",
+    fields: [
+      { key: "project", label: "GCP project id", placeholder: "my-gcp-project", required: true },
+      { key: "location", label: "Location", placeholder: "global", required: false, fallback: "global" },
+    ],
+  },
+  {
+    id: "amazon-bedrock",
+    name: "Amazon Bedrock",
+    fields: [
+      { key: "region", label: "AWS region", placeholder: "us-east-1", required: true, fallback: "us-east-1" },
+      { key: "profile", label: "AWS profile (optional)", placeholder: "default", required: false },
+    ],
+  },
+]
+
+function CloudSetup({ spec, onSave }: { spec: CloudSpec; onSave: (options: Record<string, string>) => Promise<void> }) {
+  const [values, setValues] = useState<Record<string, string>>({})
+  // Prefill from whatever the engine already has saved so the fields show the
+  // live config rather than resetting to blank each time Settings opens.
+  useEffect(() => {
+    getProviderOptions(spec.id).then((opts) =>
+      setValues(Object.fromEntries(spec.fields.map((f) => [f.key, opts[f.key] ?? ""]))),
+    )
+  }, [spec])
+  const ready = spec.fields.filter((f) => f.required).every((f) => values[f.key]?.trim())
+  return (
+    <div className="settings-grid" style={{ marginTop: 12 }}>
+      <label className="settings-label">{spec.name}</label>
+      <span className="muted" style={{ fontSize: 12 }}>
+        Reads from this host's {spec.id === "google-vertex" ? "gcloud ADC" : "AWS credentials"}.
+      </span>
+      {spec.fields.map((f) => (
+        <input
+          key={f.key}
+          placeholder={f.placeholder}
+          value={values[f.key] ?? ""}
+          onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+        />
+      ))}
+      <button
+        className="primary settings-add"
+        disabled={!ready}
+        onClick={() =>
+          onSave(
+            // Drop blanks so an unset optional field falls back to the engine
+            // default (location -> global, region -> us-east-1) rather than ""
+            Object.fromEntries(
+              spec.fields
+                .map((f) => [f.key, (values[f.key]?.trim() || f.fallback) ?? ""])
+                .filter(([, v]) => v),
+            ),
+          )
+        }
+      >
+        Save
+      </button>
+    </div>
+  )
 }
 
 function LocalEndpoint({

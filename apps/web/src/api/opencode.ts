@@ -88,6 +88,30 @@ export async function addLocalProvider(input: { id: string; name: string; baseUR
   })
 }
 
+// Vertex (project/location) and Bedrock (region/profile) take their settings from
+// provider.options in the engine's config, falling back to env only when unset
+// (see packages/opencode/src/provider/provider.ts). Setting them here means a
+// fresh clone connects these host-credential providers entirely from the UI —
+// no GOOGLE_VERTEX_PROJECT / AWS_REGION env needed. Merge into any existing entry
+// so a key set elsewhere on the same provider is preserved.
+export async function setProviderOptions(id: string, options: Record<string, string>) {
+  const cfg = await getConfig()
+  const existing = cfg.provider?.[id] ?? {}
+  return patchConfig({
+    provider: {
+      ...(cfg.provider ?? {}),
+      [id]: { ...existing, options: { ...(existing.options ?? {}), ...options } },
+    },
+  })
+}
+
+// The currently-saved provider.options, so the cloud-setup fields prefill with
+// what the engine is actually using rather than starting blank on every open.
+export async function getProviderOptions(id: string) {
+  const cfg = await getConfig()
+  return (cfg.provider?.[id]?.options ?? {}) as Record<string, string | undefined>
+}
+
 // Shape returned by the search-document tool in its part metadata.citations.
 export type Citation = {
   documentName: string
