@@ -486,45 +486,45 @@ export default function ChatPanel({
         )}
         {turns.map((t, i) =>
           t.role === "user" ? (
-            <div key={i} className="msg user">
-              {editing?.index === i ? (
-                <div className="msg-edit">
-                  <textarea
-                    autoFocus
-                    value={editing.draft}
-                    onChange={(e) => setEditing({ index: i, draft: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) resendFrom(t, i, editing.draft)
-                      if (e.key === "Escape") setEditing(null)
-                    }}
-                  />
-                  <div className="msg-edit-actions">
-                    <button className="icon-btn" onClick={() => setEditing(null)}>
-                      Cancel
-                    </button>
-                    <button className="primary" onClick={() => resendFrom(t, i, editing.draft)}>
-                      Save & send
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {t.text}
-                  {t.id && !busy && (
-                    <div className="msg-actions">
-                      <button
-                        className="icon-btn"
-                        title="Edit message"
-                        onClick={() => setEditing({ index: i, draft: t.text })}
-                      >
-                        <IconPencil />
+            <div key={i} className="msg-user-wrap">
+              <div className="msg user">
+                {editing?.index === i ? (
+                  <div className="msg-edit">
+                    <textarea
+                      autoFocus
+                      value={editing.draft}
+                      onChange={(e) => setEditing({ index: i, draft: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) resendFrom(t, i, editing.draft)
+                        if (e.key === "Escape") setEditing(null)
+                      }}
+                    />
+                    <div className="msg-edit-actions">
+                      <button className="icon-btn" onClick={() => setEditing(null)}>
+                        Cancel
                       </button>
-                      <button className="icon-btn" title="Retry" onClick={() => resendFrom(t, i, t.text)}>
-                        <IconRetry />
+                      <button className="primary" onClick={() => resendFrom(t, i, editing.draft)}>
+                        Save & send
                       </button>
                     </div>
-                  )}
-                </>
+                  </div>
+                ) : (
+                  t.text
+                )}
+              </div>
+              {editing?.index !== i && t.id && !busy && (
+                <div className="msg-actions">
+                  <button
+                    className="icon-btn"
+                    title="Edit message"
+                    onClick={() => setEditing({ index: i, draft: t.text })}
+                  >
+                    <IconPencil />
+                  </button>
+                  <button className="icon-btn" title="Retry" onClick={() => resendFrom(t, i, t.text)}>
+                    <IconRetry />
+                  </button>
+                </div>
               )}
             </div>
           ) : (

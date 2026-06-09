@@ -735,8 +735,6 @@ textarea {
 
 .msg.user {
   background: var(--accent-soft);
-  align-self: flex-end;
-  max-width: 80%;
 }
 
 .msg.assistant {
@@ -755,23 +753,29 @@ textarea {
   margin-bottom: 6px;
 }
 
-/* Edit/retry actions on a user message: hidden until the bubble is hovered so
-   the conversation stays clean, revealed as a small row below the text. */
-.msg.user {
-  position: relative;
+/* User message bubble plus its edit/retry actions, stacked so the actions sit
+   below the bubble (outside the colored fill) and the whole group right-aligns. */
+.msg-user-wrap {
+  align-self: flex-end;
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
+/* Edit/retry actions on a user message: hidden until the group is hovered so
+   the conversation stays clean, revealed as a small row below the bubble. */
 .msg-actions {
   display: flex;
   gap: 4px;
   justify-content: flex-end;
-  margin-top: 6px;
+  margin-top: 4px;
   opacity: 0;
   transition: opacity 0.12s ease;
 }
 
-.msg.user:hover .msg-actions,
-.msg.user:focus-within .msg-actions {
+.msg-user-wrap:hover .msg-actions,
+.msg-user-wrap:focus-within .msg-actions {
   opacity: 1;
 }
 
