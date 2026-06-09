@@ -1,7 +1,6 @@
 ---
 description: Reviews a matter's documents for risks, missing clauses, and ambiguities.
 mode: subagent
-model: google-vertex/gemini-3.5-flash
 temperature: 0.2
 color: warning
 tools:

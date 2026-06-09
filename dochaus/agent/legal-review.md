@@ -1,7 +1,6 @@
 ---
 description: Orchestrates a multi-agent legal review (reviewer, challenger, summarizer) and returns a combined report.
 mode: primary
-model: google-vertex/gemini-3.5-flash
 temperature: 0.2
 color: primary
 tools:

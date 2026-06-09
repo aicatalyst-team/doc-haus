@@ -1,7 +1,6 @@
 ---
 description: Answers natural-language questions about the documents in a matter, always with citations.
 mode: primary
-model: google-vertex/gemini-3.5-flash
 temperature: 0.2
 color: info
 tools:

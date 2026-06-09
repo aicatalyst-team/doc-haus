@@ -64,13 +64,15 @@ never touched. It contains:
 doc.haus is **provider-agnostic** — it inherits OpenCode's model abstraction, so any of
 the 75+ providers OpenCode supports (Anthropic, OpenAI, Google, OpenRouter, local
 models, …) works by editing `dochaus/opencode.json`. Model choice is a config + UI
-concern, not code: `opencode.json` and per-agent frontmatter set **defaults only**, and
-users switch provider/model per session or agent in the UI via OpenCode's inherited
-multi-model selector.
+concern, not code —
+users connect a provider and choose their model in the UI (Settings) on first launch,
+then switch per session or agent via OpenCode's inherited multi-model selector. Nothing
+is pinned in code — `opencode.json` ships no default model and the agents inherit
+whatever you pick.
 
-Out of the box we ship a **Google Vertex (Gemini)** config: affordable for testing,
-capable, and fast — a good default for getting started. For production use, pick the
-provider that matches your priorities:
+Out of the box we bundle a ready-to-use **Google Vertex (Gemini)** provider config:
+affordable for testing, capable, and fast — connect it in one click if the host has
+gcloud ADC. For production use, pick the provider that matches your priorities:
 
 - **Privacy / security** — run an **open-source / self-hosted model** (e.g. via Ollama
   or vLLM) so document content never leaves your infrastructure. Legal work is
@@ -104,12 +106,22 @@ bun install
 
 # Provider auth — example for the shipped Vertex default.
 # For a different provider, set its key per the OpenCode provider docs instead.
-gcloud auth application-default login
-export GOOGLE_VERTEX_PROJECT=<your-project>
-export GOOGLE_VERTEX_LOCATION=global   # Gemini 3.x models are global-only
-
 # Start all three processes (engine + ingest + web) with one command
 ./start.sh
+```
+
+No provider env is required to launch. On first run the web app opens **Settings** and
+asks you to connect a model provider — a host sign-in (gcloud/AWS), an API key (OpenAI,
+Anthropic, Groq...), or a local endpoint (Ollama, vLLM, LM Studio) — and pick your
+default model. There is **no hard-coded model default**, since a client may run Vertex,
+Anthropic, a local model, or anything else.
+
+To use the bundled Google Vertex provider, sign in with ADC before launching:
+
+```bash
+gcloud auth application-default login
+export GOOGLE_VERTEX_PROJECT=<your-project>   # only for the Vertex provider
+export GOOGLE_VERTEX_LOCATION=global          # Gemini 3.x models are global-only
 ```
 
 Matters live under `WORKSPACE_ROOT`, which defaults to `./workspace` at the repo root

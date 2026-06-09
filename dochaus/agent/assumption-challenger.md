@@ -1,7 +1,6 @@
 ---
 description: Challenges conclusions about a matter, surfacing alternative interpretations and weaknesses.
 mode: subagent
-model: google-vertex/gemini-3.5-flash
 temperature: 0.4
 color: error
 tools:

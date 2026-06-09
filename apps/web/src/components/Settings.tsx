@@ -18,7 +18,7 @@ type Methods = Record<string, { type: "oauth" | "api"; label: string }[]>
 // the default model. These act on the engine's global config + auth store (not a
 // matter), so the modal opens from the app header. The flow reads top-down the
 // way you set it up: see what's connected, connect more, then choose a model.
-export default function Settings({ onClose }: { onClose: () => void }) {
+export default function Settings({ onClose, firstRun = false }: { onClose: () => void; firstRun?: boolean }) {
   const client = useMemo<Client>(() => settingsClient(), [])
   const [all, setAll] = useState<Provider[]>([])
   const [connected, setConnected] = useState<Set<string>>(new Set())
@@ -98,6 +98,12 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           <button onClick={onClose}>Close</button>
         </div>
         <div className="picker-body">
+          {firstRun && (
+            <p className="settings-notice">
+              Welcome to doc.haus. Connect a model provider — from a host sign-in (gcloud/AWS), an API key, or a local
+              endpoint — then choose your default model to get started.
+            </p>
+          )}
           {notice && <p className="settings-notice">{notice}</p>}
 
           <section className="settings-section">
@@ -117,6 +123,9 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                 disabled={!model}
                 onClick={async () => {
                   await setDefaultModel(model)
+                  // On first run, picking a model is the whole point of the modal —
+                  // close once it's saved so the user lands straight in the app.
+                  if (firstRun) return onClose()
                   setNotice(`Default model set to ${model}.`)
                 }}
               >

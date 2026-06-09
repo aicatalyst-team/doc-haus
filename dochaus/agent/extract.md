@@ -1,7 +1,6 @@
 ---
 description: Extracts a single concise answer to one question about one named document, with a citation. Powers the tabular review grid.
 mode: primary
-model: google-vertex/gemini-3.5-flash
 temperature: 0.1
 color: info
 tools:

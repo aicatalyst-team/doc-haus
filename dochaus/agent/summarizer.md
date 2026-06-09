@@ -1,7 +1,6 @@
 ---
 description: Produces a concise legal summary of the documents or of a prior analysis.
 mode: subagent
-model: google-vertex/gemini-3.5-flash
 temperature: 0.2
 color: success
 tools:
