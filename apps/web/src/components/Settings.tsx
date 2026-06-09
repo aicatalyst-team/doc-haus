@@ -35,7 +35,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
     const [providers, auth, cfg] = await Promise.all([
       listProviders(client),
       listAuthMethods(client),
-      getConfig(client),
+      getConfig(),
     ])
     setAll(providers.all)
     setConnected(new Set(providers.connected))
@@ -61,7 +61,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
       return n
     })
     setNameMemo((m) => ({ ...m, [id]: name }))
-    await setDisabledProviders(client, next)
+    await setDisabledProviders(next)
   }
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                 className="primary"
                 disabled={!model}
                 onClick={async () => {
-                  await setDefaultModel(client, model)
+                  await setDefaultModel(model)
                   setNotice(`Default model set to ${model}.`)
                 }}
               >
@@ -212,7 +212,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
 
           <LocalEndpoint
             onAdd={async (input) => {
-              await addLocalProvider(client, input)
+              await addLocalProvider(input)
               setNotice(`Added ${input.name}. Restart the engine if its models don't appear.`)
               await load()
             }}

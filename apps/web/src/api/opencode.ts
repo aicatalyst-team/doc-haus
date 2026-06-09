@@ -1,5 +1,5 @@
 import { createOpencodeClient } from "@opencode-ai/sdk"
-import type { Event, Part } from "@opencode-ai/sdk"
+import type { Config, Event, Part } from "@opencode-ai/sdk"
 import { OPENCODE_URL } from "../config"
 
 // One OpenCode client per matter. The matter's directory is sent as the
@@ -37,40 +37,52 @@ export async function setProviderKey(client: Client, id: string, key: string) {
   return client.auth.set({ path: { id }, body: { type: "api", key } })
 }
 
-export async function getConfig(client: Client) {
-  const res = await client.config.get()
-  return res.data ?? {}
+// Engine-wide config lives behind /global/config (the engine's getGlobal/
+// updateGlobal), which round-trips through ~/.config/opencode. The SDK's
+// client.config.* targets the per-matter /config instead: its PATCH writes a
+// <cwd>/config.json that the engine never reads back, so settings saved there
+// silently vanish on reload. Settings are engine-wide, so we hit /global/config
+// directly — the SDK exposes no typed method for it.
+export async function getConfig() {
+  const res = await fetch(`${OPENCODE_URL}/global/config`)
+  if (!res.ok) throw new Error(`Failed to load config (${res.status})`)
+  return (await res.json()) as Config
+}
+
+async function patchConfig(patch: Config) {
+  const res = await fetch(`${OPENCODE_URL}/global/config`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) throw new Error(`Failed to save config (${res.status})`)
+  return (await res.json()) as Config
 }
 
 // Set the engine-wide default model, as a "providerID/modelID" string.
-export async function setDefaultModel(client: Client, model: string) {
-  return client.config.update({ body: { model } })
+export async function setDefaultModel(model: string) {
+  return patchConfig({ model })
 }
 
 // Hide providers from routing entirely. A disabled provider drops out of the
 // catalog, the model picker, and any agent that would route to it.
-export async function setDisabledProviders(client: Client, ids: string[]) {
-  return client.config.update({ body: { disabled_providers: ids } })
+export async function setDisabledProviders(ids: string[]) {
+  return patchConfig({ disabled_providers: ids })
 }
 
 // Register a local OpenAI-compatible provider (LM Studio, Ollama, vLLM...). The
 // engine loads it through @ai-sdk/openai-compatible at the given baseURL. The
 // baseURL must be reachable from where `opencode serve` runs, not the browser.
-export async function addLocalProvider(
-  client: Client,
-  input: { id: string; name: string; baseURL: string; modelID: string },
-) {
-  const cfg = await getConfig(client)
-  return client.config.update({
-    body: {
-      provider: {
-        ...(cfg.provider ?? {}),
-        [input.id]: {
-          npm: "@ai-sdk/openai-compatible",
-          name: input.name,
-          options: { baseURL: input.baseURL },
-          models: { [input.modelID]: { name: input.modelID } },
-        },
+export async function addLocalProvider(input: { id: string; name: string; baseURL: string; modelID: string }) {
+  const cfg = await getConfig()
+  return patchConfig({
+    provider: {
+      ...(cfg.provider ?? {}),
+      [input.id]: {
+        npm: "@ai-sdk/openai-compatible",
+        name: input.name,
+        options: { baseURL: input.baseURL },
+        models: { [input.modelID]: { name: input.modelID } },
       },
     },
   })
