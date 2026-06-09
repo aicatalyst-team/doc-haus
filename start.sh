@@ -37,13 +37,17 @@ pids+=($!)
 pids+=($!)
 
 # Open the web UI once vite is actually serving (poll the port via bash's /dev/tcp
-# so it works without curl). Opt out with NO_OPEN=1; harmless if no opener exists.
+# so it works without curl). Vite binds IPv6 localhost (::1) by default, so probe
+# both stacks. Opt out with NO_OPEN=1; harmless if no opener exists.
 if [ -z "${NO_OPEN:-}" ]; then
   (
     for _ in $(seq 1 60); do
-      (exec 3<>/dev/tcp/127.0.0.1/5173) 2>/dev/null && { exec 3>&- 3<&-; break; }
+      if (exec 3<>/dev/tcp/127.0.0.1/5173) 2>/dev/null || (exec 3<>/dev/tcp/::1/5173) 2>/dev/null; then
+        break
+      fi
       sleep 0.5
     done
+    echo "doc.haus: opening $WEB_URL"
     if command -v open >/dev/null 2>&1; then open "$WEB_URL"
     elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$WEB_URL" >/dev/null 2>&1
     fi
