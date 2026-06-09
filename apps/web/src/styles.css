@@ -62,7 +62,7 @@ textarea {
 
 .app-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 16px;
   padding: 14px 24px;
   border-bottom: 1px solid var(--border);
@@ -78,13 +78,26 @@ textarea {
 .app-header h1 a {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .app-logo {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.wordmark {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+/* Push the tagline to the far right of the header. */
+.app-header .tag {
+  margin-left: auto;
 }
 
 .app-header .tag {

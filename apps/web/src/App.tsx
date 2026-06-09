@@ -10,7 +10,7 @@ export default function App() {
         <h1>
           <Link to="/">
             <img src={logo} className="app-logo" alt="" />
-            doc.haus
+            <span className="wordmark">Doc.Haus</span>
           </Link>
         </h1>
         <span className="tag">legal agent workspace</span>
