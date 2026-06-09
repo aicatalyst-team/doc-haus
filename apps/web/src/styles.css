@@ -1128,6 +1128,7 @@ textarea {
   padding: 20px;
   text-align: center;
   color: var(--muted);
+  cursor: pointer;
 }
 
 button.linklike {

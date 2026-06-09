@@ -27,12 +27,14 @@ export default function DocumentUpload({
   const [busy, setBusy] = useState(false)
   const toast = useToast()
 
-  async function onFile(file: File) {
+  async function onFiles(files: File[]) {
     setBusy(true)
-    const result = await uploadDocument(matterId, file)
+    for (const file of files) {
+      const result = await uploadDocument(matterId, file)
+      onUploaded()
+      toast("success", `Indexed ${result.name}: ${result.sections} sections, ${result.chunks} chunks.`)
+    }
     setBusy(false)
-    onUploaded()
-    toast("success", `Indexed ${result.name}: ${result.sections} sections, ${result.chunks} chunks.`)
   }
 
   async function onRemove(name: string) {
@@ -96,20 +98,21 @@ export default function DocumentUpload({
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault()
-          const file = e.dataTransfer.files[0]
-          if (file) onFile(file)
+          const files = Array.from(e.dataTransfer.files)
+          if (files.length) onFiles(files)
         }}
       >
-        {busy ? "Working..." : "Drop a .docx contract here, or click to choose a file."}
+        {busy ? "Working..." : "Drop .docx contracts here, or click to choose files."}
       </div>
       <input
         ref={input}
         type="file"
         accept=".docx"
+        multiple
         hidden
         onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) onFile(file)
+          const files = Array.from(e.target.files ?? [])
+          if (files.length) onFiles(files)
           e.target.value = ""
         }}
       />
