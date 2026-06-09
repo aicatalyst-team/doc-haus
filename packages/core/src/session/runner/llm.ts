@@ -1,5 +1,6 @@
 import { LLM, LLMClient, LLMError, LLMEvent } from "@opencode-ai/llm"
 import { Cause, DateTime, Effect, FiberSet, Layer, Semaphore, Stream } from "effect"
+import { AgentV2 } from "../../agent"
 import { EventV2 } from "../../event"
 import { ModelV2 } from "../../model"
 import { ProviderV2 } from "../../provider"
@@ -74,8 +75,10 @@ import { QuestionV2 } from "../../question"
  * bounded explicit loop starts the next provider turn after local settlement.
  */
 
-// QUESTION: Did this exist previously, or did we add this limit? Does it make sense?
-const MAX_STEPS = 25
+// Default cap on model steps per activity. A per-agent `steps` config value
+// overrides this when set, so agents prone to tool loops can bound themselves
+// tighter (and verbose agents can be given more headroom) without changing core.
+const DEFAULT_MAX_STEPS = 25
 
 export const layer = Layer.effect(
   Service,
@@ -83,6 +86,7 @@ export const layer = Layer.effect(
     const events = yield* EventV2.Service
     const llm = yield* LLMClient.Service
     const tools = yield* ToolRegistry.Service
+    const agents = yield* AgentV2.Service
     const models = yield* SessionRunnerModel.Service
     const store = yield* SessionStore.Service
     const db = (yield* Database.Service).db
@@ -236,6 +240,8 @@ export const layer = Layer.effect(
       readonly force?: boolean
     }) {
       const session = yield* getSession(input.sessionID)
+      const agent = yield* agents.get(AgentV2.ID.make(session.agent ?? "build"))
+      const maxSteps = agent?.steps ?? DEFAULT_MAX_STEPS
       const hasSteer = yield* SessionInput.hasPending(db, input.sessionID, "steer")
       const hasQueue = hasSteer ? false : yield* SessionInput.hasPending(db, input.sessionID, "queue")
       if (input.force !== true && !hasSteer && !hasQueue) return
@@ -243,14 +249,14 @@ export const layer = Layer.effect(
       let openActivity = input.force === true || hasSteer || hasQueue
       while (openActivity) {
         let needsContinuation = true
-        for (let step = 0; step < MAX_STEPS; step++) {
+        for (let step = 0; step < maxSteps; step++) {
           needsContinuation = yield* runTurn(session, promotion)
           promotion = "steer"
           if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
           if (!needsContinuation) break
         }
         if (needsContinuation)
-          return yield* new StepLimitExceededError({ sessionID: input.sessionID, limit: MAX_STEPS })
+          return yield* new StepLimitExceededError({ sessionID: input.sessionID, limit: maxSteps })
         openActivity = yield* SessionInput.hasPending(db, input.sessionID, "queue")
         promotion = openActivity ? "queue" : undefined
       }

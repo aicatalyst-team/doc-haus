@@ -6,6 +6,7 @@ import { Database } from "@opencode-ai/core/database/database"
 import { EventV2 } from "@opencode-ai/core/event"
 import { EventTable } from "@opencode-ai/core/event/sql"
 import { PermissionV2 } from "@opencode-ai/core/permission"
+import { AgentV2 } from "@opencode-ai/core/agent"
 import { Project } from "@opencode-ai/core/project"
 import { ProjectTable } from "@opencode-ai/core/project/sql"
 import { AbsolutePath } from "@opencode-ai/core/schema"
@@ -46,6 +47,15 @@ const permission = Layer.succeed(
     list: () => Effect.die("unused"),
   }),
 )
+const agent = Layer.succeed(
+  AgentV2.Service,
+  AgentV2.Service.of({
+    transform: () => Effect.die("unused"),
+    update: () => Effect.die("unused"),
+    get: () => Effect.succeed(undefined),
+    all: () => Effect.succeed([]),
+  }),
+)
 const registry = ToolRegistry.layer.pipe(Layer.provide(permission))
 const model = OpenAIChat.route
   .with({
@@ -62,6 +72,7 @@ const runner = SessionRunnerLLM.defaultLayer.pipe(
   Layer.provide(client),
   Layer.provide(registry),
   Layer.provide(models),
+  Layer.provide(agent),
 )
 const coordinator = SessionRunCoordinator.layer.pipe(Layer.provide(runner))
 const execution = Layer.effect(
@@ -86,6 +97,7 @@ const it = testEffect(
     executor,
     client,
     permission,
+    agent,
     registry,
     models,
     runner,
