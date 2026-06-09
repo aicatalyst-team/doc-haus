@@ -965,6 +965,12 @@ button.linklike:hover {
   font-weight: 600;
 }
 
+.viewer-bar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .viewer-body {
   display: flex;
   overflow: hidden;

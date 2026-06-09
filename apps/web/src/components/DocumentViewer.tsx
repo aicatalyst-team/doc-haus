@@ -72,12 +72,32 @@ export default function DocumentViewer({
     }
   }
 
+  // Download the redlined .docx — the document with pending changes as native Word
+  // tracked changes — so it can be sent to counsel to accept or reject in Word.
+  // With nothing pending this is simply the current clean document.
+  async function download() {
+    const bytes = await fetchRedlinedBytes(matterId, name)
+    const url = URL.createObjectURL(
+      new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }),
+    )
+    const a = document.createElement("a")
+    a.href = url
+    a.download = redlines.length ? `${name.replace(/\.docx$/i, "")} (tracked changes).docx` : name
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="viewer-overlay" onClick={onClose}>
       <div className="viewer-panel" onClick={(e) => e.stopPropagation()}>
         <div className="viewer-bar">
           <span className="viewer-title">{name}</span>
-          <button onClick={onClose}>Close</button>
+          <div className="viewer-bar-actions">
+            <button onClick={download} disabled={!html} title="Download as a Word file with tracked changes">
+              {redlines.length ? "Download redline" : "Download"}
+            </button>
+            <button onClick={onClose}>Close</button>
+          </div>
         </div>
         <div className="viewer-body">
           <div className="viewer-doc">
