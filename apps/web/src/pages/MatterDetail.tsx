@@ -23,6 +23,9 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   const [agents, setAgents] = useState<Agent[]>([])
   const [agent, setAgent] = useState("qa")
   const [viewing, setViewing] = useState<string>()
+  // The redline proposal to scroll to when the viewer opens, set when the user
+  // follows a chat redline preview's "View in document" link (undefined otherwise).
+  const [focusRedline, setFocusRedline] = useState<number>()
   const [docsOpen, setDocsOpen] = useState(() => localStorage.getItem("dh.docs") !== "0")
 
   useEffect(() => {
@@ -71,13 +74,20 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
               onAgentChange={setAgent}
               onSessionCreated={(sid) => setParams({ view: "chat", session: sid }, { replace: true })}
               onSessionStarted={onSessionsChanged}
+              onViewDocument={(name, redlineId) => {
+                setFocusRedline(redlineId)
+                setViewing(name)
+              }}
             />
           </div>
           <DocumentUpload
             matterId={matter.id}
             documents={matter.documents}
             onUploaded={refresh}
-            onView={setViewing}
+            onView={(name) => {
+              setFocusRedline(undefined)
+              setViewing(name)
+            }}
             collapsed={!docsOpen}
             onToggle={() => setDocsOpen((o) => !o)}
           />
@@ -87,11 +97,25 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
       {view === "review" && <ReviewGrid matterId={matter.id} directory={matter.dir} documents={matter.documents} />}
 
       {view === "documents" && (
-        <DocumentUpload matterId={matter.id} documents={matter.documents} onUploaded={refresh} onView={setViewing} />
+        <DocumentUpload
+          matterId={matter.id}
+          documents={matter.documents}
+          onUploaded={refresh}
+          onView={(name) => {
+            setFocusRedline(undefined)
+            setViewing(name)
+          }}
+        />
       )}
 
       {viewing && (
-        <DocumentViewer matterId={matter.id} name={viewing} onClose={() => setViewing(undefined)} onChanged={refresh} />
+        <DocumentViewer
+          matterId={matter.id}
+          name={viewing}
+          focusId={focusRedline}
+          onClose={() => setViewing(undefined)}
+          onChanged={refresh}
+        />
       )}
     </>
   )

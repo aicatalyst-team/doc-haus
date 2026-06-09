@@ -64,7 +64,7 @@ export default tool({
     return {
       title: `Proposed redline in ${path.basename(file)}`,
       output: `Proposed rewriting the clause matching ${JSON.stringify(args.clause)} in ${path.basename(file)}, attributed to ${author}. Recorded as pending redline #${id} — the user reviews and accepts or rejects it in the doc.haus app.`,
-      metadata: { document: file, clause: args.clause, replacement: args.replacement, anchor: target.id, author, redline: id },
+      metadata: { document: file, clause: args.clause, oldText, replacement: args.replacement, anchor: target.id, author, redline: id },
     }
   },
 })

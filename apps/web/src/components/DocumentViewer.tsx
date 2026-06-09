@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useDocxodus } from "docxodus/react"
 import { CommentRenderMode } from "docxodus"
 import {
@@ -20,11 +20,15 @@ import {
 export default function DocumentViewer({
   matterId,
   name,
+  focusId,
   onClose,
   onChanged,
 }: {
   matterId: string
   name: string
+  // A redline id to scroll to and highlight on open, set when the viewer was
+  // opened from a chat redline preview's "View in document" link.
+  focusId?: number
   onClose: () => void
   onChanged?: () => void
 }) {
@@ -36,6 +40,7 @@ export default function DocumentViewer({
   // Bumped after an accept/reject resolves so the load effect re-runs — the
   // document re-renders and the change list shrinks without duplicating fetch logic.
   const [reload, setReload] = useState(0)
+  const focusRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isReady) return
@@ -60,6 +65,13 @@ export default function DocumentViewer({
       cancelled = true
     }
   }, [isReady, matterId, name, reload])
+
+  // Once the change list has rendered, scroll the proposal the chat link pointed
+  // at into view and highlight it, so the lawyer lands on that exact change rather
+  // than the top of a long list.
+  useEffect(() => {
+    if (focusId !== undefined) focusRef.current?.scrollIntoView({ block: "center" })
+  }, [focusId, redlines])
 
   async function resolve(action: () => Promise<void>, key: number | "all") {
     setBusy(key)
@@ -132,7 +144,11 @@ export default function DocumentViewer({
                 </div>
               </div>
               {redlines.map((r) => (
-                <div className="change-card" key={r.id}>
+                <div
+                  className={`change-card${r.id === focusId ? " focused" : ""}`}
+                  key={r.id}
+                  ref={r.id === focusId ? focusRef : undefined}
+                >
                   <div className="change-author">{r.author}</div>
                   {r.old_text && <div className="change-old">{r.old_text}</div>}
                   <div className="change-new">{r.new_text}</div>

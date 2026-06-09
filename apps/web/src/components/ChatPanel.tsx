@@ -21,13 +21,26 @@ type Step =
   | { kind: "reasoning"; text: string; done: boolean }
   | { kind: "tool"; label: string; status: "running" | "done" | "error"; children?: Step[] }
 
+// A redline/tracked-change a turn proposed: the clause delta plus a pointer back
+// to the document, so the assistant bubble can preview the red/green change and
+// link into the full tracked-changes review (see RedlineView, DocumentViewer).
+type RedlineProposal = { id?: number; document: string; oldText: string; newText: string }
+
 // id is the server message id, carried on user turns so edit/retry can revert
 // the session back to that exact message. Optimistic turns added before a
 // finalize reload have no id, so their actions stay hidden until settled.
 // agent is the assistant that produced the turn — the server stamps it on the
 // user message, so an assistant turn inherits the agent of the user turn it
 // answered. Carried so mixed-agent threads read clearly (see agentLabel).
-type Turn = { role: "user" | "assistant"; text: string; citations: Citation[]; steps: Step[]; id?: string; agent?: string }
+type Turn = {
+  role: "user" | "assistant"
+  text: string
+  citations: Citation[]
+  redlines: RedlineProposal[]
+  steps: Step[]
+  id?: string
+  agent?: string
+}
 
 // Quiet starter prompts so a fresh matter is not a blank box — mirrors how Harvey
 // and Legora seat the lawyer with ready questions about the documents in scope.
@@ -37,7 +50,8 @@ const STARTERS = [
   "Flag any unusual or one-sided clauses.",
 ]
 
-// Reduce a message's parts to its visible text + any search-document citations.
+// Reduce a message's parts to its visible text, search-document citations, and
+// any redline proposals.
 function contentOf(parts: Part[]) {
   const text = parts
     .filter((p): p is Extract<Part, { type: "text" }> => p.type === "text")
@@ -47,7 +61,25 @@ function contentOf(parts: Part[]) {
     .filter((p): p is Extract<Part, { type: "tool" }> => p.type === "tool")
     .filter((p) => p.tool === "search-document" && p.state.status === "completed")
     .flatMap((p) => ((p.state as { metadata?: { citations?: Citation[] } }).metadata?.citations ?? []))
-  return { text, citations }
+  return { text, citations, redlines: redlinesOf(parts) }
+}
+
+// The redline and tracked-changes tools both record a pending proposal and return
+// its delta in their metadata: tracked-changes as find/replace, redline as the
+// located clause's old text and its replacement. Surface either as a uniform
+// old/new proposal pointing at its document so the bubble can preview and link it.
+function redlinesOf(parts: Part[]): RedlineProposal[] {
+  return parts
+    .filter((p): p is Extract<Part, { type: "tool" }> => p.type === "tool")
+    .filter((p) => (p.tool === "redline" || p.tool === "tracked-changes") && p.state.status === "completed")
+    .flatMap((p) => {
+      const meta = (p.state as { metadata?: Record<string, unknown> }).metadata ?? {}
+      const document = meta.document as string | undefined
+      if (!document) return []
+      const oldText = (p.tool === "redline" ? meta.oldText : meta.find) as string | undefined
+      const newText = (p.tool === "redline" ? meta.replacement : meta.replace) as string | undefined
+      return [{ id: meta.redline as number | undefined, document, oldText: oldText ?? "", newText: newText ?? "" }]
+    })
 }
 
 // Turn the ordered parts into the visible reasoning timeline: each thinking
@@ -188,7 +220,7 @@ function readTurn(parts: Map<string, Part>, roles: Map<string, string>, matter: 
     .filter((p): p is Extract<Part, { type: "tool" }> => p.type === "tool")
     .filter((p) => p.tool === "search-document" && p.state.status === "completed")
     .flatMap((p) => ((p.state as { metadata?: { citations?: Citation[] } }).metadata?.citations ?? []))
-  return { text, citations, steps: partsToSteps(work, matter, all) }
+  return { text, citations, redlines: redlinesOf(work), steps: partsToSteps(work, matter, all) }
 }
 
 // Group stored messages into turns. A tool-using turn spans several consecutive
@@ -236,12 +268,16 @@ export default function ChatPanel({
   onAgentChange,
   onSessionCreated,
   onSessionStarted,
+  onViewDocument,
 }: {
   directory: string
   sessionID?: string
   agent: string
   available: Set<string>
   onAgentChange: (name: string) => void
+  // Open the redline viewer on a document, optionally scrolled to a specific
+  // proposal — fired by the in-chat redline preview's "View in document" link.
+  onViewDocument: (name: string, redlineId?: number) => void
   // Called once the first message lazily mints a session, so the parent can put
   // its id in the URL — a reload then restores the conversation instead of a
   // blank chat. Fired at finalize, never mid-stream, to avoid reloading the
@@ -340,7 +376,7 @@ export default function ChatPanel({
   async function onSend() {
     const text = input.trim()
     if (!text || busy) return
-    setTurns((prev) => [...prev, { role: "user", text, citations: [], steps: [] }])
+    setTurns((prev) => [...prev, { role: "user", text, citations: [], redlines: [], steps: [] }])
     setInput("")
     setBusy(true)
     partsRef.current.clear()
@@ -372,8 +408,8 @@ export default function ChatPanel({
     if (wf.scope === "matter") sessionRef.current = ""
     setTurns((prev) =>
       wf.scope === "matter"
-        ? [{ role: "user", text: wf.prompt, citations: [], steps: [] }]
-        : [...prev, { role: "user", text: wf.prompt, citations: [], steps: [] }],
+        ? [{ role: "user", text: wf.prompt, citations: [], redlines: [], steps: [] }]
+        : [...prev, { role: "user", text: wf.prompt, citations: [], redlines: [], steps: [] }],
     )
     if (!sessionRef.current) {
       sessionRef.current = (await createSession(client, wf.label)).id
@@ -394,7 +430,7 @@ export default function ChatPanel({
     partsRef.current.clear()
     rolesRef.current.clear()
     childRef.current.clear()
-    setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], steps: [] }])
+    setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], redlines: [], steps: [] }])
     await revertMessage(client, sessionRef.current, turn.id)
     await sendPrompt(client, sessionRef.current, agent, text)
   }
@@ -468,6 +504,7 @@ export default function ChatPanel({
               <StepsPanel steps={t.steps} busy={false} answered={Boolean(t.text)} />
               {t.text && <Markdown>{t.text}</Markdown>}
               <CitationView citations={t.citations} />
+              <RedlineView redlines={t.redlines} onView={onViewDocument} />
             </div>
           ),
         )}
@@ -481,6 +518,7 @@ export default function ChatPanel({
               live.steps.length === 0 && <span className="muted">Thinking...</span>
             )}
             <CitationView citations={live.citations} />
+            <RedlineView redlines={live.redlines} onView={onViewDocument} />
           </div>
         )}
       </div>
@@ -566,5 +604,33 @@ function StepRow({ step, busy, last }: { step: Step; busy: boolean; last: boolea
         <Markdown>{step.text}</Markdown>
       </details>
     </li>
+  )
+}
+
+// In-chat preview of the redlines a turn proposed: each shows the prior wording
+// struck red above the new wording in green — the same red/green the document
+// viewer paints — so the lawyer sees the change without leaving the chat, with a
+// link straight into the full tracked-changes review for that proposal.
+function RedlineView({
+  redlines,
+  onView,
+}: {
+  redlines: RedlineProposal[]
+  onView: (name: string, redlineId?: number) => void
+}) {
+  if (redlines.length === 0) return null
+  return (
+    <div className="redlines">
+      {redlines.map((r, i) => (
+        <div className="redline-card" key={i}>
+          <div className="redline-doc">{basename(r.document)}</div>
+          {r.oldText && <div className="redline-old">{r.oldText}</div>}
+          <div className="redline-new">{r.newText}</div>
+          <button className="linklike redline-view" onClick={() => onView(basename(r.document), r.id)}>
+            View in document
+          </button>
+        </div>
+      ))}
+    </div>
   )
 }

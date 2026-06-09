@@ -924,6 +924,56 @@ textarea {
   margin-top: 4px;
 }
 
+/* In-chat redline preview: a compact card per proposed change, the prior wording
+   struck red above the new wording in green — the same red/green the document
+   viewer paints — with a link into the full tracked-changes review. */
+.redlines {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.redline-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 10px;
+}
+
+.redline-doc {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.redline-old,
+.redline-new {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.redline-old {
+  color: var(--danger);
+  text-decoration: line-through;
+  margin-bottom: 4px;
+}
+
+.redline-new {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.redline-view {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
 /* Empty chat: a quiet intro line plus clickable starter questions. */
 .chat-empty {
   margin: auto 0;
@@ -1123,6 +1173,13 @@ button.linklike:hover {
   background: var(--panel);
   padding: 10px;
   margin-bottom: 10px;
+}
+
+/* The change a chat link pointed at: outlined so it stands out when the viewer
+   scrolls it into view. */
+.change-card.focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .change-author {
