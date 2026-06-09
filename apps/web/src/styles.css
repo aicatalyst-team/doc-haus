@@ -353,7 +353,10 @@ button.linklike:hover {
   text-decoration: line-through;
 }
 
-.docx-render [class*="comment"] {
+/* Only the margin comment column is amber. Docxodus wraps the whole document in
+   a .comment-margin-container layout div, so a greedy [class*="comment"] selector
+   would tint all body text — scope strictly to the comment column. */
+.docx-render .comment-margin-column {
   color: var(--warn);
 }
 
