@@ -313,6 +313,10 @@ export default function ChatPanel({
   // step (see partsToSteps). Reset alongside partsRef on each new turn.
   const childRef = useRef<Set<string>>(new Set())
   const logRef = useRef<HTMLDivElement>(null)
+  // Mirrors `busy` for the long-lived event subscription, whose resync closure is
+  // created once and would otherwise capture a stale value.
+  const busyRef = useRef(false)
+  busyRef.current = busy
 
   useEffect(() => {
     const controller = new AbortController()
@@ -329,7 +333,7 @@ export default function ChatPanel({
     }
     // No session until the first send (see onSend) — mounting the panel must not
     // mint an empty throwaway session that would clutter the conversation list.
-    subscribeEvents(client, onEvent, controller.signal).catch(() => {})
+    subscribeEvents(client, onEvent, controller.signal, resync).catch(() => {})
     return () => controller.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, sessionID])
@@ -363,6 +367,24 @@ export default function ChatPanel({
     if (event.type === "session.idle" && event.properties.sessionID === sessionRef.current) {
       finalize()
     }
+  }
+
+  // The event stream dropped and reconnected, so any parts (and the session.idle)
+  // emitted during the gap were missed. If a turn is in flight, pull the active
+  // session and merge its parts back into the live view so it catches up instead
+  // of stalling on a partial turn; if that turn already settled while we were
+  // disconnected, its session.idle was missed too, so finalize from the server's
+  // completion marker. A settled view needs nothing — its reload already ran.
+  async function resync() {
+    if (!busyRef.current || !sessionRef.current) return
+    const msgs = await getMessages(client, sessionRef.current)
+    for (const m of msgs) {
+      rolesRef.current.set(m.info.id, m.info.role)
+      for (const p of m.parts) partsRef.current.set(p.id, p)
+    }
+    bump((n) => n + 1)
+    const last = [...msgs].reverse().find((m) => m.info.role === "assistant")?.info
+    if (last?.role === "assistant" && last.time.completed) finalize()
   }
 
   // Reload the settled history from the server rather than appending the

@@ -147,11 +147,34 @@ export async function revertMessage(client: Client, sessionID: string, messageID
 
 // Subscribe to the server event stream and invoke onEvent for each event.
 // Caller passes an AbortSignal to stop. Errors after abort are swallowed.
-export async function subscribeEvents(client: Client, onEvent: (e: Event) => void, signal: AbortSignal) {
-  const res = await client.event.subscribe()
-  for await (const event of res.stream) {
+//
+// The stream is a single long-lived SSE connection. A network blip or a long
+// idle gap (a heavy model thinking phase emits no parts for a while) can end it,
+// and without reconnecting the live view would silently stop updating — missing
+// the rest of the turn and its session.idle, so the turn appears stuck until a
+// manual reload. So loop: resubscribe whenever the stream ends, and fire
+// onReconnect on each re-subscribe so the caller can resync the state it missed.
+export async function subscribeEvents(
+  client: Client,
+  onEvent: (e: Event) => void,
+  signal: AbortSignal,
+  onReconnect?: () => void,
+) {
+  let first = true
+  while (!signal.aborted) {
+    try {
+      const res = await client.event.subscribe()
+      if (!first) onReconnect?.()
+      first = false
+      for await (const event of res.stream) {
+        if (signal.aborted) return
+        onEvent(event as Event)
+      }
+    } catch {
+      if (signal.aborted) return
+    }
     if (signal.aborted) return
-    onEvent(event as Event)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
   }
 }
 
