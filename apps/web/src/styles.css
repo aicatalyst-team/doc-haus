@@ -720,6 +720,17 @@ textarea {
   border: 1px solid var(--border);
 }
 
+/* Byline naming the agent that produced an answer, so a thread that mixes
+   agents (Q&A, then Redline) reads clearly rather than as one anonymous voice. */
+.msg-agent {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
 /* Edit/retry actions on a user message: hidden until the bubble is hovered so
    the conversation stays clean, revealed as a small row below the text. */
 .msg.user {

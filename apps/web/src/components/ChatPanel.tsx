@@ -24,7 +24,10 @@ type Step =
 // id is the server message id, carried on user turns so edit/retry can revert
 // the session back to that exact message. Optimistic turns added before a
 // finalize reload have no id, so their actions stay hidden until settled.
-type Turn = { role: "user" | "assistant"; text: string; citations: Citation[]; steps: Step[]; id?: string }
+// agent is the assistant that produced the turn — the server stamps it on the
+// user message, so an assistant turn inherits the agent of the user turn it
+// answered. Carried so mixed-agent threads read clearly (see agentLabel).
+type Turn = { role: "user" | "assistant"; text: string; citations: Citation[]; steps: Step[]; id?: string; agent?: string }
 
 // Quiet starter prompts so a fresh matter is not a blank box — mirrors how Harvey
 // and Legora seat the lawyer with ready questions about the documents in scope.
@@ -78,6 +81,11 @@ function partsToSteps(parts: Part[], matter: string, pool?: Part[]): Step[] {
 function humanizeTool(tool: string) {
   return tool.charAt(0).toUpperCase() + tool.slice(1).replace(/-/g, " ")
 }
+
+// The agent name as a byline on an answer. Most names humanize cleanly
+// ("redline" -> "Redline"); the few that don't get a friendlier label here.
+const AGENT_LABELS: Record<string, string> = { qa: "Q&A" }
+const agentLabel = (name: string) => AGENT_LABELS[name] ?? humanizeTool(name)
 
 // Verbs that turn a raw tool name + its target into a readable action line
 // ("Read Share Purchase Agreement.docx"), so the timeline narrates each step the
@@ -186,17 +194,25 @@ function readTurn(parts: Map<string, Part>, roles: Map<string, string>, matter: 
 // Group stored messages into turns. A tool-using turn spans several consecutive
 // assistant messages (one per model step); merging their parts reconstructs the
 // whole reasoning timeline instead of showing only the final answer bubble.
-function toTurns(msgs: { info: { id: string; role: "user" | "assistant" }; parts: Part[] }[], matter: string): Turn[] {
-  const groups: { role: "user" | "assistant"; id: string; parts: Part[] }[] = []
+function toTurns(
+  msgs: { info: { id: string; role: "user" | "assistant"; agent?: string }; parts: Part[] }[],
+  matter: string,
+): Turn[] {
+  const groups: { role: "user" | "assistant"; id: string; parts: Part[]; agent?: string }[] = []
+  // An assistant turn answers the most recent user turn, so it inherits that
+  // user message's agent — the server only stamps the agent on user messages.
+  let lastAgent: string | undefined
   for (const m of msgs) {
+    if (m.info.role === "user" && m.info.agent) lastAgent = m.info.agent
     const last = groups[groups.length - 1]
     if (last && last.role === "assistant" && m.info.role === "assistant") last.parts.push(...m.parts)
-    else groups.push({ role: m.info.role, id: m.info.id, parts: [...m.parts] })
+    else groups.push({ role: m.info.role, id: m.info.id, parts: [...m.parts], agent: lastAgent })
   }
   return groups
     .map((g) => ({
       role: g.role,
       id: g.id,
+      agent: g.agent,
       ...contentOf(g.parts),
       steps: g.role === "assistant" ? partsToSteps(g.parts, matter) : [],
     }))
@@ -259,7 +275,14 @@ export default function ChatPanel({
     const controller = new AbortController()
     if (sessionID) {
       sessionRef.current = sessionID
-      getMessages(client, sessionID).then((msgs) => setTurns(toTurns(msgs, matterName)))
+      getMessages(client, sessionID).then((msgs) => {
+        setTurns(toTurns(msgs, matterName))
+        // Reopening a past conversation pre-selects the agent it last ran on,
+        // read off the most recent user turn (the server stamps each one with
+        // its agent), so the picker reflects where the thread left off.
+        const last = [...msgs].reverse().find((m) => m.info.role === "user")?.info
+        if (last && "agent" in last && last.agent) onAgentChange(last.agent)
+      })
     }
     // No session until the first send (see onSend) — mounting the panel must not
     // mint an empty throwaway session that would clutter the conversation list.
@@ -441,6 +464,7 @@ export default function ChatPanel({
             </div>
           ) : (
             <div key={i} className="msg assistant">
+              {t.agent && <div className="msg-agent">{agentLabel(t.agent)}</div>}
               <StepsPanel steps={t.steps} busy={false} answered={Boolean(t.text)} />
               {t.text && <Markdown>{t.text}</Markdown>}
               <CitationView citations={t.citations} />
@@ -449,6 +473,7 @@ export default function ChatPanel({
         )}
         {busy && (
           <div className="msg assistant">
+            <div className="msg-agent">{agentLabel(agent)}</div>
             <StepsPanel steps={live.steps} busy answered={Boolean(live.text)} />
             {live.text ? (
               <Markdown>{live.text}</Markdown>

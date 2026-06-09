@@ -39,8 +39,11 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
     if (!matter) return
     listAgents(matterClient(matter.dir)).then((list) => {
       setAgents(list as Agent[])
-      if (list.some((a) => (a as Agent).name === "qa")) setAgent("qa")
+      // A new chat opens on the default agent; an existing session restores the
+      // agent it last used (see ChatPanel's load effect), so don't force qa here.
+      if (!session && list.some((a) => (a as Agent).name === "qa")) setAgent("qa")
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matter])
 
   if (!matter) return <p className="muted">Loading matter...</p>
