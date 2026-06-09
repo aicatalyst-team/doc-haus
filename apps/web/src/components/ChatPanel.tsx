@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import type { Event, Part } from "@opencode-ai/sdk"
 import {
   createSession,
+  getMessages,
   matterClient,
   sendPrompt,
   subscribeEvents,
@@ -23,29 +24,43 @@ const STARTERS = [
   "Flag any unusual or one-sided clauses.",
 ]
 
-// Pull the assistant's visible text + any search-document citations out of the
-// live part map for one message id.
-function readMessage(parts: Map<string, Part>, messageID: string) {
-  const mine = [...parts.values()].filter((p) => p.messageID === messageID)
-  const text = mine
+// Reduce a message's parts to its visible text + any search-document citations.
+function contentOf(parts: Part[]) {
+  const text = parts
     .filter((p): p is Extract<Part, { type: "text" }> => p.type === "text")
     .map((p) => p.text)
     .join("")
-  const citations = mine
+  const citations = parts
     .filter((p): p is Extract<Part, { type: "tool" }> => p.type === "tool")
     .filter((p) => p.tool === "search-document" && p.state.status === "completed")
     .flatMap((p) => ((p.state as { metadata?: { citations?: Citation[] } }).metadata?.citations ?? []))
   return { text, citations }
 }
 
+// Same, over the live part map keyed by id, for one streaming message.
+function readMessage(parts: Map<string, Part>, messageID: string) {
+  return contentOf([...parts.values()].filter((p) => p.messageID === messageID))
+}
+
+// A session title from the first message: trimmed to a word boundary with an
+// ellipsis, so the rail reads cleanly instead of cutting mid-word.
+function titleFrom(text: string) {
+  if (text.length <= 60) return text
+  const cut = text.slice(0, 60)
+  const space = cut.lastIndexOf(" ")
+  return (space > 30 ? cut.slice(0, space) : cut).trimEnd() + "…"
+}
+
 export default function ChatPanel({
   directory,
+  sessionID,
   agent,
   available,
   onAgentChange,
   onLaunchWorkflow,
 }: {
   directory: string
+  sessionID?: string
   agent: string
   available: Set<string>
   onAgentChange: (name: string) => void
@@ -65,11 +80,22 @@ export default function ChatPanel({
 
   useEffect(() => {
     const controller = new AbortController()
-    createSession(client, "doc.haus Q&A").then((s) => (sessionRef.current = s.id))
+    if (sessionID) {
+      sessionRef.current = sessionID
+      getMessages(client, sessionID).then((msgs) =>
+        setTurns(
+          msgs
+            .map((m) => ({ role: m.info.role, ...contentOf(m.parts) }))
+            .filter((t) => t.text || t.citations.length),
+        ),
+      )
+    }
+    // No session until the first send (see onSend) — mounting the panel must not
+    // mint an empty throwaway session that would clutter the conversation list.
     subscribeEvents(client, onEvent, controller.signal).catch(() => {})
     return () => controller.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client])
+  }, [client, sessionID])
 
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight)
@@ -109,12 +135,15 @@ export default function ChatPanel({
 
   async function onSend() {
     const text = input.trim()
-    if (!text || busy || !sessionRef.current) return
+    if (!text || busy) return
     setTurns((prev) => [...prev, { role: "user", text, citations: [] }])
     setInput("")
     setBusy(true)
     partsRef.current.clear()
     assistantRef.current = ""
+    // Create the session lazily, titled from this first message so it reads as a
+    // distinct conversation in the rail rather than an interchangeable "Q&A".
+    if (!sessionRef.current) sessionRef.current = (await createSession(client, titleFrom(text))).id
     await sendPrompt(client, sessionRef.current, agent, text)
   }
 

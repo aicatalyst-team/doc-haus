@@ -60,25 +60,139 @@ textarea {
   color: var(--text);
 }
 
-.app-header {
+/* App shell: a collapsible left rail beside the scrolling content column. */
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 10px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar.collapsed {
+  width: 56px;
+}
+
+.sidebar-brand a {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
+  gap: 10px;
+  padding: 4px 6px 10px;
 }
 
-.app-header h1 {
-  font-size: 18px;
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-.app-header h1 a {
-  display: inline-flex;
+/* Primary nav + Settings/collapse share one row style; active picks up accent. */
+.nav-item {
+  display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: var(--accent-soft);
+}
+
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The open matter's conversation history; scrolls if it runs long. */
+.sidebar-convos {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 6px 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.sidebar-empty {
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.convo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.convo-item {
+  display: block;
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.convo-item:hover {
+  background: var(--accent-soft);
+}
+
+.convo-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .app-logo {
@@ -93,16 +207,6 @@ textarea {
   font-size: 20px;
   letter-spacing: -0.02em;
   color: var(--text);
-}
-
-/* Push the tagline to the far right of the header. */
-.app-header .tag {
-  margin-left: auto;
-}
-
-.app-header .tag {
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .container {
@@ -250,6 +354,78 @@ textarea {
 
 .workspace.with-artifact {
   grid-template-columns: 1.5fr 1fr;
+}
+
+/* Matter body: the chat workspace beside a collapsible documents rail. The rail
+   keeps the matter's files out of the chat's way; collapsed it shrinks to a thin
+   tab so the conversation reclaims the full width. */
+.matter-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+.matter-body.docs-collapsed {
+  grid-template-columns: minmax(0, 1fr) 40px;
+}
+
+/* Rail tracks the chat scroll so the document list stays in reach. */
+.docs-rail {
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  margin-bottom: 0;
+}
+
+.docs-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.docs-rail-head h2 {
+  margin: 0;
+}
+
+/* Collapsed rail: a slim vertical tab that reopens the documents panel. */
+.docs-tab {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 40px;
+  padding: 12px 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.docs-tab:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.docs-tab-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.docs-tab-label {
+  writing-mode: vertical-rl;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
 }
 
 /* Artifact panel sticks in view while the chat scrolls, so a long review report
@@ -410,6 +586,26 @@ button.linklike:hover {
   text-decoration: underline;
 }
 
+/* Remove control on a document row — floats right, reddens on hover. */
+.doc-remove {
+  margin-left: auto;
+  display: inline-flex;
+  border: none;
+  background: none;
+  padding: 4px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.doc-remove:hover {
+  color: var(--danger);
+}
+
+.doc-remove:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .viewer-overlay {
   position: fixed;
   inset: 0;
@@ -550,23 +746,8 @@ button.linklike:hover {
   color: var(--text);
 }
 
-/* Settings: a gear in the header opens an engine-wide modal for credentials,
+/* Settings: opened from the sidebar as an engine-wide modal for credentials,
    local providers, and the default model. Reuses the picker modal shell. */
-.settings-gear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  color: var(--muted);
-  border-color: transparent;
-  background: transparent;
-}
-
-.settings-gear:hover {
-  color: var(--text);
-  border-color: var(--border);
-}
-
 .settings-panel {
   max-width: 600px;
 }
@@ -676,4 +857,79 @@ button.linklike:hover {
   border-radius: 4px;
   background: var(--accent-soft);
   font-size: 12.5px;
+}
+
+/* Toasts: transient notifications stacked bottom-right, above the doc viewer
+   overlay. White card, soft shadow, a colored left border keyed to the type. */
+.toast-stack {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--muted);
+  border-radius: 6px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 20px rgba(26, 26, 24, 0.14);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  animation: toast-in 160ms ease-out;
+}
+
+.toast-success {
+  border-left-color: var(--accent);
+}
+
+.toast-warning {
+  border-left-color: var(--warn);
+}
+
+.toast-error {
+  border-left-color: var(--danger);
+}
+
+.toast-info {
+  border-left-color: #2a5a8a;
+}
+
+.toast-msg {
+  flex: 1;
+}
+
+.toast-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 1px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  color: var(--text);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
