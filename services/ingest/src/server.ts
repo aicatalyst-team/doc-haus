@@ -11,7 +11,7 @@ import {
 } from "./db"
 import { ingestDocx } from "./ingest"
 import { buildRedlined, bake } from "./redline"
-import { listMatters, createMatter, getMatter, deleteMatter, matterDir } from "./matter"
+import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir } from "./matter"
 import { readGrid, writeGrid, type Grid } from "./grid"
 import { existsSync, rmSync } from "node:fs"
 import path from "node:path"
@@ -24,6 +24,11 @@ app.get("/matters", (c) => c.json(listMatters()))
 app.post("/matters", async (c) => {
   const { title, reference } = await c.req.json<{ title: string; reference?: string }>()
   return c.json(createMatter(title, reference))
+})
+
+app.patch("/matters/:id", async (c) => {
+  const { title, reference } = await c.req.json<{ title: string; reference?: string }>()
+  return c.json(renameMatter(c.req.param("id"), title, reference))
 })
 
 app.delete("/matters/:id", (c) => {

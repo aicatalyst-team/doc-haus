@@ -133,6 +133,7 @@ export default function Sidebar({
                   <Link
                     to={`/matter/${matterId}?session=${c.id}`}
                     className={`convo-item${c.id === activeSession ? " active" : ""}`}
+                    title={c.title}
                   >
                     {c.title}
                   </Link>

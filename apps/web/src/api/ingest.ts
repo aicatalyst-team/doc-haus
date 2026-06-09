@@ -52,6 +52,15 @@ export async function createMatter(title: string, reference?: string): Promise<M
   return res.json()
 }
 
+export async function renameMatter(id: string, title: string, reference?: string): Promise<Matter> {
+  const res = await fetch(`${INGEST_URL}/matters/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, reference }),
+  })
+  return res.json()
+}
+
 export async function deleteMatter(id: string): Promise<void> {
   await fetch(`${INGEST_URL}/matters/${id}`, { method: "DELETE" })
 }

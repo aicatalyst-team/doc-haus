@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
-import { getMatter, type MatterDetail as Detail } from "../api/ingest"
+import { getMatter, renameMatter, type MatterDetail as Detail } from "../api/ingest"
 import { listAgents, matterClient } from "../api/opencode"
 import DocumentUpload from "../components/DocumentUpload"
 import DocumentViewer from "../components/DocumentViewer"
@@ -27,6 +27,10 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   // follows a chat redline preview's "View in document" link (undefined otherwise).
   const [focusRedline, setFocusRedline] = useState<number>()
   const [docsOpen, setDocsOpen] = useState(() => localStorage.getItem("dh.docs") !== "0")
+  // Click the title to rename: swap the heading for an input seeded with the
+  // current title. Commit persists via the ingest service and updates in place.
+  const [renaming, setRenaming] = useState(false)
+  const [draftTitle, setDraftTitle] = useState("")
 
   useEffect(() => {
     localStorage.setItem("dh.docs", docsOpen ? "1" : "0")
@@ -53,13 +57,44 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
 
   const available = new Set(agents.map((a) => a.name))
 
+  async function commitRename() {
+    setRenaming(false)
+    const next = draftTitle.trim()
+    if (!matter || !next || next === matter.title) return
+    const updated = await renameMatter(matter.id, next, matter.reference)
+    setMatter((m) => m && { ...m, title: updated.title })
+    onSessionsChanged()
+  }
+
   return (
     <>
       <div style={{ marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>
-          {matter.reference && <span className="matter-ref">{matter.reference}</span>}
-          {matter.title}
-        </h2>
+        {renaming ? (
+          <input
+            className="matter-title-input"
+            autoFocus
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename()
+              if (e.key === "Escape") setRenaming(false)
+            }}
+          />
+        ) : (
+          <h2
+            className="matter-title"
+            style={{ margin: 0 }}
+            title="Click to rename"
+            onClick={() => {
+              setDraftTitle(matter.title)
+              setRenaming(true)
+            }}
+          >
+            {matter.reference && <span className="matter-ref">{matter.reference}</span>}
+            {matter.title}
+          </h2>
+        )}
       </div>
 
       {view === "chat" && (

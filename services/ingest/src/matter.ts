@@ -38,6 +38,15 @@ export function createMatter(title: string, reference?: string): Matter {
   return matter
 }
 
+// Rename keeps the directory id stable (it backs every session and document
+// path); only the display title/reference in matter.json change.
+export function renameMatter(id: string, title: string, reference?: string): Matter {
+  const dir = matterDir(id)
+  const matter = { ...getMatter(id), title, reference }
+  writeFileSync(matterFile(dir), JSON.stringify(matter, null, 2))
+  return matter
+}
+
 export function deleteMatter(id: string) {
   rmSync(matterDir(id), { recursive: true, force: true })
 }
