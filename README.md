@@ -108,12 +108,12 @@ gcloud auth application-default login
 export GOOGLE_VERTEX_PROJECT=<your-project>
 export GOOGLE_VERTEX_LOCATION=global   # Gemini 3.x models are global-only
 
-# Where matters live (independent of this repo)
-export WORKSPACE_ROOT=<path-to-matters>
-
 # Start all three processes (engine + ingest + web) with one command
 ./start.sh
 ```
+
+Matters live under `WORKSPACE_ROOT`, which defaults to `./workspace` at the repo root
+(gitignored) — set it to an absolute path to keep matters outside the repo.
 
 `start.sh` launches the engine (pointed at `dochaus/`), the ingest service, and the web
 app together, and tears them all down if any one exits. To run them by hand instead — in

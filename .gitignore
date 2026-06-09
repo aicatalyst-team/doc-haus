@@ -35,4 +35,5 @@ tsconfig.tsbuildinfo
 
 # doc.haus runtime + tooling artifacts (not source)
 services/ingest/workspace/
+/workspace/
 .playwright-mcp/
