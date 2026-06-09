@@ -549,3 +549,131 @@ button.linklike:hover {
 .markdown strong {
   color: var(--text);
 }
+
+/* Settings: a gear in the header opens an engine-wide modal for credentials,
+   local providers, and the default model. Reuses the picker modal shell. */
+.settings-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  color: var(--muted);
+  border-color: transparent;
+  background: transparent;
+}
+
+.settings-gear:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.settings-panel {
+  max-width: 600px;
+}
+
+.settings-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.settings-connected {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.settings-conn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--accent-soft);
+}
+
+.settings-conn.off {
+  background: var(--panel);
+  opacity: 0.7;
+}
+
+.settings-conn-name {
+  font-weight: 600;
+}
+
+.settings-conn-meta {
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.settings-switch {
+  font-size: 12px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  min-width: 48px;
+}
+
+.settings-switch.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* Local endpoint: a stacked label/field grid so the form reads as a unit; the
+   add button sits flush right on its own row. */
+.settings-add {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.settings-section:first-of-type {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.settings-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.settings-row {
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-row input,
+.settings-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  font-size: 12.5px;
+}
