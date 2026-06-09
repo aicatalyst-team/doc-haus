@@ -2,19 +2,19 @@ import { tool } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
+import { recordRedline } from "../lib/redlines"
 
-// doc.haus tracked-changes tool. Applies an edit to the matter's canonical Word
-// (.docx) document as a native Word tracked change (w:ins/w:del), attributed to
-// an author, so a reviewer can accept or reject it in Microsoft Word.
+// doc.haus tracked-changes tool. Proposes a surgical find/replace edit to the
+// matter's canonical Word (.docx) document as a tracked change, attributed to an
+// author, that a reviewer accepts or rejects in the doc.haus app.
 //
-// Docxodus session edits are always plain; native tracked changes come from
-// compareDocuments(original, edited, { authorName }), which diffs the two whole
-// documents into a single revision-marked output. So we edit a throwaway copy in
-// memory, then redline it against the on-disk original and write the redline back.
+// The proposal is recorded against the matter's index; the canonical .docx stays
+// clean (the accepted state) until a reviewer accepts, when ingest bakes the edit
+// in. So here we only confirm the text exists — we never modify the file.
 
 export default tool({
   description:
-    "Edit the matter's canonical Word (.docx) document as a tracked change. Finds exact text and replaces it, recording the change as a native Word insertion/deletion attributed to an author, which a reviewer can accept or reject. Use this for negotiation redlines; use word-integration for silent (non-tracked) edits.",
+    "Propose a surgical edit to the matter's canonical Word (.docx) document as a tracked change. Finds exact text and proposes replacing it, attributed to an author. The change is recorded as a pending redline the user reviews and accepts or rejects in the doc.haus app — the document is not modified until they accept. Use this for a word/phrase swap; use redline for a whole-clause rewrite, and word-integration for silent (non-tracked) edits.",
   args: {
     document: tool.schema.string().describe("Document file name within the matter (the docPath from a citation)"),
     find: tool.schema.string().describe("The exact text to find"),
@@ -26,33 +26,32 @@ export default tool({
     if (!existsSync(file)) return `Document not found in this matter: ${args.document}`
 
     const dx = await docxodus()
-    const original = await Bun.file(file).bytes()
-    const session = dx.openDocxSession(original, {})
+    const session = dx.openDocxSession(await Bun.file(file).bytes(), {})
 
     const targets = session.findAllByText(args.find)
     if (!targets.length) {
       session.close()
       return `Text not found in ${path.basename(file)}: ${JSON.stringify(args.find)}`
     }
-
-    const results = targets.flatMap((t) => session.replaceTextRange(t.id, args.find, args.replace))
-    const failed = results.find((r) => !r.success)
-    if (failed) {
-      session.close()
-      return `Edit failed: ${failed.error?.message ?? JSON.stringify(failed.error)}`
-    }
-
-    const edited = session.save()
+    const anchor = targets[0].id
     session.close()
 
     const author = args.author ?? "doc.haus"
-    const redline = await dx.compareDocuments(original, edited, { authorName: author })
-    await Bun.write(file, redline)
+    const id = recordRedline(ctx.directory, {
+      docPath: file,
+      docName: path.basename(file),
+      scope: "phrase",
+      findText: args.find,
+      oldText: args.find,
+      newText: args.replace,
+      author,
+      anchorId: anchor,
+    })
 
     return {
-      title: `Tracked change in ${path.basename(file)}`,
-      output: `Recorded ${results.length} tracked change(s) replacing ${JSON.stringify(args.find)} with ${JSON.stringify(args.replace)} in ${path.basename(file)}, attributed to ${author}. Reviewer can accept or reject in Word.`,
-      metadata: { document: file, find: args.find, replace: args.replace, edits: results.length, author },
+      title: `Proposed tracked change in ${path.basename(file)}`,
+      output: `Proposed replacing ${JSON.stringify(args.find)} with ${JSON.stringify(args.replace)} in ${path.basename(file)} (${targets.length} occurrence(s)), attributed to ${author}. Recorded as pending redline #${id} — the user reviews and accepts or rejects it in the doc.haus app.`,
+      metadata: { document: file, find: args.find, replace: args.replace, matches: targets.length, author, redline: id },
     }
   },
 })

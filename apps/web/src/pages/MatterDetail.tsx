@@ -9,10 +9,11 @@ import ReviewGrid from "../components/ReviewGrid"
 
 type Agent = { name: string; description?: string; mode?: string }
 
-// One matter, four surfaces, switched by the `view` query param from the sidebar:
-// chat | review | documents | workflows. The content is a single canvas whose
-// width flexes to the surface — the grid and the documents manager run full-width,
+// One matter, three surfaces, switched by the `view` query param from the
+// sidebar: chat | review | documents. The content is a single canvas whose width
+// flexes to the surface — the grid and the documents manager run full-width,
 // while chat keeps a documents rail for reference. Default surface is chat.
+// Workflows are not a surface: they run as seeded chat sessions in the chat view.
 export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged: () => void }) {
   const { id } = useParams<{ id: string }>()
   const [params, setParams] = useSearchParams()
@@ -86,7 +87,9 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
         <DocumentUpload matterId={matter.id} documents={matter.documents} onUploaded={refresh} onView={setViewing} />
       )}
 
-      {viewing && <DocumentViewer matterId={matter.id} name={viewing} onClose={() => setViewing(undefined)} />}
+      {viewing && (
+        <DocumentViewer matterId={matter.id} name={viewing} onClose={() => setViewing(undefined)} onChanged={refresh} />
+      )}
     </>
   )
 }

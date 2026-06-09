@@ -6,6 +6,7 @@
       "name": "@dochaus/ingest",
       "dependencies": {
         "@xenova/transformers": "^2.17.2",
+        "docxodus": "^6.4.0",
         "hono": "^4.10.7",
         "mammoth": "^1.8.0",
       },
@@ -92,6 +93,8 @@
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
     "dingbat-to-unicode": ["dingbat-to-unicode@1.0.1", "", {}, "sha512-98l0sW87ZT58pU4i61wa2OHwxbiYSbuxsCBozaVnYX2iCnr3bLM3fIes1/ej7h1YdOKuKt/MLs706TVnALA65w=="],
+
+    "docxodus": ["docxodus@6.4.0", "", { "peerDependencies": { "react": ">=16.8.0" }, "optionalPeers": ["react"] }, "sha512-8OAM1oyEcwC+BtfeqDZ8e914cTR8OAO0ARU59jyrvSozft2xTqbw0sUij07trt4wMFgpytb2fgqrw41Fvrh7yg=="],
 
     "duck": ["duck@0.1.12", "", { "dependencies": { "underscore": "^1.13.1" } }, "sha512-wkctla1O6VfP89gQ+J/yDesM0S7B7XLXjKGzXxMDVFg7uEn706niAtyYovKbyq1oT9YwDcly721/iUWoc8MVRg=="],
 
