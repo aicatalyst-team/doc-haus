@@ -1214,6 +1214,13 @@ button.linklike:hover {
   color: var(--warn);
 }
 
+/* With no comments Docxodus still emits an empty margin column that reserves its
+   fixed width, leaving a wide blank gutter right of the text. Collapse it when
+   empty so the document content flexes to full width. */
+.docx-render .comment-margin-column:empty {
+  display: none;
+}
+
 /* Markdown rendering for assistant answers and subagent reports. The .msg
    wrapper sets white-space: pre-wrap for raw text; reset it here so markdown
    blocks control their own spacing. */
