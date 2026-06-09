@@ -182,6 +182,22 @@ textarea {
   color: var(--muted);
 }
 
+/* Agent picker: select on top, the agent's own description beneath, right-aligned
+   under the header so the choice reads in plain terms without crowding the row. */
+.agent-select {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.agent-desc {
+  margin: 0;
+  font-size: 12px;
+  max-width: 280px;
+  text-align: right;
+}
+
 /* Matter workspace: chat is the primary surface, the review panel supports it —
    give chat the wider column rather than equal weight. */
 .grid {
