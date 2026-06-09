@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
-import { Link, NavLink, useMatch, useSearchParams } from "react-router-dom"
+import { Link, NavLink, useMatch, useNavigate, useSearchParams } from "react-router-dom"
 import { getMatter } from "../api/ingest"
-import { listSessions, matterClient } from "../api/opencode"
+import { deleteSession, listSessions, matterClient } from "../api/opencode"
 import logo from "../assets/dochaus-logo.svg"
+import { useToast } from "./Toast"
 
 type Convo = { id: string; title: string; updated: number }
 
@@ -22,10 +23,13 @@ export default function Sidebar({ onOpenSettings }: { onOpenSettings: () => void
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("dh.sidebar") === "1")
   const matterId = useMatch("/matter/:id")?.params.id
   const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const notify = useToast()
   const activeSession = params.get("session")
   const view = params.get("view") ?? "chat"
   const [convos, setConvos] = useState<Convo[]>([])
   const [matterTitle, setMatterTitle] = useState("")
+  const [matterDir, setMatterDir] = useState("")
 
   useEffect(() => {
     localStorage.setItem("dh.sidebar", collapsed ? "1" : "0")
@@ -39,6 +43,7 @@ export default function Sidebar({ onOpenSettings }: { onOpenSettings: () => void
     getMatter(matterId)
       .then((m) => {
         setMatterTitle(m.title)
+        setMatterDir(m.dir)
         return listSessions(matterClient(m.dir))
       })
       .then((list) => {
@@ -57,6 +62,21 @@ export default function Sidebar({ onOpenSettings }: { onOpenSettings: () => void
       live = false
     }
   }, [matterId, activeSession])
+
+  // Delete a conversation from the engine, then drop it from the list. If it was
+  // the open one, fall back to a fresh chat so the canvas isn't left on a dead id.
+  async function removeConvo(c: Convo) {
+    if (!matterDir) return
+    if (!window.confirm(`Delete "${c.title}"? This cannot be undone.`)) return
+    try {
+      await deleteSession(matterClient(matterDir), c.id)
+      setConvos((list) => list.filter((x) => x.id !== c.id))
+      if (c.id === activeSession) navigate(`/matter/${matterId}?view=chat`)
+      notify("success", "Conversation deleted")
+    } catch {
+      notify("error", "Could not delete conversation")
+    }
+  }
 
   return (
     <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
@@ -104,13 +124,20 @@ export default function Sidebar({ onOpenSettings }: { onOpenSettings: () => void
           ) : (
             <ul className="convo-list">
               {convos.map((c) => (
-                <li key={c.id}>
+                <li key={c.id} className="convo-row">
                   <Link
                     to={`/matter/${matterId}?session=${c.id}`}
                     className={`convo-item${c.id === activeSession ? " active" : ""}`}
                   >
                     {c.title}
                   </Link>
+                  <button
+                    className="convo-del"
+                    title="Delete conversation"
+                    onClick={() => removeConvo(c)}
+                  >
+                    <IconTrash />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -185,6 +212,15 @@ function IconSettings() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
+function IconTrash() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>
   )
 }

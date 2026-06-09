@@ -105,6 +105,11 @@ export async function listSessions(client: Client) {
   return res.data ?? []
 }
 
+// Delete a session and its messages from the engine. Irreversible.
+export async function deleteSession(client: Client, sessionID: string) {
+  return client.session.delete({ path: { id: sessionID } })
+}
+
 // Settled messages for one session, each as { info, parts }, used to replay a
 // past conversation back into the chat panel.
 export async function getMessages(client: Client, sessionID: string) {

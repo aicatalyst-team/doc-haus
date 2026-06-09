@@ -165,7 +165,15 @@ textarea {
   gap: 2px;
 }
 
+.convo-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .convo-item {
+  flex: 1;
+  min-width: 0;
   display: block;
   padding: 7px 10px;
   border-radius: 6px;
@@ -176,7 +184,7 @@ textarea {
   text-overflow: ellipsis;
 }
 
-.convo-item:hover {
+.convo-row:hover .convo-item {
   background: var(--accent-soft);
 }
 
@@ -184,6 +192,33 @@ textarea {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
+}
+
+/* Delete control: hidden until the row is hovered, pinned right over the title
+   with a soft fade so long titles slide under it instead of being clipped. */
+.convo-del {
+  position: absolute;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.convo-row:hover .convo-del {
+  opacity: 1;
+}
+
+.convo-del:hover {
+  background: var(--bg);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .sidebar-foot {
