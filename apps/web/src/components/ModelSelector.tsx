@@ -1,28 +1,54 @@
-type Agent = { name: string; description?: string; mode?: string }
+import { useState } from "react"
+import { CHAT_ASSISTANTS } from "../agents"
 
-// Lets the user pick which primary agent answers chat. Agent definitions carry
-// their own model, so picking the agent is the model/behavior selector —
-// OpenCode's inherited per-agent model config does the rest.
+// Assistant picker: a quiet link in the chat header opens a modal listing each
+// chat assistant we expose, with its description, rather than a bare dropdown of
+// every agent the engine happens to load. `available` is the set of agent ids the
+// engine actually has, so we never offer one that is not installed.
 export default function ModelSelector({
-  agents,
+  available,
   value,
   onChange,
 }: {
-  agents: Agent[]
+  available: Set<string>
   value: string
   onChange: (name: string) => void
 }) {
-  const primary = agents.filter((a) => a.mode !== "subagent")
+  const options = CHAT_ASSISTANTS.filter((a) => available.has(a.name))
+  const [open, setOpen] = useState(false)
+  if (options.length === 0) return null
+
+  const current = options.find((a) => a.name === value) ?? options[0]
   return (
-    <label className="row" style={{ gap: 6 }}>
-      <span className="muted">Agent</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        {primary.map((a) => (
-          <option key={a.name} value={a.name}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <>
+      <button className="linklike assistant-trigger" onClick={() => setOpen(true)}>
+        Assistant: {current.label}
+      </button>
+      {open && (
+        <div className="viewer-overlay" onClick={() => setOpen(false)}>
+          <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="viewer-bar">
+              <span className="viewer-title">Choose an assistant</span>
+              <button onClick={() => setOpen(false)}>Close</button>
+            </div>
+            <div className="picker-body">
+              {options.map((a) => (
+                <button
+                  key={a.name}
+                  className={`assistant-option${a.name === value ? " selected" : ""}`}
+                  onClick={() => {
+                    onChange(a.name)
+                    setOpen(false)
+                  }}
+                >
+                  <span className="assistant-name">{a.label}</span>
+                  <span className="assistant-desc muted">{a.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

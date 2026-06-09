@@ -5,8 +5,7 @@ import { listAgents, matterClient } from "../api/opencode"
 import DocumentUpload from "../components/DocumentUpload"
 import DocumentViewer from "../components/DocumentViewer"
 import ChatPanel from "../components/ChatPanel"
-import AgentPanel from "../components/AgentPanel"
-import ModelSelector from "../components/ModelSelector"
+import WorkflowArtifact from "../components/WorkflowArtifact"
 
 type Agent = { name: string; description?: string; mode?: string }
 
@@ -16,6 +15,7 @@ export default function MatterDetail() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [agent, setAgent] = useState("qa")
   const [viewing, setViewing] = useState<string>()
+  const [workflow, setWorkflow] = useState<string>()
 
   function refresh() {
     if (id) getMatter(id).then(setMatter)
@@ -35,21 +35,34 @@ export default function MatterDetail() {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
-        <div>
-          <Link to="/" className="muted">
-            &larr; All matters
-          </Link>
-          <h2 style={{ margin: "4px 0 0" }}>{matter.title}</h2>
-        </div>
-        <ModelSelector agents={agents} value={agent} onChange={setAgent} />
+      <div style={{ marginBottom: 16 }}>
+        <Link to="/" className="muted">
+          &larr; All matters
+        </Link>
+        <h2 style={{ margin: "4px 0 0" }}>
+          {matter.reference && <span className="matter-ref">{matter.reference}</span>}
+          {matter.title}
+        </h2>
       </div>
 
       <DocumentUpload matterId={matter.id} documents={matter.documents} onUploaded={refresh} onView={setViewing} />
 
-      <div className="grid">
-        <ChatPanel directory={matter.dir} agent={agent} />
-        <AgentPanel directory={matter.dir} />
+      <div className={`workspace${workflow ? " with-artifact" : ""}`}>
+        <ChatPanel
+          directory={matter.dir}
+          agent={agent}
+          available={new Set(agents.map((a) => a.name))}
+          onAgentChange={setAgent}
+          onLaunchWorkflow={setWorkflow}
+        />
+        {workflow && (
+          <WorkflowArtifact
+            key={workflow}
+            directory={matter.dir}
+            workflow={workflow}
+            onClose={() => setWorkflow(undefined)}
+          />
+        )}
       </div>
 
       {viewing && <DocumentViewer matterId={matter.id} name={viewing} onClose={() => setViewing(undefined)} />}

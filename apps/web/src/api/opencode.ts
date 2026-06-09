@@ -11,6 +11,71 @@ export function matterClient(directory: string) {
 
 export type Client = ReturnType<typeof matterClient>
 
+// A client with no matter directory. Settings act on the engine's global config
+// (opencode.json) and machine-wide credential store (auth.json) rather than a
+// single matter, so we deliberately omit the x-opencode-directory header.
+export function settingsClient() {
+  return createOpencodeClient({ baseUrl: OPENCODE_URL })
+}
+
+// All providers the engine knows from the models.dev catalog, with which ones
+// are connected and the current default model per provider.
+export async function listProviders(client: Client) {
+  const res = await client.provider.list()
+  return res.data ?? { all: [], default: {}, connected: [] }
+}
+
+// Per-provider auth methods (api key vs oauth). Empty array => credentials come
+// from the environment (Vertex ADC, Bedrock/Azure SDK creds), not a key field.
+export async function listAuthMethods(client: Client) {
+  const res = await client.provider.auth()
+  return res.data ?? {}
+}
+
+// Store an API key for a provider. Writes to the engine's auth.json (0o600).
+export async function setProviderKey(client: Client, id: string, key: string) {
+  return client.auth.set({ path: { id }, body: { type: "api", key } })
+}
+
+export async function getConfig(client: Client) {
+  const res = await client.config.get()
+  return res.data ?? {}
+}
+
+// Set the engine-wide default model, as a "providerID/modelID" string.
+export async function setDefaultModel(client: Client, model: string) {
+  return client.config.update({ body: { model } })
+}
+
+// Hide providers from routing entirely. A disabled provider drops out of the
+// catalog, the model picker, and any agent that would route to it.
+export async function setDisabledProviders(client: Client, ids: string[]) {
+  return client.config.update({ body: { disabled_providers: ids } })
+}
+
+// Register a local OpenAI-compatible provider (LM Studio, Ollama, vLLM...). The
+// engine loads it through @ai-sdk/openai-compatible at the given baseURL. The
+// baseURL must be reachable from where `opencode serve` runs, not the browser.
+export async function addLocalProvider(
+  client: Client,
+  input: { id: string; name: string; baseURL: string; modelID: string },
+) {
+  const cfg = await getConfig(client)
+  return client.config.update({
+    body: {
+      provider: {
+        ...(cfg.provider ?? {}),
+        [input.id]: {
+          npm: "@ai-sdk/openai-compatible",
+          name: input.name,
+          options: { baseURL: input.baseURL },
+          models: { [input.modelID]: { name: input.modelID } },
+        },
+      },
+    },
+  })
+}
+
 // Shape returned by the search-document tool in its part metadata.citations.
 export type Citation = {
   documentName: string
