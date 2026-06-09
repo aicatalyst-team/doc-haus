@@ -9,6 +9,7 @@ import {
   type Client,
 } from "../api/opencode"
 import CitationView from "./CitationView"
+import Markdown from "./Markdown"
 
 type Turn = { role: "user" | "assistant"; text: string; citations: Citation[] }
 
@@ -103,13 +104,13 @@ export default function ChatPanel({ directory, agent }: { directory: string; age
       <div className="chat-log" ref={logRef}>
         {turns.map((t, i) => (
           <div key={i} className={`msg ${t.role}`}>
-            {t.text}
+            {t.role === "assistant" ? <Markdown>{t.text}</Markdown> : t.text}
             <CitationView citations={t.citations} />
           </div>
         ))}
         {busy && (
           <div className="msg assistant">
-            {live?.text || <span className="muted">Thinking...</span>}
+            {live?.text ? <Markdown>{live.text}</Markdown> : <span className="muted">Thinking...</span>}
             {live && <CitationView citations={live.citations} />}
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { Event, Part } from "@opencode-ai/sdk"
 import { createSession, matterClient, sendPrompt, subscribeEvents, type Client } from "../api/opencode"
+import Markdown from "./Markdown"
 
 type TaskPart = Extract<Part, { type: "tool" }>
 
@@ -18,7 +19,11 @@ function SubagentResult({ part }: { part: TaskPart }) {
           <span className="badge">{status}</span>
         </span>
       </div>
-      {output && <div className="msg assistant" style={{ marginTop: 8 }}>{output}</div>}
+      {output && (
+        <div className="msg assistant" style={{ marginTop: 8 }}>
+          <Markdown>{output}</Markdown>
+        </div>
+      )}
     </div>
   )
 }
@@ -93,7 +98,7 @@ export default function AgentPanel({ directory }: { directory: string }) {
             <div className="agent-step">
               <div className="name">Combined report</div>
               <div className="msg assistant" style={{ marginTop: 8 }}>
-                {report}
+                <Markdown>{report}</Markdown>
               </div>
             </div>
           )}

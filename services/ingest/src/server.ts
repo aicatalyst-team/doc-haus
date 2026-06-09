@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { openDb, listDocuments } from "./db"
 import { ingestDocx } from "./ingest"
-import { listMatters, createMatter, getMatter, matterDir } from "./matter"
+import { listMatters, createMatter, getMatter, deleteMatter, matterDir } from "./matter"
 import { existsSync } from "node:fs"
 import path from "node:path"
 
@@ -12,8 +12,13 @@ app.use("*", cors())
 app.get("/matters", (c) => c.json(listMatters()))
 
 app.post("/matters", async (c) => {
-  const { title } = await c.req.json<{ title: string }>()
-  return c.json(createMatter(title))
+  const { title, reference } = await c.req.json<{ title: string; reference?: string }>()
+  return c.json(createMatter(title, reference))
+})
+
+app.delete("/matters/:id", (c) => {
+  deleteMatter(c.req.param("id"))
+  return c.json({ ok: true })
 })
 
 app.get("/matters/:id", (c) => {

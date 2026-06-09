@@ -40,7 +40,10 @@ export default function MatterDetail() {
           <Link to="/" className="muted">
             &larr; All matters
           </Link>
-          <h2 style={{ margin: "4px 0 0" }}>{matter.title}</h2>
+          <h2 style={{ margin: "4px 0 0" }}>
+            {matter.reference && <span className="matter-ref">{matter.reference}</span>}
+            {matter.title}
+          </h2>
         </div>
         <ModelSelector agents={agents} value={agent} onChange={setAgent} />
       </div>

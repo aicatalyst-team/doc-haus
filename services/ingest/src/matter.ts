@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync, rmSync } from "node:fs"
 import path from "node:path"
 
 // A matter is a directory under WORKSPACE_ROOT holding a matter.json plus the
@@ -7,7 +7,9 @@ import path from "node:path"
 
 export const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? path.join(process.cwd(), "workspace")
 
-export type Matter = { id: string; title: string; dir: string; created_at: number }
+// reference is the firm's own client-matter number (e.g. "2026-0042"), shown in
+// the UI. It is display metadata only — the directory id stays the auto slug+uuid.
+export type Matter = { id: string; title: string; reference?: string; dir: string; created_at: number }
 
 function matterFile(dir: string) {
   return path.join(dir, "matter.json")
@@ -26,14 +28,18 @@ export function listMatters(): Matter[] {
     .sort((a, b) => a.created_at - b.created_at)
 }
 
-export function createMatter(title: string): Matter {
+export function createMatter(title: string, reference?: string): Matter {
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
   const id = `${slug}-${crypto.randomUUID().slice(0, 6)}`
   const dir = matterDir(id)
   mkdirSync(dir, { recursive: true })
-  const matter: Matter = { id, title, dir, created_at: Date.now() }
+  const matter: Matter = { id, title, reference, dir, created_at: Date.now() }
   writeFileSync(matterFile(dir), JSON.stringify(matter, null, 2))
   return matter
+}
+
+export function deleteMatter(id: string) {
+  rmSync(matterDir(id), { recursive: true, force: true })
 }
 
 export function getMatter(id: string): Matter {
