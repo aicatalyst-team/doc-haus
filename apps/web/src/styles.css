@@ -862,7 +862,7 @@ textarea {
   position: absolute;
   left: -5px;
   /* Center the 8px dot on the 13px/1.5 (~19.5px) first text line. */
-  top: 6px;
+  top: 7px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
