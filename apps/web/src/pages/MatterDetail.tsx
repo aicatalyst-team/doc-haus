@@ -6,7 +6,6 @@ import DocumentUpload from "../components/DocumentUpload"
 import DocumentViewer from "../components/DocumentViewer"
 import ChatPanel from "../components/ChatPanel"
 import AgentPanel from "../components/AgentPanel"
-import ModelSelector from "../components/ModelSelector"
 
 type Agent = { name: string; description?: string; mode?: string }
 
@@ -35,23 +34,25 @@ export default function MatterDetail() {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
-        <div>
-          <Link to="/" className="muted">
-            &larr; All matters
-          </Link>
-          <h2 style={{ margin: "4px 0 0" }}>
-            {matter.reference && <span className="matter-ref">{matter.reference}</span>}
-            {matter.title}
-          </h2>
-        </div>
-        <ModelSelector agents={agents} value={agent} onChange={setAgent} />
+      <div style={{ marginBottom: 16 }}>
+        <Link to="/" className="muted">
+          &larr; All matters
+        </Link>
+        <h2 style={{ margin: "4px 0 0" }}>
+          {matter.reference && <span className="matter-ref">{matter.reference}</span>}
+          {matter.title}
+        </h2>
       </div>
 
       <DocumentUpload matterId={matter.id} documents={matter.documents} onUploaded={refresh} onView={setViewing} />
 
       <div className="grid">
-        <ChatPanel directory={matter.dir} agent={agent} />
+        <ChatPanel
+          directory={matter.dir}
+          agent={agent}
+          agents={agents.filter((a) => a.name !== "legal-review")}
+          onAgentChange={setAgent}
+        />
         <AgentPanel directory={matter.dir} />
       </div>
 

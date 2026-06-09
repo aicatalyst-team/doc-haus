@@ -33,6 +33,7 @@ export default function ModelSelector({
   onChange: (name: string) => void
 }) {
   const primary = agents.filter((a) => a.mode !== "subagent")
+  if (primary.length <= 1) return null
   const selected = primary.find((a) => a.name === value)
   const description = DESCRIPTIONS[value] ?? selected?.description
   return (

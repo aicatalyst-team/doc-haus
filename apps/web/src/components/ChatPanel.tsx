@@ -10,6 +10,9 @@ import {
 } from "../api/opencode"
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
+import ModelSelector from "./ModelSelector"
+
+type Agent = { name: string; description?: string; mode?: string }
 
 type Turn = { role: "user" | "assistant"; text: string; citations: Citation[] }
 
@@ -36,7 +39,17 @@ function readMessage(parts: Map<string, Part>, messageID: string) {
   return { text, citations }
 }
 
-export default function ChatPanel({ directory, agent }: { directory: string; agent: string }) {
+export default function ChatPanel({
+  directory,
+  agent,
+  agents,
+  onAgentChange,
+}: {
+  directory: string
+  agent: string
+  agents: Agent[]
+  onAgentChange: (name: string) => void
+}) {
   const client = useMemo<Client>(() => matterClient(directory), [directory])
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState("")
@@ -108,7 +121,10 @@ export default function ChatPanel({ directory, agent }: { directory: string; age
 
   return (
     <div className="card">
-      <h2>Ask the matter</h2>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+        <h2 style={{ margin: 0 }}>Ask the matter</h2>
+        <ModelSelector agents={agents} value={agent} onChange={onAgentChange} />
+      </div>
       <div className="chat-log" ref={logRef}>
         {turns.length === 0 && !busy && (
           <div className="chat-empty">
