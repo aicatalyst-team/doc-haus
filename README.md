@@ -111,18 +111,47 @@ export GOOGLE_VERTEX_LOCATION=global   # Gemini 3.x models are global-only
 # Where matters live (independent of this repo)
 export WORKSPACE_ROOT=<path-to-matters>
 
-# 1. The engine, pointed at the legal config layer
+# Start all three processes (engine + ingest + web) with one command
+./start.sh
+```
+
+`start.sh` launches the engine (pointed at `dochaus/`), the ingest service, and the web
+app together, and tears them all down if any one exits. To run them by hand instead — in
+three terminals:
+
+```bash
 OPENCODE_CONFIG_DIR=$PWD/dochaus bun run packages/opencode/src/index.ts serve
-
-# 2. The ingest service (separate terminal)
 cd services/ingest && bun run dev
-
-# 3. The web app (separate terminal)
 cd apps/web && bun run dev
 ```
 
 Then: create a matter → upload a `.docx` contract → ask cited questions in chat → run a
 legal review → answers and history persist.
+
+## Security
+
+doc.haus inherits OpenCode's self-hosted posture — there is no built-in
+multi-tenant auth; you run it on infrastructure you trust and front it with your own
+proxy/SSO if exposing it beyond localhost. To match that posture across the stack:
+
+- **Loopback by default.** Both the engine and the ingest service bind `127.0.0.1`.
+  Override the ingest bind with `INGEST_HOST` / `INGEST_PORT` only behind a reverse proxy.
+- **CORS is an allowlist, not a wildcard.** The ingest service accepts browser origins
+  only from `localhost` / `127.0.0.1`, mirroring the engine's CORS rules.
+- **Matter ids are validated** against their generated `[a-z0-9-]` shape before touching
+  the filesystem, so a request id can't traverse out of `WORKSPACE_ROOT`.
+
+For stronger isolation (per-user auth, network exposure), put the engine and ingest
+service behind an authenticating reverse proxy; OpenCode's optional
+`OPENCODE_SERVER_PASSWORD` Basic auth covers the engine.
+
+## Tests
+
+The ingest service is tested with `bun test`:
+
+```bash
+cd services/ingest && bun test
+```
 
 ## Mergeability
 

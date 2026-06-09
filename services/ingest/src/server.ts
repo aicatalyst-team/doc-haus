@@ -17,7 +17,16 @@ import { existsSync, rmSync } from "node:fs"
 import path from "node:path"
 
 const app = new Hono()
-app.use("*", cors())
+
+// Mirror opencode's CORS posture (packages/opencode/src/server/cors.ts): allow
+// only localhost/127.0.0.1 origins on any port, not a wildcard. The web app runs
+// on localhost; a wildcard would let any site in a user's browser hit this
+// service. Non-browser callers (curl, the opencode server) send no Origin and are
+// unaffected.
+app.use(
+  "*",
+  cors({ origin: (origin) => (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ? origin : null) }),
+)
 
 app.get("/matters", (c) => c.json(listMatters()))
 
@@ -159,6 +168,10 @@ app.post("/matters/:id/redlines/reject-all", (c) => {
   return c.json({ ok: true, rejected: rows.length })
 })
 
+// Bind loopback by default like opencode (packages/opencode/src/cli/network.ts):
+// the service is self-hosted alongside the engine and web app, not exposed
+// directly. Front it with a reverse proxy to serve beyond localhost.
 const port = Number(process.env.INGEST_PORT ?? 4500)
-console.log(`doc.haus ingest service listening on http://localhost:${port}`)
-export default { port, fetch: app.fetch }
+const hostname = process.env.INGEST_HOST ?? "127.0.0.1"
+console.log(`doc.haus ingest service listening on http://${hostname}:${port}`)
+export default { port, hostname, fetch: app.fetch }

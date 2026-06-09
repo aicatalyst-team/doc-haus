@@ -15,7 +15,13 @@ function matterFile(dir: string) {
   return path.join(dir, "matter.json")
 }
 
+// A matter id is the auto-generated slug+uuid from createMatter, so it is always
+// [a-z0-9-]. Reject anything else before it reaches a filesystem path: the id
+// arrives straight from a URL param, and matterDir is the single chokepoint every
+// route resolves through, so guarding here blocks path traversal (../, absolute
+// paths) out of WORKSPACE_ROOT across the whole service.
 export function matterDir(id: string) {
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new Error(`invalid matter id: ${id}`)
   return path.join(WORKSPACE_ROOT, id)
 }
 
