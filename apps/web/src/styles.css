@@ -861,7 +861,8 @@ textarea {
 .dot {
   position: absolute;
   left: -5px;
-  top: 4px;
+  /* Center the 8px dot on the 13px/1.5 (~19.5px) first text line. */
+  top: 6px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -879,18 +880,18 @@ textarea {
   border-color: var(--danger);
 }
 
+/* In-flight step: a spinning ring, not a fading dot — the subtle opacity pulse
+   was easy to miss, so the running step now reads clearly as work in progress. */
 .dot.running {
-  border-color: var(--warn);
-  animation: step-pulse 1s ease-in-out infinite;
+  background: transparent;
+  border: 1.5px solid var(--accent-soft);
+  border-top-color: var(--warn);
+  animation: step-spin 0.7s linear infinite;
 }
 
-@keyframes step-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
+@keyframes step-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -910,6 +911,64 @@ textarea {
 
 .thinking[open] > summary {
   margin-bottom: 4px;
+}
+
+/* Expandable step: a chevron marks a tool step or thought block you can open to
+   read its underlying work (a search's passages, a read's content, the model's
+   reasoning). Subtle until hovered so the timeline stays calm; rotates on open. */
+.step-detail > summary,
+.thinking > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.step-detail > summary::before,
+.thinking > summary::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: 4px solid currentColor;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  opacity: 0.35;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.step-detail[open] > summary::before,
+.thinking[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.step-detail > summary:hover::before,
+.thinking > summary:hover::before {
+  opacity: 0.7;
+}
+
+.step-detail > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.step-detail > summary::-webkit-details-marker {
+  display: none;
+}
+
+.step-output {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--muted);
 }
 
 /* Sources: deduplicated citations behind a collapsed disclosure, so the answer

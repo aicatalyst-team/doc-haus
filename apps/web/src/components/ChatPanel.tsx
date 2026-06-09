@@ -19,7 +19,7 @@ import WorkflowLauncher from "./WorkflowLauncher"
 // One row in the assistant's reasoning timeline: a thinking block or a tool call.
 type Step =
   | { kind: "reasoning"; text: string; done: boolean }
-  | { kind: "tool"; label: string; status: "running" | "done" | "error"; children?: Step[] }
+  | { kind: "tool"; label: string; status: "running" | "done" | "error"; detail?: string; children?: Step[] }
 
 // A redline/tracked-change a turn proposed: the clause delta plus a pointer back
 // to the document, so the assistant bubble can preview the red/green change and
@@ -104,7 +104,14 @@ function partsToSteps(parts: Part[], matter: string, pool?: Part[]): Step[] {
         ? pool!.filter((c) => c.sessionID === childID && (c.type === "reasoning" || c.type === "tool"))
         : []
       const children = childParts.length ? partsToSteps(childParts, matter, pool) : undefined
-      return [{ kind: "tool", label: stepLabel(p, matter), status, children }]
+      // The tool's own output (or error) — surfaced behind a disclosure so the
+      // timeline stays a one-line narration but the underlying work it explored
+      // (a search's passages, a read's content, a failure's reason) is one click
+      // away. Subagent task steps narrate through their nested children instead.
+      const raw =
+        p.state.status === "completed" ? p.state.output : p.state.status === "error" ? p.state.error : undefined
+      const detail = !children && raw?.trim() ? raw.trim() : undefined
+      return [{ kind: "tool", label: stepLabel(p, matter), status, detail, children }]
     }
     return []
   })
@@ -587,7 +594,14 @@ function StepRow({ step, busy, last }: { step: Step; busy: boolean; last: boolea
     return (
       <li className="step">
         <span className={`dot ${step.status}`} />
-        <span className="step-label">{step.label}</span>
+        {step.detail ? (
+          <details className="step-detail">
+            <summary className="step-label">{step.label}</summary>
+            <pre className="step-output">{step.detail}</pre>
+          </details>
+        ) : (
+          <span className="step-label">{step.label}</span>
+        )}
         {step.children && step.children.length > 0 && (
           <StepList steps={step.children} busy={busy && step.status === "running"} />
         )}
