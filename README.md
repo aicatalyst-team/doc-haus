@@ -9,10 +9,11 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white" />
 </p>
 
-<!-- TODO: drop asset — hero video/GIF: conversation with a question + redline, automatic agent selection -->
+<!-- TODO: drop asset — hero video/GIF: conversation with a question + redline, automatic agent selection
 <p align="center">
   <img alt="Asking a question and redlining a contract in doc.haus" src="screenshots/conversation.gif" width="800" />
 </p>
+-->
 
 ---
 
@@ -53,10 +54,11 @@ conversations, documents, the index — persists on your machine.
 Matters are separate, self-contained workspaces. Each one holds its documents,
 conversations, and a private search index — nothing is shared between them.
 
-<!-- TODO: drop asset — matter listing screenshot -->
+<!-- TODO: drop asset — matter listing screenshot
 <p align="center">
   <img alt="Matter listing in doc.haus" src="screenshots/matters.png" width="800" />
 </p>
+-->
 
 ### Ask in plain English; it answers with citations or redlines the document
 
@@ -65,10 +67,11 @@ clause cited and quoted. Ask for a change and the redlining agent writes it as t
 changes into the `.docx` itself — doc.haus picks the right agent for each request
 automatically.
 
-<!-- TODO: drop asset — conversation video/GIF (question + redline, auto agent selection) -->
+<!-- TODO: drop asset — conversation video/GIF (question + redline, auto agent selection)
 <p align="center">
   <img alt="Cited answers and tracked-change redlines from one conversation" src="screenshots/conversation.gif" width="800" />
 </p>
+-->
 
 ### Review every contract in the matter as a grid
 
@@ -76,10 +79,11 @@ Define question-columns once — *Liability cap*, *Payment terms*, *Governing la
 doc.haus answers them for every document in the matter, side by side, instead of one
 conversation at a time.
 
-<!-- TODO: drop asset — tabbed review video/GIF -->
+<!-- TODO: drop asset — tabbed review video/GIF
 <p align="center">
   <img alt="Tabular review grid in doc.haus" src="screenshots/review.gif" width="800" />
 </p>
+-->
 
 ## Why firms can trust it
 
