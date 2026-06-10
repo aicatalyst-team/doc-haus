@@ -7,6 +7,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# --demo seeds the fictional Aldgate Mills letter of engagement before launch, so a
+# first run lands on a matter with cited Q&A and a legal review without uploading
+# anything. The seed is idempotent — pass it on every boot, it only ingests once.
+DEMO=
+for arg in "$@"; do
+  [ "$arg" = "--demo" ] && DEMO=1
+done
+
 # WORKSPACE_ROOT is where matters live. Defaults to ./workspace at the repo root
 # (gitignored) like opencode defaults its project dir to process.cwd() — set it to
 # an absolute path to keep matters outside the repo.
@@ -53,6 +61,14 @@ for port in "${PORTS[@]}"; do
   stale=$(lsof -ti tcp:"$port" 2>/dev/null || true)
   [ -n "$stale" ] && kill -9 $stale 2>/dev/null || true
 done
+
+# Seed the demo matter before the stack comes up so it is already selectable on the
+# first page load. Runs inline (not backgrounded) via the ingest pipeline's own
+# imports — no server needed — and inherits the WORKSPACE_ROOT exported above.
+if [ -n "$DEMO" ]; then
+  echo "doc.haus: seeding demo matter"
+  (cd services/ingest && bun run seed)
+fi
 
 WEB_URL="http://localhost:5173"
 echo "doc.haus: starting engine, ingest, web (workspace: $WORKSPACE_ROOT)"

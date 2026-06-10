@@ -1,7 +1,7 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx"
 import { mkdirSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { createMatter } from "./matter"
+import { createMatter, listMatters } from "./matter"
 import { ingestDocument } from "./ingest"
 
 // Seeds the demo matter: a wholly fictional letter of engagement, ingested
@@ -128,6 +128,15 @@ const buffer = await Packer.toBuffer(doc)
 const demoDir = path.join(import.meta.dir, "..", "..", "..", "demo")
 mkdirSync(demoDir, { recursive: true })
 writeFileSync(path.join(demoDir, "Letter-of-Engagement-Aldgate-Mills.docx"), buffer)
+
+// Idempotent: `start.sh --demo` runs this on every boot, so skip ingestion if the
+// demo matter is already present rather than piling up duplicates. The .docx above
+// is still rewritten so demo/ stays in sync with the seed script.
+const existing = listMatters().find((m) => m.title === MATTER_TITLE)
+if (existing) {
+  console.log(`Demo matter "${MATTER_TITLE}" already present (${existing.id}); skipping ingest.`)
+  process.exit(0)
+}
 
 const matter = createMatter(MATTER_TITLE, "A&C/2026-0042")
 const result = await ingestDocument(matter.dir, DOC_NAME, Buffer.from(buffer))

@@ -9,8 +9,17 @@ not exist; the figures, clauses, and people are invented.
 
 ## Load it
 
-One command creates a matter and ingests the letter through the real pipeline
-(local MiniLM embeddings into a per-matter SQLite index):
+The simplest path is to launch the whole stack with the letter pre-seeded:
+
+```bash
+./start.sh --demo
+```
+
+The web app opens with **"Aldgate Mills — Engagement (Demo)"** already selectable.
+`--demo` is idempotent — it only ingests on the first run, so it is safe to leave on.
+
+To seed without launching (it creates a matter and ingests the letter through the
+real pipeline — local MiniLM embeddings into a per-matter SQLite index):
 
 ```bash
 cd services/ingest && bun run seed
