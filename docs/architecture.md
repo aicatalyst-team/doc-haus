@@ -108,10 +108,12 @@ cd services/ingest && bun test
 
 ## Mergeability
 
-The fork touches a minimal set of upstream-tracked files, and only documentation:
-`README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `LICENSE`. The doc-files
-keep doc.haus content in a prepended section above the original OpenCode body, so a merge
-conflict can only land inside that top section, never in the upstream text below. All
+The fork touches a minimal set of upstream-tracked files, and only documentation and
+repo metadata: `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`,
+the `.github/` ownership and issue-template files, and `STATS.md` (upstream's download
+stats, deleted here). The doc-files keep doc.haus content in a prepended section above
+the original OpenCode body, so a merge conflict can only land inside that top section,
+never in the upstream text below. All
 legal *functionality* lives in new paths upstream does not have (`dochaus/`, `services/`,
 `apps/`, `demo/`), so `git merge upstream/dev` cannot conflict there at all. See
 `FUTURE.md` for the extension seams (custom tools, plugin hooks, vector scale) the MVP

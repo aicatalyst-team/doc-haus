@@ -28,8 +28,9 @@ provider's policies.
 </data-handling>
 
 <reporting>
-Report suspected vulnerabilities in doc.haus **privately**, via GitHub Security Advisories
-on the doc.haus repository ("Report a Vulnerability"), rather than opening a public issue.
+Report suspected vulnerabilities in doc.haus **privately**, via
+[GitHub Security Advisories on the doc.haus repository](https://github.com/sure-scale/doc-haus/security/advisories/new),
+rather than opening a public issue.
 We will acknowledge your report and keep you informed of progress toward a fix. Issues that
 concern upstream OpenCode itself should follow the upstream disclosure process documented
 below.
