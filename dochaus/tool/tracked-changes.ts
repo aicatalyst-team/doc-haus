@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
-import { recordRedline } from "../lib/redlines"
+import { recordRedline, pendingRedlinesForDoc, conflictingRedlines, supersedeRedlines } from "../lib/redlines"
 
 // doc.haus tracked-changes tool. Proposes a surgical find/replace edit to the
 // matter's canonical Word (.docx) document as a tracked change, attributed to an
@@ -36,6 +36,16 @@ export default tool({
     const anchor = targets[0].id
     session.close()
 
+    // Retire any pending proposal this edit collides with — a clause rewrite on the
+    // same paragraph, or another phrase edit whose text overlaps — so the replay
+    // that builds the redlined view never anchors to text an earlier proposal
+    // already erased. Independent phrase edits in the paragraph are left untouched.
+    const conflicts = conflictingRedlines(pendingRedlinesForDoc(ctx.directory, file), {
+      anchorId: anchor,
+      scope: "phrase",
+      findText: args.find,
+    })
+
     const author = args.author ?? "doc.haus"
     // Recording the proposal is gated on the matter owner's approval (permission
     // "tracked-changes" in opencode.json) — the redline review queue is itself a
@@ -58,11 +68,15 @@ export default tool({
       author,
       anchorId: anchor,
     })
+    supersedeRedlines(ctx.directory, conflicts.map((c) => c.id))
 
+    const superseded = conflicts.length
+      ? ` Supersedes pending redline${conflicts.length === 1 ? "" : "s"} ${conflicts.map((c) => `#${c.id}`).join(", ")} on the same passage — only this latest edit stays pending.`
+      : ""
     return {
       title: `Proposed tracked change in ${path.basename(file)}`,
-      output: `Proposed replacing ${JSON.stringify(args.find)} with ${JSON.stringify(args.replace)} in ${path.basename(file)} (${targets.length} occurrence(s)), attributed to ${author}. Recorded as pending redline #${id} — the user reviews and accepts or rejects it in the doc.haus app.`,
-      metadata: { document: file, find: args.find, replace: args.replace, matches: targets.length, author, redline: id },
+      output: `Proposed replacing ${JSON.stringify(args.find)} with ${JSON.stringify(args.replace)} in ${path.basename(file)} (${targets.length} occurrence(s)), attributed to ${author}. Recorded as pending redline #${id} — the user reviews and accepts or rejects it in the doc.haus app.${superseded}`,
+      metadata: { document: file, find: args.find, replace: args.replace, matches: targets.length, author, redline: id, superseded: conflicts.map((c) => c.id) },
     }
   },
 })

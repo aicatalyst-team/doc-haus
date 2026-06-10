@@ -66,7 +66,9 @@ export type RedlineRow = {
   new_text: string
   author: string
   anchor_id: string | null
-  status: "pending" | "accepted" | "rejected"
+  // 'superseded': a later proposal on the same paragraph replaced this one before
+  // review (set by the redline tools), so it never reaches the pending queue.
+  status: "pending" | "accepted" | "rejected" | "superseded"
   created_at: number
 }
 

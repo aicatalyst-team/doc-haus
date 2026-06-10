@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
-import { recordRedline } from "../lib/redlines"
+import { recordRedline, pendingRedlinesForDoc, conflictingRedlines, supersedeRedlines } from "../lib/redlines"
 
 // doc.haus redline tool. Proposes rewriting a whole clause — the paragraph a
 // search-document citation points at — as a tracked change a reviewer accepts or
@@ -53,6 +53,17 @@ export default tool({
     const oldText = session.projectAnchor(target.id).markdown.replace(/\{#[^}]*\}/g, "").trim()
     session.close()
 
+    // A clause rewrite replaces the whole paragraph, so any pending proposal on
+    // the same paragraph would be replayed against text this one erases — the
+    // collision that 500s the redlined view. The newest edit wins: record this
+    // one, retire the ones it supersedes. The model sees what it replaced so it
+    // can reason about the running state of the negotiation.
+    const conflicts = conflictingRedlines(pendingRedlinesForDoc(ctx.directory, file), {
+      anchorId: target.id,
+      scope: "clause",
+      findText: args.clause,
+    })
+
     const author = args.author ?? "doc.haus"
     // Recording the proposal is gated on the matter owner's approval (permission
     // "redline" in opencode.json) — the redline review queue is itself a work
@@ -75,11 +86,15 @@ export default tool({
       author,
       anchorId: target.id,
     })
+    supersedeRedlines(ctx.directory, conflicts.map((c) => c.id))
 
+    const superseded = conflicts.length
+      ? ` Supersedes pending redline${conflicts.length === 1 ? "" : "s"} ${conflicts.map((c) => `#${c.id}`).join(", ")} on the same clause — only this latest rewrite stays pending.`
+      : ""
     return {
       title: `Proposed redline in ${path.basename(file)}`,
-      output: `Proposed rewriting the clause matching ${JSON.stringify(args.clause)} in ${path.basename(file)}, attributed to ${author}. Recorded as pending redline #${id} — the user reviews and accepts or rejects it in the doc.haus app.`,
-      metadata: { document: file, clause: args.clause, oldText, replacement: args.replacement, anchor: target.id, author, redline: id },
+      output: `Proposed rewriting the clause matching ${JSON.stringify(args.clause)} in ${path.basename(file)}, attributed to ${author}. Recorded as pending redline #${id} — the user reviews and accepts or rejects it in the doc.haus app.${superseded}`,
+      metadata: { document: file, clause: args.clause, oldText, replacement: args.replacement, anchor: target.id, author, redline: id, superseded: conflicts.map((c) => c.id) },
     }
   },
 })

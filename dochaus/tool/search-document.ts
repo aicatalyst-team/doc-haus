@@ -3,6 +3,7 @@ import { Database } from "bun:sqlite"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { formatCitations } from "../lib/citations"
+import { pendingRedlinesForDoc } from "../lib/redlines"
 
 // doc.haus retrieval tool. Reads the per-matter legal.db that
 // `services/ingest` populates, embeds the query with the same local MiniLM model
@@ -113,10 +114,23 @@ export default tool({
       score,
     }))
 
+    // Surface proposals already pending on the cited documents. The retrieved
+    // passages reflect the clean (accepted) document on disk — they do NOT include
+    // edits the assistant proposed earlier this negotiation but that are not yet
+    // accepted. Listing them keeps the model from re-proposing or contradicting a
+    // change it already made, and lets it compose new edits against the running state.
+    const pending = [...new Set(citations.map((c) => c.docPath))].flatMap((docPath) =>
+      pendingRedlinesForDoc(ctx.directory, docPath).map((r) => ({ docName: path.basename(docPath), ...r })),
+    )
+    const pendingNote = pending.length
+      ? `\n\nPending redlines on these documents (proposed but not yet accepted — not reflected in the passages above):\n` +
+        pending.map((r) => `- #${r.id} (${r.author}) in ${r.docName}: proposes "${r.new_text}"`).join("\n")
+      : ""
+
     return {
       title: `${citations.length} passage(s) for "${args.query}"`,
-      output: formatCitations(citations) || "No relevant passages found.",
-      metadata: { citations },
+      output: (formatCitations(citations) || "No relevant passages found.") + pendingNote,
+      metadata: { citations, pending },
     }
   },
 })
