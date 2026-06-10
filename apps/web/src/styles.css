@@ -345,6 +345,20 @@ textarea {
   border-color: var(--muted);
 }
 
+/* Armed delete: same confirm pill as conversation deletion. */
+.icon-btn.danger {
+  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+  animation: convo-confirm-in 160ms ease-out;
+}
+
+.icon-btn.danger:hover {
+  color: #fff;
+  border-color: var(--danger);
+}
+
 .muted {
   color: var(--muted);
 }

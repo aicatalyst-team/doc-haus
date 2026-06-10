@@ -10,6 +10,7 @@ export default function Matters() {
   const [reference, setReference] = useState("")
   const [filter, setFilter] = useState("")
   const [busy, setBusy] = useState(false)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
   const toast = useToast()
 
   useEffect(() => {
@@ -17,6 +18,13 @@ export default function Matters() {
       .then(setMatters)
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!confirmId) return
+    const dismiss = () => setConfirmId(null)
+    window.addEventListener("click", dismiss)
+    return () => window.removeEventListener("click", dismiss)
+  }, [confirmId])
 
   async function onCreate() {
     if (!title.trim()) return
@@ -30,7 +38,7 @@ export default function Matters() {
   }
 
   async function onDelete(m: Matter) {
-    if (!confirm(`Delete matter "${m.title}"? This removes its documents and cannot be undone.`)) return
+    setConfirmId(null)
     await deleteMatter(m.id)
     setMatters((prev) => prev.filter((x) => x.id !== m.id))
     toast("success", `Deleted matter "${m.title}".`)
@@ -93,9 +101,29 @@ export default function Matters() {
                   {m.title}
                 </Link>
                 <span className="muted">{new Date(m.created_at).toLocaleDateString()}</span>
-                <button className="icon-btn" title="Delete matter" onClick={() => onDelete(m)}>
-                  Delete
-                </button>
+                {confirmId === m.id ? (
+                  <button
+                    className="icon-btn danger"
+                    title="Confirm delete"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDelete(m)
+                    }}
+                  >
+                    Confirm
+                  </button>
+                ) : (
+                  <button
+                    className="icon-btn"
+                    title="Delete matter"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setConfirmId(m.id)
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
               </li>
             ))}
           </ul>
