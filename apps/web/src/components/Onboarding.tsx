@@ -280,20 +280,27 @@ const MODEL_PREFS: Record<string, { primary: RegExp[]; fast: RegExp[] }> = {
   },
 }
 
-// Best primary + fast across the detected providers. Walk the providers present
-// in the model list and take the first curated match for each slot, then fall
-// back to the first model (primary) and an obvious cheap model (fast) for any
-// provider without a preference entry.
+// First-run defaults favour one provider for BOTH slots, chosen by this priority
+// rather than catalog order: Vertex/Gemini is the doc.haus default, then Bedrock,
+// then Azure. Both models coming from the same provider keeps them from straddling
+// providers — the Auto router runs the fast model, so a fast model on a different
+// provider than the primary is a misconfiguration (see routeAgent).
+const PROVIDER_PRIORITY = ["google-vertex", "amazon-bedrock", "azure"]
+
+// Both defaults come from the first priority provider present in the catalog that
+// resolves a curated primary: Vertex -> Gemini 3.5 Flash for both; Bedrock -> Opus
+// 4.8 (global) primary, Haiku 4.5 (global) fast. With no curated provider present,
+// fall back to the first model as primary and an obvious cheap model as fast.
 function pickDefaults(models: ModelOption[]) {
-  const providerIds = [...new Set(models.map((m) => m.providerId))]
-  const preferred = (kind: "primary" | "fast") =>
-    providerIds.flatMap((id) =>
-      (MODEL_PREFS[id]?.[kind] ?? []).map((re) => models.find((m) => m.providerId === id && re.test(m.modelId))),
-    )
-  const primary = preferred("primary").find(Boolean)?.value ?? models[0].value
-  const fast =
-    preferred("fast").find(Boolean)?.value ??
-    models.find((m) => /flash|mini|haiku|lite|nano|small|fast/i.test(m.label))?.value ??
-    primary
+  const match = (id: string, kind: "primary" | "fast") =>
+    (MODEL_PREFS[id]?.[kind] ?? [])
+      .map((re) => models.find((m) => m.providerId === id && re.test(m.modelId)))
+      .find(Boolean)?.value
+  for (const id of PROVIDER_PRIORITY) {
+    const primary = match(id, "primary")
+    if (primary) return { primary, fast: match(id, "fast") ?? primary }
+  }
+  const primary = models[0].value
+  const fast = models.find((m) => /flash|mini|haiku|lite|nano|small|fast/i.test(m.label))?.value ?? primary
   return { primary, fast }
 }
