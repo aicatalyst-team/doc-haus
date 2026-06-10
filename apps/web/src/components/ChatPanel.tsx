@@ -652,7 +652,7 @@ export default function ChatPanel({
               live.steps.length === 0 && <span className="muted">Thinking...</span>
             )}
             <CitationView citations={live.citations} />
-            <RedlineView redlines={live.redlines} onView={onViewDocument} />
+            {live.text && <RedlineView redlines={live.redlines} onView={onViewDocument} />}
           </div>
         )}
       </div>
