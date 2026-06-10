@@ -29,6 +29,11 @@ export const CHAT_ASSISTANTS: AssistantMeta[] = [
     description:
       "Researches legal questions across the matter's documents and U.S. case law, always with citations to real sources.",
   },
+  {
+    name: "drafter",
+    label: "Draft",
+    description: "Drafts new documents into this matter — from a firm template or from scratch.",
+  },
 ]
 
 // "Auto" is a pseudo-assistant, not a real agent: when it is selected each message
