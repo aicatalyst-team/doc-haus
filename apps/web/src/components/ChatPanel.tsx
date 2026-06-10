@@ -331,6 +331,11 @@ export default function ChatPanel({
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState(false)
+  // Reopening a past conversation refetches its messages, leaving turns empty for
+  // a beat. Without this the empty-starter state ("Ask a question...") flashes in
+  // that gap; gate it on !loading and show a skeleton instead. A fresh chat (no
+  // sessionID) has nothing to load, so it stays false and the starters show now.
+  const [loading, setLoading] = useState(Boolean(sessionID))
   // Edit-tool calls the engine parked awaiting the user's approval (see the
   // ctx.ask gates in dochaus/tool/*). Each renders an approval card above the
   // composer; the turn stays "working" until every request is answered.
@@ -355,6 +360,7 @@ export default function ChatPanel({
   // partsRef scoped to the current turn.
   const seenRef = useRef<Set<string>>(new Set())
   const logRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   // Mirrors `busy` for the long-lived event subscription, whose resync closure is
   // created once and would otherwise capture a stale value.
   const busyRef = useRef(false)
@@ -364,6 +370,7 @@ export default function ChatPanel({
     const controller = new AbortController()
     if (sessionID) {
       sessionRef.current = sessionID
+      setLoading(true)
       getMessages(client, sessionID).then((msgs) => {
         setTurns(toTurns(msgs, matterName))
         for (const m of msgs) seenRef.current.add(m.info.id)
@@ -372,6 +379,7 @@ export default function ChatPanel({
         // its agent), so the picker reflects where the thread left off.
         const last = [...msgs].reverse().find((m) => m.info.role === "user")?.info
         if (last && "agent" in last && last.agent) onAgentChange(last.agent)
+        setLoading(false)
       })
     }
     // No session until the first send (see onSend) — mounting the panel must not
@@ -478,6 +486,7 @@ export default function ChatPanel({
     childRef.current.clear()
     setPermissions([])
     setBusy(false)
+    inputRef.current?.focus()
     if (freshRef.current) {
       freshRef.current = false
       onSessionCreated?.(sessionRef.current)
@@ -562,7 +571,8 @@ export default function ChatPanel({
         <h2 style={{ margin: 0 }}>Ask the matter</h2>
       </div>
       <div className="chat-log" ref={logRef}>
-        {turns.length === 0 && !busy && (
+        {loading && turns.length === 0 && <ChatSkeleton />}
+        {!loading && turns.length === 0 && !busy && (
           <div className="chat-empty">
             <p className="muted">Ask a question about this matter's documents. Every answer cites the source section.</p>
             <div className="starters">
@@ -660,11 +670,19 @@ export default function ChatPanel({
         <PermissionCard key={p.id} request={p} onReply={onPermissionReply} />
       ))}
       <div className="composer-tools">
-        <ModelSelector available={available} value={agent} onChange={onAgentChange} />
+        <ModelSelector
+          available={available}
+          value={agent}
+          onChange={(a) => {
+            onAgentChange(a)
+            inputRef.current?.focus()
+          }}
+        />
         <WorkflowLauncher available={available} onLaunch={runWorkflow} />
       </div>
       <div className="composer">
         <textarea
+          ref={inputRef}
           placeholder="e.g. What termination rights does each party have?"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -682,6 +700,29 @@ export default function ChatPanel({
       <p className="muted" style={{ marginTop: 2, fontSize: 12 }}>
         Not legal advice. AI can make mistakes — verify answers against the cited source before relying on them.
       </p>
+    </div>
+  )
+}
+
+// Placeholder shown while a reopened conversation's messages load, so the panel
+// reads as "this thread is coming" rather than flashing the fresh-chat starters.
+// Mirrors the message rhythm — a short user bubble answered by a taller assistant
+// block — with shimmer bars standing in for the text.
+function ChatSkeleton() {
+  return (
+    <div className="chat-skeleton" aria-hidden>
+      {[0, 1].map((i) => (
+        <div key={i} className="sk-turn">
+          <div className="sk-bubble sk-user">
+            <div className="sk-line" style={{ width: "60%" }} />
+          </div>
+          <div className="sk-bubble sk-assistant">
+            <div className="sk-line" style={{ width: "92%" }} />
+            <div className="sk-line" style={{ width: "98%" }} />
+            <div className="sk-line" style={{ width: "74%" }} />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
