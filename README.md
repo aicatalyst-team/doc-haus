@@ -1,6 +1,6 @@
 <h1 align="center">doc.haus</h1>
 
-<p align="center">The open-source legal AI agent. Your documents stay on your machine; the redlines land in Word.</p>
+<p align="center"><strong>Not a chatbot. A legal team that works on your machine.</strong><br />Open-source multi-agent legal AI — your documents stay on your machine; the redlines land in Word.</p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" /></a>
@@ -9,16 +9,15 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white" />
 </p>
 
-<!-- TODO: drop asset — hero video/GIF: conversation with a question + redline, automatic agent selection
 <p align="center">
   <img alt="Asking a question and redlining a contract in doc.haus" src="screenshots/conversation.gif" width="800" />
 </p>
--->
 
 ---
 
 - **Documents never leave your infrastructure.** Each matter gets its own local index on
-  your own disk; there is no doc.haus cloud, and the AI model itself can run locally too.
+  your own disk; there is no doc.haus cloud, and the LLM models the agents run on can be
+  local too.
 - **Word-native.** Real tracked changes baked into the `.docx` itself — open the result
   in Word and accept or reject each change, exactly as if a colleague had marked it up.
 - **Every answer cites the clause it came from**, quoted verbatim, so you can verify it
@@ -30,7 +29,6 @@ You need [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`). The
 
 ```bash
 git clone https://github.com/sure-scale/doc-haus.git && cd doc-haus
-bun install
 ./start.sh --demo
 ```
 
@@ -54,11 +52,9 @@ conversations, documents, the index — persists on your machine.
 Matters are separate, self-contained workspaces. Each one holds its documents,
 conversations, and a private search index — nothing is shared between them.
 
-<!-- TODO: drop asset — matter listing screenshot
 <p align="center">
   <img alt="Matter listing in doc.haus" src="screenshots/matters.png" width="800" />
 </p>
--->
 
 ### Ask in plain English; it answers with citations or redlines the document
 
@@ -67,11 +63,9 @@ clause cited and quoted. Ask for a change and the redlining agent writes it as t
 changes into the `.docx` itself — doc.haus picks the right agent for each request
 automatically.
 
-<!-- TODO: drop asset — conversation video/GIF (question + redline, auto agent selection)
 <p align="center">
   <img alt="Cited answers and tracked-change redlines from one conversation" src="screenshots/conversation.gif" width="800" />
 </p>
--->
 
 ### Review every contract in the matter as a grid
 
@@ -79,19 +73,17 @@ Define question-columns once — *Liability cap*, *Payment terms*, *Governing la
 doc.haus answers them for every document in the matter, side by side, instead of one
 conversation at a time.
 
-<!-- TODO: drop asset — tabbed review video/GIF
 <p align="center">
   <img alt="Tabular review grid in doc.haus" src="screenshots/review.gif" width="800" />
 </p>
--->
 
 ## Why firms can trust it
 
 doc.haus is **self-hosted on infrastructure you control** — no doc.haus cloud, no
 multi-tenant service, no vendor holding your clients' privileged documents. Document
 text and embeddings never leave your disk; the only thing that touches the network is
-the prompt sent to the model provider you chose, and that provider can be a local model
-so it need not leave either. Everything binds to localhost by default; to put it in
+the prompts the agents send to the model providers you chose, and those can be local
+models so nothing need leave at all. Everything binds to localhost by default; to put it in
 front of a team, front it with the reverse proxy and SSO your firm already trusts. MIT
 licensed — embed it, modify it, ship it. Full posture and vulnerability reporting in
 [SECURITY.md](SECURITY.md).
@@ -112,13 +104,13 @@ providers) and keeps pulling upstream improvements via merge. The concepts map 1
 | Multi-agent review   | primary agent + Task subagents |
 | Retrieval / citation | a custom tool                  |
 
-Built by [Sure Scale](https://github.com/sure-scale) on OpenCode by the Anomaly team,
-MIT licensed. The heavy lifting — the agent engine itself — is theirs; doc.haus is the
-legal layer on top. doc.haus is not affiliated with or endorsed by the OpenCode team.
+Built by [Nick Watson](https://www.linkedin.com/in/nickpwatson/) from
+[SureScale.ai](https://surescale.ai) on OpenCode by the Anomaly team, MIT licensed. The
+heavy lifting — the agent engine itself — is theirs; doc.haus is the legal layer on top.
+doc.haus is not affiliated with or endorsed by the OpenCode team.
 
-doc.haus is authored and maintained by
-[Nick Watson](https://www.linkedin.com/in/nickpwatson/). Open to working with firms on
-implementations, customizations, and integrations — reach out on LinkedIn.
+Open to working with firms on implementations, customizations, and integrations — reach
+out on [LinkedIn](https://www.linkedin.com/in/nickpwatson/).
 
 ## Disclaimer
 
