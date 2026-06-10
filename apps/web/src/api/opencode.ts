@@ -66,7 +66,7 @@ export async function setDefaultModel(model: string) {
 
 // Set the engine-wide small/fast model, as a "providerID/modelID" string. The
 // engine uses it for cheap tasks like title generation; doc.haus also reads it to
-// route the chat's "Auto" assistant (see ingest /route).
+// route the chat's "Auto" assistant (see routeAgent).
 export async function setSmallModel(model: string) {
   return patchConfig({ small_model: model })
 }
@@ -211,6 +211,62 @@ export async function sendPrompt(client: Client, sessionID: string, agent: strin
     path: { id: sessionID },
     body: { agent, parts: [{ type: "text", text }] },
   })
+}
+
+// Pick the chat's "Auto" assistant by asking the engine's small model which real
+// assistant should answer. Routing runs entirely through OpenCode, so it adapts
+// to whatever provider the small model lives on — Vertex, Bedrock, Azure, OpenAI,
+// Ollama — and reuses the engine's own credentials and model resolution, with no
+// parallel provider SDK to keep in sync. The router agent (dochaus/agent/router.md)
+// has no tools and a neutral prompt, so it just returns one candidate name. It
+// runs on a throwaway session created with settingsClient (no matter directory),
+// so it never lands in a matter's conversation rail, and is deleted once read.
+// smallModel is the full "provider/model" string from the engine config.
+export async function routeAgent(input: {
+  smallModel: string
+  candidates: { name: string; description: string }[]
+  history: string[]
+  text: string
+}): Promise<string> {
+  const slash = input.smallModel.indexOf("/")
+  if (slash < 1) throw new Error(`Cannot route: small_model "${input.smallModel}" is not "provider/model"`)
+  const model = { providerID: input.smallModel.slice(0, slash), modelID: input.smallModel.slice(slash + 1) }
+  const names = input.candidates.map((c) => c.name)
+  const client = settingsClient()
+  const id = (await createSession(client, "router")).id
+  try {
+    const res = await client.session.prompt({
+      path: { id },
+      body: { agent: "router", model, parts: [{ type: "text", text: routePrompt(input) }] },
+    })
+    const reply = (res.data?.parts ?? [])
+      .filter((p) => p.type === "text")
+      .map((p) => p.text)
+      .join("")
+      .trim()
+    // The model is told to reply with exactly one name; tolerate stray wrapping by
+    // also accepting a name embedded in the reply. Fall back to the first
+    // candidate (Q&A) when it returns something off-list.
+    return (
+      names.find((n) => reply === n) ?? names.find((n) => reply.toLowerCase().includes(n.toLowerCase())) ?? names[0] ?? "qa"
+    )
+  } finally {
+    await deleteSession(client, id).catch(() => {})
+  }
+}
+
+function routePrompt(input: { candidates: { name: string; description: string }[]; history: string[]; text: string }) {
+  return [
+    "<candidates>",
+    input.candidates.map((c) => `- ${c.name}: ${c.description}`).join("\n"),
+    "</candidates>",
+    "<history>",
+    input.history.length ? input.history.map((h) => `- ${h}`).join("\n") : "(none)",
+    "</history>",
+    "<message>",
+    input.text,
+    "</message>",
+  ].join("\n")
 }
 
 // Revert a user message and everything after it, rolling the session back to

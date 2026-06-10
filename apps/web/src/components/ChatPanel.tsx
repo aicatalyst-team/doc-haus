@@ -8,6 +8,7 @@ import {
   matterClient,
   replyPermission,
   revertMessage,
+  routeAgent,
   sendPrompt,
   subscribeEvents,
   type Citation,
@@ -16,7 +17,6 @@ import {
   type PermissionReply,
   type PermissionRequest,
 } from "../api/opencode"
-import { routeAssistant } from "../api/ingest"
 import { CHAT_ASSISTANTS, isAuto, WORKFLOWS } from "../agents"
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
@@ -546,25 +546,19 @@ export default function ChatPanel({
       .slice(-2)
       .map((t) => t.text)
     const config = await getConfig().catch(() => undefined)
-    const model = (config?.small_model ?? "gemini-3.5-flash").split("/").pop() ?? "gemini-3.5-flash"
-    // Vertex project/location live in the engine config's provider options (set by
-    // connecting Vertex in Settings, not env), so the router must carry them along.
-    const vertex = config?.provider?.["google-vertex"]?.options as
-      | { project?: string; location?: string }
-      | undefined
-    const resolved = await routeAssistant({
-      text,
-      history,
+    // Route through the engine using its configured small model, whatever provider
+    // it lives on. OpenCode resolves the provider and credentials, so Auto works
+    // on Vertex, Bedrock, Azure, OpenAI, or Ollama alike (see routeAgent).
+    const small = config?.small_model ?? config?.model ?? "google-vertex/gemini-3.5-flash"
+    const resolved = await routeAgent({
+      smallModel: small,
       candidates: CHAT_ASSISTANTS.map((a) => ({ name: a.name, description: a.description })),
-      model,
-      project: vertex?.project,
-      location: vertex?.location,
+      history,
+      text,
+    }).catch((err) => {
+      console.warn("Auto routing failed, falling back to Q&A", err)
+      return "qa"
     })
-      .then((r) => r.agent)
-      .catch((err) => {
-        console.warn("Auto routing failed, falling back to Q&A", err)
-        return "qa"
-      })
     setResolvedAgent(resolved)
     return resolved
   }

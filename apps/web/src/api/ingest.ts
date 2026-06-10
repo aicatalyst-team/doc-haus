@@ -38,31 +38,6 @@ export type GridCellData = {
 }
 export type Grid = { columns: GridColumn[]; cells: Record<string, GridCellData> }
 
-// Route the chat's "Auto" assistant: the ingest service asks a fast model which
-// real assistant should answer this message, given a little history and the
-// candidate list. Returns the chosen agent name, which is then sent to the engine
-// as a real agent — "auto" itself is never a real agent. The timeout caps the
-// extra latency; the caller falls back to "qa" on any failure or timeout. Flash
-// routes in ~1.6s warm (thinking disabled), so 4s covers the tail without
-// letting a dead ingest service stall the send for long.
-export async function routeAssistant(input: {
-  text: string
-  history: string[]
-  candidates: { name: string; description: string }[]
-  model: string
-  project?: string
-  location?: string
-}): Promise<{ agent: string }> {
-  const res = await fetch(`${INGEST_URL}/route`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-    signal: AbortSignal.timeout(4000),
-  })
-  if (!res.ok) throw new Error(`Failed to route assistant (${res.status})`)
-  return res.json()
-}
-
 export async function listMatters(): Promise<Matter[]> {
   const res = await fetch(`${INGEST_URL}/matters`)
   return res.json()
