@@ -41,7 +41,7 @@
       "command": [
         "deno",
         "run",
-        "-N",
+        "-N=cdn.jsdelivr.net,pypi.org,files.pythonhosted.org",
         "-R=node_modules",
         "-W=node_modules",
         "--node-modules-dir=auto",
