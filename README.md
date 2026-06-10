@@ -113,7 +113,12 @@ providers) and keeps pulling upstream improvements via merge. The concepts map 1
 | Retrieval / citation | a custom tool                  |
 
 Built by [Sure Scale](https://github.com/sure-scale) on OpenCode by the Anomaly team,
-MIT licensed. doc.haus is not affiliated with or endorsed by the OpenCode team.
+MIT licensed. The heavy lifting — the agent engine itself — is theirs; doc.haus is the
+legal layer on top. doc.haus is not affiliated with or endorsed by the OpenCode team.
+
+doc.haus is authored and maintained by
+[Nick Watson](https://www.linkedin.com/in/nickpwatson/). Open to working with firms on
+implementations, customizations, and integrations — reach out on LinkedIn.
 
 ## Disclaimer
 
