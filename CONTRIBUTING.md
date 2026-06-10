@@ -1,3 +1,66 @@
+# Contributing to doc.haus
+
+doc.haus is a **true fork of [OpenCode](https://github.com/anomalyco/opencode)** that
+retargets its agent harness onto legal documents. The most important rule for
+contributors follows from that: **mergeability first.** We keep pulling upstream
+innovation via `git merge upstream/dev`, so the fork stays clean by being *additive*.
+
+<fork-model>
+- **Never edit upstream packages** (`packages/*` — `core`, `server`, `llm`, `sdk`,
+  `opencode`, `app`, `desktop`, `tui`, `plugin`) unless a change is strongly justified
+  and isolated in one clearly-marked commit. Every edit there is a future merge
+  conflict. Default to building elsewhere first.
+- **Domain mapping is presentation-only.** Matter = project directory, Document = file.
+  Relabel in the UI and our config; never rename core primitives (`project`, `file`,
+  `session`).
+</fork-model>
+
+<where-to-build>
+All legal functionality lives outside upstream packages, in paths upstream does not have:
+
+- **New agents, tools, skills, commands** → `dochaus/` (the legal config layer, loaded
+  via `OPENCODE_CONFIG_DIR=<repo>/dochaus`).
+- **Ingestion, embeddings, document I/O, matter management** → `services/ingest/` (the
+  standalone Bun + Hono service).
+- **UI changes** → `apps/web/` (React + Vite on the OpenCode SDK + ingest API).
+</where-to-build>
+
+<commits>
+Use conventional commit-style messages and PR titles: `type(scope): summary`. Valid
+types are `feat`, `fix`, `docs`, `chore`, `refactor`, and `test`. Scope is optional —
+use the affected area, e.g. `dochaus`, `ingest`, `web`. Examples:
+`feat(ingest): add docx page extraction`, `docs: refresh contributing guide`.
+</commits>
+
+<running-locally>
+Requires [Bun](https://bun.sh). Install once, then launch all three processes (engine +
+ingest + web) with one command:
+
+```bash
+bun install
+./start.sh
+```
+
+`start.sh` points the engine at `dochaus/`, starts the ingest service and the web app,
+and tears them all down if any one exits. See `README.md` for provider auth and the
+manual three-terminal alternative.
+</running-locally>
+
+<branches>
+The default branch in this fork is the fork's own branch, not OpenCode's `dev`. Upstream
+changes land via `git merge upstream/dev`. Keep your branches off the fork default and
+keep diffs out of `packages/*` so those merges stay conflict-free.
+</branches>
+
+---
+
+## Upstream (OpenCode) guide
+
+> The section below is inherited from upstream OpenCode and applies when working inside
+> upstream packages (`packages/*`). Follow it there to keep diffs mergeable; for legal
+> work in `dochaus/`, `services/ingest/`, or `apps/web/`, the doc.haus section above
+> takes precedence.
+
 # Contributing to OpenCode
 
 We want to make it easy for you to contribute to OpenCode. Here are the most common type of changes that get merged:

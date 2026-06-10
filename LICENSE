@@ -1,6 +1,11 @@
 MIT License
 
-Copyright (c) 2025 opencode
+Copyright (c) 2026 doc.haus contributors (https://github.com/sure-scale/doc-haus)
+Copyright (c) 2025 opencode (https://github.com/anomalyco/opencode)
+
+doc.haus is a fork of OpenCode and retains its MIT license. The notice above
+preserves OpenCode's upstream authorship, as the MIT license requires, alongside
+the doc.haus fork's own copyright.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -42,6 +42,7 @@
     "task": "allow",
     "skill": "allow",
     "search-document": "allow",
+    "case-law": "allow",
     "word-integration": "ask",
     "tracked-changes": "ask",
     "redline": "ask",

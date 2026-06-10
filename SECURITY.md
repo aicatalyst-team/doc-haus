@@ -1,3 +1,48 @@
+# Security — doc.haus
+
+doc.haus is a **self-hosted, local-first** legal-document agent. Its security posture is
+a deliberate privacy choice: there is **no built-in multi-tenant auth by design**, and
+your data never leaves infrastructure you control. Run it on trusted infra; if you expose
+it beyond localhost, front it with your own reverse proxy / SSO. This is a posture, not a
+gap — the alternative (a shared, internet-facing service) is exactly what doc.haus avoids
+so sensitive legal content stays on your own machine.
+
+<posture>
+- **Loopback by default.** Both the engine and the ingest service bind `127.0.0.1`.
+  Override the ingest bind with `INGEST_HOST` / `INGEST_PORT` only when you have placed it
+  behind a reverse proxy.
+- **CORS is an allowlist, not a wildcard.** The ingest service accepts browser origins
+  only from `localhost` / `127.0.0.1` on any port, mirroring the engine's CORS rules.
+- **Matter ids are validated** against their generated `[a-z0-9-]` shape before they
+  touch the filesystem, so a request id cannot traverse out of `WORKSPACE_ROOT`.
+- **Engine auth.** OpenCode's `OPENCODE_SERVER_PASSWORD` enables HTTP Basic Auth on the
+  engine; set it whenever the engine is reachable beyond localhost.
+</posture>
+
+<data-handling>
+Document content and embeddings stay in a **per-matter local SQLite database**
+(`<matter>/.dochaus/legal.db`) under `WORKSPACE_ROOT`. Nothing is sent to a central
+service. The only outbound data flow is model inference, which goes solely to the model
+provider the operator configures in `dochaus/opencode.json` and is governed by that
+provider's policies.
+</data-handling>
+
+<reporting>
+Report suspected vulnerabilities in doc.haus **privately**, via GitHub Security Advisories
+on the doc.haus repository ("Report a Vulnerability"), rather than opening a public issue.
+We will acknowledge your report and keep you informed of progress toward a fix. Issues that
+concern upstream OpenCode itself should follow the upstream disclosure process documented
+below.
+</reporting>
+
+---
+
+## Upstream (OpenCode) guide
+
+> The section below is inherited from upstream OpenCode and describes OpenCode's own threat
+> model and disclosure process. It applies when working inside upstream packages
+> (`packages/*`). For doc.haus-specific posture and reporting, see the section above.
+
 # Security
 
 ## IMPORTANT

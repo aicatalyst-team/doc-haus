@@ -30,6 +30,27 @@ Matter and Document are labels in the UI and our config; the core primitives
 (`project`, `file`, `session`) are never renamed. We fork rather than reimplement so we
 keep pulling upstream innovation via `git merge upstream/dev`.
 
+## What makes it different
+
+doc.haus is built for the two things sensitive legal work actually demands —
+**keeping the document in the building, and keeping the lawyer in Word** — neither of
+which a hosted SaaS legal-AI tool can give you.
+
+- **Local-first, by design.** A document's text and its embeddings live in a per-matter
+  SQLite index (`<matter>/.dochaus/legal.db`) on your own disk, embedded by a local
+  MiniLM model. Nothing about a document leaves your infrastructure except the prompt you
+  send to the model provider you chose — and that provider can be a local model, so it
+  need not leave at all. There is no doc.haus cloud, no vendor data store, no upload to us.
+- **Word-native.** doc.haus reads, redlines, and bakes tracked changes back into the
+  `.docx` itself (`redline`, `tracked-changes`, `word-integration` tools over an OOXML
+  engine), not a lossy re-render. Lawyers live in Word; the output lands there.
+- **A real agent engine, not a wrapper.** Forking OpenCode gives multi-agent review (a
+  primary agent orchestrating Task subagents), a permission system, skills, the provider
+  abstraction, and the streaming server/client stack — and every upstream improvement
+  flows in via merge.
+- **MIT-licensed.** Embed it in your firm, modify it, ship it, with no copyleft
+  obligation.
+
 ## Architecture
 
 Everything legal is **additive** — it lives outside upstream packages so merges stay
@@ -49,15 +70,27 @@ it with `OPENCODE_CONFIG_DIR=<repo>/dochaus`, so the upstream `.opencode/` dev c
 never touched. It contains:
 
 - **`opencode.json`** — provider, models, and legal-safe permissions.
-- **`agent/`** — five legal agents: `qa` (cited Q&A), `legal-review` (orchestrator), and
-  its subagents `legal-reviewer`, `assumption-challenger`, `summarizer`. The review
-  pipeline is agent-driven via the built-in Task tool — reviewer → challenger →
-  summarizer — not hardcoded in app logic.
-- **`tool/search-document.ts`** — retrieval + citations. Reads the matter's `legal.db`,
-  embeds the query locally, cosine-ranks chunks, returns
-  `{ documentName, section, excerpt, score }[]`. Read-only.
+- **`agent/`** — the legal agents: `qa` (cited Q&A), `research` (cited Q&A plus U.S.
+  case law), `legal-review` (orchestrator) with its subagents `legal-reviewer`,
+  `assumption-challenger`, `summarizer`, plus `extract` (tabular review) and `redliner`
+  (tracked-change edits). The review pipeline is agent-driven via the built-in Task tool
+  — reviewer → challenger → summarizer — not hardcoded in app logic.
+- **`tool/`** — the legal tools, all read-only except the redline tools, which propose
+  changes for human review:
+  - `search-document` — retrieval + citations. Reads the matter's `legal.db`, embeds the
+    query locally, cosine-ranks chunks, returns `{ documentName, section, excerpt, score }[]`.
+  - `case-law` — searches U.S. case law via [CourtListener](https://www.courtlistener.com)
+    and returns real, citable opinions. The one tool that reaches outside the matter;
+    public record only, never the matter's documents.
+  - `redline`, `tracked-changes`, `word-integration` — propose and bake tracked changes
+    into the `.docx` itself via the OOXML engine.
 - **`skill/`** — `contract-risk-checklist`, `clause-library`.
 - **`command/review.md`** — runs the `legal-review` orchestrator.
+
+**Tabular review.** Beyond chat, the web app has a review grid (`apps/web`'s
+`ReviewGrid` over the ingest service's `grid`): define question-columns once and the
+`extract` agent answers them for every document in the matter, so you can bulk-review a
+set of contracts side by side instead of one conversation at a time.
 
 ## Models and providers
 
@@ -140,11 +173,32 @@ cd apps/web && bun run dev
 Then: create a matter → upload a `.docx` contract → ask cited questions in chat → run a
 legal review → answers and history persist.
 
-## Security
+### Try it in two minutes
 
-doc.haus inherits OpenCode's self-hosted posture — there is no built-in
-multi-tenant auth; you run it on infrastructure you trust and front it with your own
-proxy/SSO if exposing it beyond localhost. To match that posture across the stack:
+No document of your own needed — seed a demo matter from a fictional letter of
+engagement, ingested through the real pipeline:
+
+```bash
+cd services/ingest && bun run seed
+```
+
+Open the web app, select **"Aldgate Mills — Engagement (Demo)"**, and ask
+*"What is the cap on the firm's liability?"* — you get an answer cited to
+`[Letter of Engagement — Aldgate Mills § 9]` with the clause quoted. See `demo/` for
+more to try.
+
+## Security and privacy
+
+doc.haus is **self-hosted on infrastructure you control**, and that is the point. There
+is **no doc.haus cloud and no multi-tenant service** — so there is no vendor that holds
+your clients' privileged documents, no shared database, and no third party to trust with
+them. Document text and embeddings never leave your disk; the only thing that goes to the
+network is the prompt you send to the model provider you configured, and that provider
+can be a local model so it need not leave either. For a profession bound by privilege,
+not shipping the data is the strongest posture there is.
+
+The single-tenant model also means doc.haus ships **no built-in user auth** — it assumes
+the box it runs on is already yours. The stack is hardened to match:
 
 - **Loopback by default.** Both the engine and the ingest service bind `127.0.0.1`.
   Override the ingest bind with `INGEST_HOST` / `INGEST_PORT` only behind a reverse proxy.
@@ -153,9 +207,10 @@ proxy/SSO if exposing it beyond localhost. To match that posture across the stac
 - **Matter ids are validated** against their generated `[a-z0-9-]` shape before touching
   the filesystem, so a request id can't traverse out of `WORKSPACE_ROOT`.
 
-For stronger isolation (per-user auth, network exposure), put the engine and ingest
-service behind an authenticating reverse proxy; OpenCode's optional
-`OPENCODE_SERVER_PASSWORD` Basic auth covers the engine.
+To put doc.haus in front of a team, add the boundary your firm already trusts: front the
+engine and ingest service with an authenticating reverse proxy (SSO/VPN). OpenCode's
+optional `OPENCODE_SERVER_PASSWORD` Basic auth covers the engine in the meantime. See
+`SECURITY.md` for the full posture and how to report a vulnerability.
 
 ## Tests
 
@@ -167,9 +222,12 @@ cd services/ingest && bun test
 
 ## Mergeability
 
-The fork touches a minimal set of upstream-tracked files (this README, `AGENTS.md`). All
-legal functionality lives in new paths upstream does not have (`dochaus/`, `services/`,
-`apps/`), so `git merge upstream/dev` cannot conflict outside those few edge files. See
+The fork touches a minimal set of upstream-tracked files, and only documentation:
+`README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `LICENSE`. The doc-files
+keep doc.haus content in a prepended section above the original OpenCode body, so a merge
+conflict can only land inside that top section, never in the upstream text below. All
+legal *functionality* lives in new paths upstream does not have (`dochaus/`, `services/`,
+`apps/`, `demo/`), so `git merge upstream/dev` cannot conflict there at all. See
 `FUTURE.md` for the extension seams (custom tools, plugin hooks, vector scale) the MVP
 deliberately leaves open.
 
