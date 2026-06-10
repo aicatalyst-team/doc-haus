@@ -26,6 +26,7 @@ const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
 </Types>`
 
 const RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -36,7 +37,14 @@ const RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 const DOCUMENT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
 </Relationships>`
+
+// Docxodus's HTML converter requires a settings part — without it conversion
+// fails with "ArgumentNull_Generic ... part" — even though editing sessions
+// open the document fine.
+const SETTINGS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>`
 
 // One empty paragraph: Docxodus needs at least one body anchor to insert after.
 const DOCUMENT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -138,6 +146,7 @@ await Bun.write(path.join(stage, "_rels", ".rels"), RELS)
 await Bun.write(path.join(stage, "word", "document.xml"), DOCUMENT)
 await Bun.write(path.join(stage, "word", "_rels", "document.xml.rels"), DOCUMENT_RELS)
 await Bun.write(path.join(stage, "word", "styles.xml"), STYLES)
+await Bun.write(path.join(stage, "word", "settings.xml"), SETTINGS)
 
 const base = path.join(here, "_base.docx")
 rmSync(base, { force: true })
