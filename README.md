@@ -55,10 +55,15 @@ conversations, documents, the index — persists on your machine.
 - **Ask in plain English; get citations or redlines.** One conversation handles both:
   questions come back with the clause cited and quoted, and edit requests land as
   tracked changes in the `.docx` itself.
+- **Draft new documents from a template or from scratch.** Ask for an NDA or any
+  document and doc.haus drafts it into the matter — filling a firm template's
+  placeholders or composing from scratch onto a styled blank — then writes and
+  indexes the `.docx` so you can review and redline it right away, with anything it
+  can't know left as bracketed placeholders.
 - **Pick an assistant — or let Auto choose.** Switch between focused assistants —
-  *Q&A*, *Redline*, *Research* — or leave it on *Auto* and doc.haus routes each
-  message to the right agent as the conversation moves between asking, editing, and
-  researching.
+  *Q&A*, *Redline*, *Research*, *Draft* — or leave it on *Auto* and doc.haus routes
+  each message to the right agent as the conversation moves between asking, drafting,
+  editing, and researching.
 - **Run a full multi-agent review in one click.** Pick a workflow like *Full review*
   and a reviewer, an adversarial challenger, and a summarizer each read every
   document, then hand back one combined report — the multi-agent engine doc.haus
