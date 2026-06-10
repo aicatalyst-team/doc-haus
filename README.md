@@ -212,6 +212,16 @@ engine and ingest service with an authenticating reverse proxy (SSO/VPN). OpenCo
 optional `OPENCODE_SERVER_PASSWORD` Basic auth covers the engine in the meantime. See
 `SECURITY.md` for the full posture and how to report a vulnerability.
 
+## Disclaimer
+
+doc.haus is software, not a law firm. Its output is **not legal advice**, creates no
+attorney-client relationship, and like all AI output it can be wrong — models can
+misread, omit, or hallucinate. Every answer cites the source passage so it can be
+checked; check it. Review anything doc.haus produces with a licensed attorney before
+relying on or filing it. Before sending client material through any hosted model
+provider, verify that provider's data-use terms (training, retention) yourself — or use
+a local model so the question never arises.
+
 ## Tests
 
 The ingest service is tested with `bun test`:

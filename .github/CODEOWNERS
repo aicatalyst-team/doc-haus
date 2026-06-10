@@ -1,5 +1,3 @@
-# web + desktop packages
-packages/app/      @adamdotdevin
-packages/tauri/    @adamdotdevin
-packages/desktop/src-tauri/  @brendonovich
-packages/desktop/  @adamdotdevin
+# doc.haus fork — all paths owned by the doc.haus maintainers.
+# Upstream OpenCode ownership does not apply to this repository.
+* @nicksolarsoul

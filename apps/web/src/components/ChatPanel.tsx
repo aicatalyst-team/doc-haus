@@ -359,7 +359,22 @@ export default function ChatPanel({
     // No session until the first send (see onSend) — mounting the panel must not
     // mint an empty throwaway session that would clutter the conversation list.
     subscribeEvents(client, onEvent, controller.signal, resync).catch(() => {})
-    return () => controller.abort()
+    // A backgrounded tab can have its SSE socket killed by the browser without
+    // the stream ever ending, so the reconnect loop never fires and the turn
+    // sticks on "Thinking...". Resync when the tab comes back, plus a slow poll
+    // as a net for silent stalls; resync is a no-op unless a turn is in flight.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") resync()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
+    const poll = setInterval(resync, 15000)
+    return () => {
+      controller.abort()
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+      clearInterval(poll)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, sessionID])
 
@@ -610,6 +625,9 @@ export default function ChatPanel({
       </div>
       <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
         Cmd/Ctrl + Enter to send. Answers cite [Document § section] from indexed documents.
+      </p>
+      <p className="muted" style={{ marginTop: 2, fontSize: 12 }}>
+        Not legal advice. AI can make mistakes — verify answers against the cited source before relying on them.
       </p>
     </div>
   )
