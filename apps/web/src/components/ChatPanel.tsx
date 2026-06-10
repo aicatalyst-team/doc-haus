@@ -303,6 +303,7 @@ function titleFrom(text: string) {
 export default function ChatPanel({
   directory,
   sessionID,
+  created,
   agent,
   available,
   onAgentChange,
@@ -312,6 +313,11 @@ export default function ChatPanel({
 }: {
   directory: string
   sessionID?: string
+  // This mount is the just-minted session, not a chat reopened from the rail.
+  // The first send mints a session, which flips the URL and remounts the panel
+  // under the new id (see onSessionCreated). The user was typing here a beat ago,
+  // so seat the cursor like a fresh chat rather than treating it as a reopen.
+  created?: boolean
   agent: string
   available: Set<string>
   onAgentChange: (name: string) => void
@@ -422,10 +428,12 @@ export default function ChatPanel({
   })
 
   // A fresh chat (no session yet) seats the cursor in the composer on mount so
-  // the lawyer can type immediately. A reopened conversation skips this — it
-  // focuses once a turn settles (see below).
+  // the lawyer can type immediately, as does the remount that follows the first
+  // send minting a session (`created`) — same composer, so keep the cursor in it.
+  // A conversation reopened from the rail skips this; it focuses once a turn
+  // settles (see below).
   useEffect(() => {
-    if (!sessionID) inputRef.current?.focus()
+    if (!sessionID || created) inputRef.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

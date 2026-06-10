@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 import { getMatter, renameMatter, type MatterDetail as Detail } from "../api/ingest"
 import { listAgents, matterClient } from "../api/opencode"
@@ -32,6 +32,10 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   // current title. Commit persists via the ingest service and updates in place.
   const [renaming, setRenaming] = useState(false)
   const [draftTitle, setDraftTitle] = useState("")
+  // The session id the composer just minted. The first send flips the `session`
+  // param, remounting ChatPanel under the new id; this lets that remount know it
+  // is the same composer (not a rail reopen) so it keeps the cursor seated.
+  const createdRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     localStorage.setItem("dh.docs", docsOpen ? "1" : "0")
@@ -106,10 +110,14 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
               key={session ?? "new"}
               directory={matter.dir}
               sessionID={session}
+              created={createdRef.current === session}
               agent={agent}
               available={available}
               onAgentChange={setAgent}
-              onSessionCreated={(sid) => setParams({ view: "chat", session: sid }, { replace: true })}
+              onSessionCreated={(sid) => {
+                createdRef.current = sid
+                setParams({ view: "chat", session: sid }, { replace: true })
+              }}
               onSessionStarted={onSessionsChanged}
               onViewDocument={(name, redlineId) => {
                 setFocusRedline(redlineId)
