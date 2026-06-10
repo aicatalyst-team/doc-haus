@@ -49,13 +49,32 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
 
   useEffect(() => {
     if (!matter) return
-    listAgents(matterClient(matter.dir)).then((list) => {
-      setAgents(list as Agent[])
-      // A new chat opens on Auto (a pseudo-assistant always offered, so no
-      // availability check); an existing session restores the agent it last used
-      // (see ChatPanel's load effect), so don't force Auto here.
-      if (!session) setAgent(AUTO)
-    })
+    const dir = matter.dir
+    let cancelled = false
+    // Right after navigating back into a matter the engine can be briefly busy and
+    // app.agents() rejects. The assistant and workflow pickers hide when they have
+    // no agents to offer (see ModelSelector/WorkflowLauncher), so a single failed
+    // call would silently drop the composer controls for the whole mount. Retry
+    // until it answers rather than leaving them missing.
+    async function load() {
+      while (!cancelled) {
+        const list = await listAgents(matterClient(dir)).catch(() => undefined)
+        if (cancelled) return
+        if (list) {
+          setAgents(list as Agent[])
+          // A new chat opens on Auto (a pseudo-assistant always offered, so no
+          // availability check); an existing session restores the agent it last
+          // used (see ChatPanel's load effect), so don't force Auto here.
+          if (!session) setAgent(AUTO)
+          return
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matter])
 

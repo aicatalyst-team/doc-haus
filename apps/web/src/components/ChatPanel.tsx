@@ -508,8 +508,19 @@ export default function ChatPanel({
     const pending = await listPermissions(directory)
     setPermissions(pending.filter((p) => p.sessionID === sessionRef.current || childRef.current.has(p.sessionID)))
     bump((n) => n + 1)
-    const last = [...msgs].reverse().find((m) => m.info.role === "assistant")?.info
-    if (last?.role === "assistant" && last.time.completed) finalize()
+    // Finalize only when THIS turn produced a NEW settled answer: the last message
+    // overall is a completed assistant whose id we have not already settled.
+    // seenRef holds every settled message id (see load/finalize). Two cases this
+    // rules out, both of which otherwise dropped the optimistic in-flight turn and
+    // hid the bubble until a later session.idle re-rendered it all at once:
+    //  - Auto routing/choosing: the prompt is not sent yet, so the last persisted
+    //    message is the PRIOR turn's completed assistant — already in seenRef.
+    //  - just after dispatch, before the server has persisted this turn's messages,
+    //    the last message is still that prior completed assistant.
+    // While streaming, the last message is this turn's assistant but not yet
+    // completed; once it completes it is new (not in seenRef) and we finalize.
+    const last = msgs[msgs.length - 1]?.info
+    if (last?.role === "assistant" && last.time.completed && !seenRef.current.has(last.id)) finalize()
   }
 
   // Reload the settled history from the server rather than appending the
@@ -517,7 +528,11 @@ export default function ChatPanel({
   // message id, which edit/retry need to revert the session to a given turn.
   async function finalize() {
     if (sessionRef.current) {
-      const msgs = await getMessages(client, sessionRef.current)
+      // If this reload fails the turn is not lost: leave busy set and the refs
+      // intact so the 15s resync poll retries finalize, instead of clearing the
+      // live view and hanging on a half-settled turn.
+      const msgs = await getMessages(client, sessionRef.current).catch(() => undefined)
+      if (!msgs) return
       setTurns(toTurns(msgs, matterName))
       for (const m of msgs) seenRef.current.add(m.info.id)
     }
@@ -530,6 +545,21 @@ export default function ChatPanel({
       freshRef.current = false
       onSessionCreated?.(sessionRef.current)
     }
+  }
+
+  // A send failed before the turn ever reached a settled state — routing, lazy
+  // session creation, the revert, or the prompt request itself rejected. This is
+  // common when the engine is briefly unreachable right after navigating back
+  // into a matter. No session.idle will come to clear busy, so without this the
+  // bubble hangs on "Thinking..." forever (and if session creation was what
+  // failed, sessionRef is empty so the resync poll cannot recover it either).
+  // Surface the failure as an error turn and settle so the composer reopens.
+  function failTurn(message: string) {
+    partsRef.current.clear()
+    rolesRef.current.clear()
+    childRef.current.clear()
+    setTurns((prev) => [...prev, { role: "assistant", text: "", citations: [], redlines: [], steps: [], error: message }])
+    setBusy(false)
   }
 
   // Resolve which real agent answers this message. With Auto selected, a cheap
@@ -545,13 +575,23 @@ export default function ChatPanel({
       .filter((t) => t.role === "user")
       .slice(-2)
       .map((t) => t.text)
-    const config = await getConfig().catch(() => undefined)
+    // Like routeAgent, this read must not block the send: a stalled fetch would
+    // never reject, so cap it and fall back to the default small model.
+    const config = await Promise.race([
+      getConfig().catch(() => undefined),
+      new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 3000)),
+    ])
     // Route through the engine using its configured small model, whatever provider
     // it lives on. OpenCode resolves the provider and credentials, so Auto works
     // on Vertex, Bedrock, Azure, OpenAI, or Ollama alike (see routeAgent).
     const small = config?.small_model ?? config?.model ?? "google-vertex/gemini-3.5-flash"
     const resolved = await routeAgent({
+      client,
       smallModel: small,
+      // On a miss (a weak small model returns an off-list name) routeAgent retries
+      // the route on the primary model before defaulting to Q&A. Omitted when it
+      // equals small, so a single-model setup never pays for a duplicate call.
+      primaryModel: config?.model,
       candidates: CHAT_ASSISTANTS.map((a) => ({ name: a.name, description: a.description })),
       history,
       text,
@@ -573,15 +613,19 @@ export default function ChatPanel({
     partsRef.current.clear()
     rolesRef.current.clear()
     childRef.current.clear()
-    const resolved = await resolveAgent(text, prior)
-    // Create the session lazily, titled from this first message so it reads as a
-    // distinct conversation in the rail rather than an interchangeable "Q&A".
-    if (!sessionRef.current) {
-      sessionRef.current = (await createSession(client, titleFrom(text))).id
-      freshRef.current = true
-      onSessionStarted?.()
+    try {
+      const resolved = await resolveAgent(text, prior)
+      // Create the session lazily, titled from this first message so it reads as a
+      // distinct conversation in the rail rather than an interchangeable "Q&A".
+      if (!sessionRef.current) {
+        sessionRef.current = (await createSession(client, titleFrom(text))).id
+        freshRef.current = true
+        onSessionStarted?.()
+      }
+      await sendPrompt(client, sessionRef.current, resolved, text)
+    } catch (e) {
+      failTurn(e instanceof Error ? e.message : "Could not reach the engine. Try again.")
     }
-    await sendPrompt(client, sessionRef.current, resolved, text)
   }
 
   // A workflow is a canned, orchestrated run that streams into the chat like any
@@ -603,12 +647,16 @@ export default function ChatPanel({
         ? [{ role: "user", text: wf.prompt, citations: [], redlines: [], steps: [] }]
         : [...prev, { role: "user", text: wf.prompt, citations: [], redlines: [], steps: [] }],
     )
-    if (!sessionRef.current) {
-      sessionRef.current = (await createSession(client, wf.label)).id
-      freshRef.current = true
-      onSessionStarted?.()
+    try {
+      if (!sessionRef.current) {
+        sessionRef.current = (await createSession(client, wf.label)).id
+        freshRef.current = true
+        onSessionStarted?.()
+      }
+      await sendPrompt(client, sessionRef.current, wf.name, wf.prompt)
+    } catch (e) {
+      failTurn(e instanceof Error ? e.message : "Could not start the workflow. Try again.")
     }
-    await sendPrompt(client, sessionRef.current, wf.name, wf.prompt)
   }
 
   // Edit and retry both rewind the session to a user turn and re-ask: revert
@@ -623,9 +671,13 @@ export default function ChatPanel({
     rolesRef.current.clear()
     childRef.current.clear()
     setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], redlines: [], steps: [] }])
-    const resolved = await resolveAgent(text, turns.slice(0, index))
-    await revertMessage(client, sessionRef.current, turn.id)
-    await sendPrompt(client, sessionRef.current, resolved, text)
+    try {
+      const resolved = await resolveAgent(text, turns.slice(0, index))
+      await revertMessage(client, sessionRef.current, turn.id)
+      await sendPrompt(client, sessionRef.current, resolved, text)
+    } catch (e) {
+      failTurn(e instanceof Error ? e.message : "Could not reach the engine. Try again.")
+    }
   }
 
   // Optimistic removal — the engine's permission.replied event confirms it, and

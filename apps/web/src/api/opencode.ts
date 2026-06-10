@@ -219,37 +219,68 @@ export async function sendPrompt(client: Client, sessionID: string, agent: strin
 // Ollama — and reuses the engine's own credentials and model resolution, with no
 // parallel provider SDK to keep in sync. The router agent (dochaus/agent/router.md)
 // has no tools and a neutral prompt, so it just returns one candidate name. It
-// runs on a throwaway session created with settingsClient (no matter directory),
-// so it never lands in a matter's conversation rail, and is deleted once read.
+// runs on the matter's own client (passed in) — NOT a directory-less client. A
+// header-less prompt routes to the server's cwd, a different directory than the
+// matter, which forces the engine to cold-boot a whole second instance for cwd
+// (git detection, plugin boot, provider state, models.dev fetch) on first touch,
+// awaited with no timeout — the exact stall that wedged the composer on
+// "Thinking...". The matter's instance is already warm (upload, agents, history
+// all hit it), so routing there reuses it and never boots a second instance.
+// The throwaway session is titled "doc.haus router" so the conversation rail's
+// system-title filter drops it (see Sidebar), and it is deleted once read.
 // smallModel is the full "provider/model" string from the engine config.
 export async function routeAgent(input: {
+  client: Client
   smallModel: string
+  primaryModel?: string
   candidates: { name: string; description: string }[]
   history: string[]
   text: string
 }): Promise<string> {
-  const slash = input.smallModel.indexOf("/")
-  if (slash < 1) throw new Error(`Cannot route: small_model "${input.smallModel}" is not "provider/model"`)
-  const model = { providerID: input.smallModel.slice(0, slash), modelID: input.smallModel.slice(slash + 1) }
   const names = input.candidates.map((c) => c.name)
-  const client = settingsClient()
-  const id = (await createSession(client, "router")).id
+  const fallback = names[0] ?? "qa"
+  const prompt = routePrompt(input)
+  // Try the cheap small model first. Weak small models (Flash Lite, Haiku) can
+  // return an off-list name; on that miss, escalate the same route to the primary
+  // model before defaulting to Q&A. Primary is only paid for on a miss (and never
+  // when it equals small), so the common case stays one cheap call.
+  const small = await routeOnce(input.client, input.smallModel, prompt, names)
+  if (small) return small
+  if (input.primaryModel && input.primaryModel !== input.smallModel) {
+    const primary = await routeOnce(input.client, input.primaryModel, prompt, names)
+    if (primary) return primary
+  }
+  return fallback
+}
+
+// One routing attempt on a "provider/model" spec: spin up the throwaway router
+// session, prompt it, and return the matched candidate name — or null on a bad
+// spec, timeout, or off-list reply so the caller can escalate or fall back.
+async function routeOnce(client: Client, spec: string, prompt: string, names: string[]): Promise<string | null> {
+  const slash = spec.indexOf("/")
+  if (slash < 1) return null
+  const model = { providerID: spec.slice(0, slash), modelID: spec.slice(slash + 1) }
+  const id = (await createSession(client, "doc.haus router").catch(() => null))?.id
+  if (!id) return null
   try {
-    const res = await client.session.prompt({
-      path: { id },
-      body: { agent: "router", model, parts: [{ type: "text", text: routePrompt(input) }] },
-    })
+    // Routing is a best-effort pre-step that must never block the user's turn. The
+    // ephemeral router turn has been seen to never complete, which would hang the
+    // caller on this await (wedging the composer on "Thinking...") and — since the
+    // finally would then never run — leak the throwaway session. Cap it: on overrun
+    // return null and let the finally delete the session.
+    const turn = client.session
+      .prompt({ path: { id }, body: { agent: "router", model, parts: [{ type: "text", text: prompt }] } })
+      .catch(() => null)
+    const res = await Promise.race([turn, new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))])
+    if (!res) return null
     const reply = (res.data?.parts ?? [])
       .filter((p) => p.type === "text")
       .map((p) => p.text)
       .join("")
       .trim()
     // The model is told to reply with exactly one name; tolerate stray wrapping by
-    // also accepting a name embedded in the reply. Fall back to the first
-    // candidate (Q&A) when it returns something off-list.
-    return (
-      names.find((n) => reply === n) ?? names.find((n) => reply.toLowerCase().includes(n.toLowerCase())) ?? names[0] ?? "qa"
-    )
+    // also accepting a name embedded in the reply. Off-list => null.
+    return names.find((n) => reply === n) ?? names.find((n) => reply.toLowerCase().includes(n.toLowerCase())) ?? null
   } finally {
     await deleteSession(client, id).catch(() => {})
   }
