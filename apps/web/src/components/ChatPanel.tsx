@@ -44,6 +44,9 @@ type Turn = {
   text: string
   citations: Citation[]
   redlines: RedlineProposal[]
+  // Documents the turn created (draft-document tool), as matter-relative names —
+  // each renders as a card linking into the document viewer.
+  drafts: string[]
   steps: Step[]
   id?: string
   agent?: string
@@ -74,7 +77,19 @@ function contentOf(parts: Part[]) {
     .filter((p): p is Extract<Part, { type: "tool" }> => p.type === "tool")
     .filter((p) => p.tool === "search-document" && p.state.status === "completed")
     .flatMap((p) => ((p.state as { metadata?: { citations?: Citation[] } }).metadata?.citations ?? []))
-  return { text, citations, redlines: redlinesOf(parts) }
+  return { text, citations, redlines: redlinesOf(parts), drafts: draftsOf(parts) }
+}
+
+// The draft-document tool stamps the created document's path on its metadata.
+// Surface each as a document name the bubble can card and link into the viewer.
+function draftsOf(parts: Part[]): string[] {
+  return parts
+    .filter((p): p is Extract<Part, { type: "tool" }> => p.type === "tool")
+    .filter((p) => p.tool === "draft-document" && p.state.status === "completed")
+    .flatMap((p) => {
+      const document = (p.state as { metadata?: Record<string, unknown> }).metadata?.document
+      return typeof document === "string" ? [basename(document)] : []
+    })
 }
 
 // The redline and tracked-changes tools both record a pending proposal and return
@@ -247,7 +262,7 @@ function readTurn(parts: Map<string, Part>, roles: Map<string, string>, matter: 
     .filter((p): p is Extract<Part, { type: "tool" }> => p.type === "tool")
     .filter((p) => p.tool === "search-document" && p.state.status === "completed")
     .flatMap((p) => ((p.state as { metadata?: { citations?: Citation[] } }).metadata?.citations ?? []))
-  return { text, citations, redlines: redlinesOf(work), steps: partsToSteps(work, matter, all) }
+  return { text, citations, redlines: redlinesOf(work), drafts: draftsOf(work), steps: partsToSteps(work, matter, all) }
 }
 
 // Group stored messages into turns. A tool-using turn spans several consecutive
@@ -310,6 +325,7 @@ export default function ChatPanel({
   onSessionCreated,
   onSessionStarted,
   onViewDocument,
+  onDocumentsChanged,
 }: {
   directory: string
   sessionID?: string
@@ -334,6 +350,9 @@ export default function ChatPanel({
   // onSessionCreated this must not change the URL — that would remount the panel
   // and drop the in-flight stream — it only signals a re-list.
   onSessionStarted?: () => void
+  // Fired when a tool changed the matter's document set mid-turn (a draft was
+  // created), so the documents rail refreshes without waiting for a reload.
+  onDocumentsChanged?: () => void
 }) {
   const client = useMemo<Client>(() => matterClient(directory), [directory])
   const matterName = basename(directory)
@@ -448,6 +467,21 @@ export default function ChatPanel({
     wasBusy.current = busy
   }, [busy])
 
+  // Admit a streamed part into the live view. The moment a draft-document call
+  // completes (not on its later re-deliveries), the matter's document set changed
+  // — tell the parent so the documents rail picks up the new file mid-turn.
+  function admitPart(part: Part) {
+    const prev = partsRef.current.get(part.id)
+    partsRef.current.set(part.id, part)
+    if (
+      part.type === "tool" &&
+      part.tool === "draft-document" &&
+      part.state.status === "completed" &&
+      !(prev?.type === "tool" && prev.state.status === "completed")
+    )
+      onDocumentsChanged?.()
+  }
+
   function onEvent(event: Event) {
     // The v1 SDK's Event union predates the permission events, so narrow the raw
     // stream envelope ({ type, properties }) through PermissionEvent ourselves.
@@ -474,7 +508,7 @@ export default function ChatPanel({
       const own = part.sessionID === sessionRef.current
       if (!own && !childRef.current.has(part.sessionID)) return
       if (seenRef.current.has(part.messageID)) return
-      partsRef.current.set(part.id, part)
+      admitPart(part)
       // A task tool part names the child session it spawned; track that session
       // so its reasoning/tool parts get admitted and nest under this step.
       if (own && part.type === "tool" && part.tool === "task") {
@@ -501,7 +535,7 @@ export default function ChatPanel({
     for (const m of msgs) {
       if (seenRef.current.has(m.info.id)) continue
       rolesRef.current.set(m.info.id, m.info.role)
-      for (const p of m.parts) partsRef.current.set(p.id, p)
+      for (const p of m.parts) admitPart(p)
     }
     // A permission.asked emitted during the gap was missed the same way as the
     // parts — without it the turn sits parked on an approval nobody can see.
@@ -558,7 +592,10 @@ export default function ChatPanel({
     partsRef.current.clear()
     rolesRef.current.clear()
     childRef.current.clear()
-    setTurns((prev) => [...prev, { role: "assistant", text: "", citations: [], redlines: [], steps: [], error: message }])
+    setTurns((prev) => [
+      ...prev,
+      { role: "assistant", text: "", citations: [], redlines: [], drafts: [], steps: [], error: message },
+    ])
     setBusy(false)
   }
 
@@ -607,7 +644,7 @@ export default function ChatPanel({
     const text = input.trim()
     if (!text || busy) return
     const prior = turns
-    setTurns((prev) => [...prev, { role: "user", text, citations: [], redlines: [], steps: [] }])
+    setTurns((prev) => [...prev, { role: "user", text, citations: [], redlines: [], drafts: [], steps: [] }])
     setInput("")
     setBusy(true)
     partsRef.current.clear()
@@ -644,8 +681,8 @@ export default function ChatPanel({
     if (wf.scope === "matter") sessionRef.current = ""
     setTurns((prev) =>
       wf.scope === "matter"
-        ? [{ role: "user", text: wf.prompt, citations: [], redlines: [], steps: [] }]
-        : [...prev, { role: "user", text: wf.prompt, citations: [], redlines: [], steps: [] }],
+        ? [{ role: "user", text: wf.prompt, citations: [], redlines: [], drafts: [], steps: [] }]
+        : [...prev, { role: "user", text: wf.prompt, citations: [], redlines: [], drafts: [], steps: [] }],
     )
     try {
       if (!sessionRef.current) {
@@ -670,7 +707,7 @@ export default function ChatPanel({
     partsRef.current.clear()
     rolesRef.current.clear()
     childRef.current.clear()
-    setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], redlines: [], steps: [] }])
+    setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], redlines: [], drafts: [], steps: [] }])
     try {
       const resolved = await resolveAgent(text, turns.slice(0, index))
       await revertMessage(client, sessionRef.current, turn.id)
@@ -758,7 +795,7 @@ export default function ChatPanel({
               <StepsPanel steps={t.steps} busy={false} answered={!isEmptyAnswer(t.text)} />
               {t.text && !isEmptyAnswer(t.text) && <Markdown>{t.text}</Markdown>}
               {t.error && <div className="msg-error">{t.error}</div>}
-              {!t.error && isEmptyAnswer(t.text) && t.redlines.length === 0 && (
+              {!t.error && isEmptyAnswer(t.text) && t.redlines.length === 0 && t.drafts.length === 0 && (
                 <div className="msg-error">
                   No answer was produced for this question.{" "}
                   <button
@@ -774,6 +811,7 @@ export default function ChatPanel({
               )}
               <CitationView citations={t.citations} />
               <RedlineView redlines={t.redlines} onView={onViewDocument} />
+              <DraftView drafts={t.drafts} onView={onViewDocument} />
             </div>
           ),
         )}
@@ -788,6 +826,7 @@ export default function ChatPanel({
             )}
             <CitationView citations={live.citations} />
             {live.text && <RedlineView redlines={live.redlines} onView={onViewDocument} />}
+            <DraftView drafts={live.drafts} onView={onViewDocument} />
           </div>
         )}
       </div>
@@ -928,6 +967,7 @@ const PERMISSION_VERBS: Record<string, string> = {
   "word-integration": "edit",
   "tracked-changes": "propose a tracked change in",
   redline: "propose a redline in",
+  "draft-document": "create",
 }
 
 // One parked edit-tool call awaiting the user's decision. The metadata the tool
@@ -991,6 +1031,25 @@ function RedlineView({
           <div className="redline-new">{r.newText}</div>
           <button className="linklike redline-view" onClick={() => onView(basename(r.document), r.id)}>
             View in document
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// In-chat card for each document a turn drafted: the new file's name with a link
+// straight into the document viewer, so the lawyer opens the draft without
+// hunting for it in the documents rail.
+function DraftView({ drafts, onView }: { drafts: string[]; onView: (name: string) => void }) {
+  if (drafts.length === 0) return null
+  return (
+    <div className="drafts">
+      {drafts.map((name, i) => (
+        <div className="draft-card" key={i}>
+          <span className="draft-doc">{name}</span>
+          <button className="linklike" onClick={() => onView(name)}>
+            Open document
           </button>
         </div>
       ))}

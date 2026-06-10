@@ -44,6 +44,8 @@
     "skill": "allow",
     "search-document": "allow",
     "case-law": "allow",
+    "list-templates": "allow",
+    "draft-document": "ask",
     "word-integration": "ask",
     "tracked-changes": "ask",
     "redline": "ask",
