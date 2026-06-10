@@ -93,9 +93,9 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
 
   // Every model across connected providers, as the "providerID/modelID" strings
   // the engine expects, for the default-model picker.
-  const models = connectedProviders.flatMap((p) =>
-    Object.values(p.models).map((m) => ({ value: `${p.id}/${m.id}`, label: `${p.name} — ${m.name}` })),
-  )
+  const models = connectedProviders
+    .flatMap((p) => Object.values(p.models).map((m) => ({ value: `${p.id}/${m.id}`, label: `${p.name} — ${m.name}` })))
+    .sort((a, b) => a.label.localeCompare(b.label))
 
   return (
     <div className="viewer-overlay" onClick={onClose}>
