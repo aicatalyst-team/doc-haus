@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 import { getMatter, renameMatter, type MatterDetail as Detail } from "../api/ingest"
 import { listAgents, matterClient } from "../api/opencode"
+import { AUTO } from "../agents"
 import DocumentUpload from "../components/DocumentUpload"
 import DocumentViewer from "../components/DocumentViewer"
 import ChatPanel from "../components/ChatPanel"
@@ -21,7 +22,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   const session = params.get("session") ?? undefined
   const [matter, setMatter] = useState<Detail>()
   const [agents, setAgents] = useState<Agent[]>([])
-  const [agent, setAgent] = useState("qa")
+  const [agent, setAgent] = useState(AUTO)
   const [viewing, setViewing] = useState<string>()
   // The redline proposal to scroll to when the viewer opens, set when the user
   // follows a chat redline preview's "View in document" link (undefined otherwise).
@@ -46,9 +47,10 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
     if (!matter) return
     listAgents(matterClient(matter.dir)).then((list) => {
       setAgents(list as Agent[])
-      // A new chat opens on the default agent; an existing session restores the
-      // agent it last used (see ChatPanel's load effect), so don't force qa here.
-      if (!session && list.some((a) => (a as Agent).name === "qa")) setAgent("qa")
+      // A new chat opens on Auto (a pseudo-assistant always offered, so no
+      // availability check); an existing session restores the agent it last used
+      // (see ChatPanel's load effect), so don't force Auto here.
+      if (!session) setAgent(AUTO)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matter])

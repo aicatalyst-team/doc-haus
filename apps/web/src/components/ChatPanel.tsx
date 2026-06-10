@@ -383,9 +383,15 @@ export default function ChatPanel({
         for (const m of msgs) seenRef.current.add(m.info.id)
         // Reopening a past conversation pre-selects the agent it last ran on,
         // read off the most recent user turn (the server stamps each one with
-        // its agent), so the picker reflects where the thread left off.
+        // its agent) — but only when the user has explicitly picked an agent.
+        // On Auto the stamp is just what routing chose last (and this effect
+        // also fires when the first send mints the session and remounts the
+        // panel), so restoring it would silently flip the picker off Auto.
         const last = [...msgs].reverse().find((m) => m.info.role === "user")?.info
-        if (last && "agent" in last && last.agent) onAgentChange(last.agent)
+        if (last && "agent" in last && last.agent) {
+          if (isAuto(agent)) setResolvedAgent(last.agent)
+          if (!isAuto(agent)) onAgentChange(last.agent)
+        }
         setLoading(false)
       })
     }
@@ -414,6 +420,25 @@ export default function ChatPanel({
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight)
   })
+
+  // A fresh chat (no session yet) seats the cursor in the composer on mount so
+  // the lawyer can type immediately. A reopened conversation skips this — it
+  // focuses once a turn settles (see below).
+  useEffect(() => {
+    if (!sessionID) inputRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Refocus the composer the moment a turn settles (busy → false). Done in an
+  // effect, not inline in finalize(), so it runs after React commits the
+  // settled turns: calling focus() inside finalize fires before that re-render,
+  // landing on a node React then reconciles away — which is why the refocus only
+  // worked intermittently.
+  const wasBusy = useRef(false)
+  useEffect(() => {
+    if (wasBusy.current && !busy) inputRef.current?.focus()
+    wasBusy.current = busy
+  }, [busy])
 
   function onEvent(event: Event) {
     // The v1 SDK's Event union predates the permission events, so narrow the raw
@@ -493,7 +518,6 @@ export default function ChatPanel({
     childRef.current.clear()
     setPermissions([])
     setBusy(false)
-    inputRef.current?.focus()
     if (freshRef.current) {
       freshRef.current = false
       onSessionCreated?.(sessionRef.current)
