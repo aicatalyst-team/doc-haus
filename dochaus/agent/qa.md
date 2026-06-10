@@ -3,6 +3,13 @@ description: Answers natural-language questions about the documents in a matter,
 mode: primary
 temperature: 0.2
 steps: 20
+# Q&A is retrieval-bound synthesis, not deep reasoning. Cap Gemini's thinking to
+# "low" for this agent only (deep agents keep the default "high") so a reasoning
+# spiral cannot burn the whole output budget and truncate the answer. Deep-merges
+# over the provider default, which keeps includeThoughts on.
+options:
+  thinkingConfig:
+    thinkingLevel: low
 color: info
 tools:
   "*": false

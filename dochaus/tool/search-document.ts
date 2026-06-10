@@ -39,6 +39,9 @@ function dot(a: Float32Array, b: Float32Array) {
 // runner does not yet bound repeated identical tool calls (see runner/llm.ts),
 // so the bound lives here at the tool boundary.
 const RECENT_LIMIT = 5
+// Cap how many sessions we keep loop-detection state for, so a long-lived
+// server process does not accumulate one entry per session forever.
+const SESSION_LIMIT = 256
 const recentBySession = new Map<string, string[]>()
 
 export default tool({
@@ -88,7 +91,14 @@ export default tool({
     const signature = ranked.map(({ row }) => `${row.doc_name}§${row.section}`).join("|")
     const recent = recentBySession.get(ctx.sessionID) ?? []
     if (recent.includes(signature)) {
+      console.warn(
+        `[search-document] repeated result-set in session ${ctx.sessionID} for query "${args.query}" — short-circuiting to break a search loop`,
+      )
       return "These passages were already returned by an earlier search this turn — the same results matched again, so searching further will not surface anything new. Answer from the passages you have already retrieved; if they do not address the question, say the documents do not cover it. Do not repeat this search."
+    }
+    if (!recentBySession.has(ctx.sessionID) && recentBySession.size >= SESSION_LIMIT) {
+      const oldest = recentBySession.keys().next().value
+      if (oldest !== undefined) recentBySession.delete(oldest)
     }
     recentBySession.set(ctx.sessionID, [signature, ...recent].slice(0, RECENT_LIMIT))
 
