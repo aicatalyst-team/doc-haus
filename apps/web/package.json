@@ -22,5 +22,8 @@
     "@vitejs/plugin-react": "^4.4.0",
     "typescript": "^5.8.0",
     "vite": "^6.3.0"
+  },
+  "patchedDependencies": {
+    "docxodus@6.4.0": "patches/docxodus@6.4.0.patch"
   }
 }

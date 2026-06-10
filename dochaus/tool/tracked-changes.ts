@@ -37,6 +37,17 @@ export default tool({
     session.close()
 
     const author = args.author ?? "doc.haus"
+    // Recording the proposal is gated on the matter owner's approval (permission
+    // "tracked-changes" in opencode.json) — the redline review queue is itself a
+    // work product, so the assistant must not stack proposals into it unasked.
+    // ctx.ask blocks until they reply and throws on reject. "Always" approves
+    // future proposals against this document only.
+    await ctx.ask({
+      permission: "tracked-changes",
+      patterns: [file],
+      always: [file],
+      metadata: { document: path.basename(file), find: args.find, replace: args.replace, author },
+    })
     const id = recordRedline(ctx.directory, {
       docPath: file,
       docName: path.basename(file),

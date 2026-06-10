@@ -127,7 +127,10 @@ The Vertex config reads project and location from env, so nothing is hardcoded:
 ```
 
 To use a different provider, swap the provider block and the `model` / `small_model`
-defaults — see the [OpenCode provider docs](https://opencode.ai/docs/providers).
+defaults. See [docs/providers.md](docs/providers.md) for copy-pasteable config for a
+BYO cloud key (Anthropic, OpenAI) and for a fully local / on-prem endpoint (Ollama,
+LM Studio, vLLM), plus a note on what leaves your machine — or the upstream
+[OpenCode provider docs](https://opencode.ai/docs/providers) for the full catalog.
 
 ## Quick start
 

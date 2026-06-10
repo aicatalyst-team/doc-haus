@@ -3,12 +3,17 @@ import type { Event, Part } from "@opencode-ai/sdk"
 import {
   createSession,
   getMessages,
+  listPermissions,
   matterClient,
+  replyPermission,
   revertMessage,
   sendPrompt,
   subscribeEvents,
   type Citation,
   type Client,
+  type PermissionEvent,
+  type PermissionReply,
+  type PermissionRequest,
 } from "../api/opencode"
 import { WORKFLOWS } from "../agents"
 import CitationView from "./CitationView"
@@ -326,6 +331,10 @@ export default function ChatPanel({
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState(false)
+  // Edit-tool calls the engine parked awaiting the user's approval (see the
+  // ctx.ask gates in dochaus/tool/*). Each renders an approval card above the
+  // composer; the turn stays "working" until every request is answered.
+  const [permissions, setPermissions] = useState<PermissionRequest[]>([])
   const [editing, setEditing] = useState<{ index: number; draft: string } | null>(null)
   const [, bump] = useState(0)
 
@@ -337,6 +346,14 @@ export default function ChatPanel({
   // their own sessionID, so we admit those into partsRef to nest under the task
   // step (see partsToSteps). Reset alongside partsRef on each new turn.
   const childRef = useRef<Set<string>>(new Set())
+  // Message ids already folded into the settled `turns`. The live view aggregates
+  // every part in partsRef indiscriminately, so it assumes partsRef holds only the
+  // in-flight turn. Two things break that: trailing SSE part.updated events from a
+  // just-finalized turn landing after the clear, and resync pulling full session
+  // history. Both re-admit prior-turn parts, making the live bubble flash the
+  // previous answer. Reject any part whose message is already settled to keep
+  // partsRef scoped to the current turn.
+  const seenRef = useRef<Set<string>>(new Set())
   const logRef = useRef<HTMLDivElement>(null)
   // Mirrors `busy` for the long-lived event subscription, whose resync closure is
   // created once and would otherwise capture a stale value.
@@ -349,6 +366,7 @@ export default function ChatPanel({
       sessionRef.current = sessionID
       getMessages(client, sessionID).then((msgs) => {
         setTurns(toTurns(msgs, matterName))
+        for (const m of msgs) seenRef.current.add(m.info.id)
         // Reopening a past conversation pre-selects the agent it last ran on,
         // read off the most recent user turn (the server stamps each one with
         // its agent), so the picker reflects where the thread left off.
@@ -383,6 +401,19 @@ export default function ChatPanel({
   })
 
   function onEvent(event: Event) {
+    // The v1 SDK's Event union predates the permission events, so narrow the raw
+    // stream envelope ({ type, properties }) through PermissionEvent ourselves.
+    const pe = event as unknown as PermissionEvent
+    if (pe.type === "permission.asked") {
+      const req = pe.properties
+      if (req.sessionID !== sessionRef.current && !childRef.current.has(req.sessionID)) return
+      setPermissions((prev) => [...prev.filter((p) => p.id !== req.id), req])
+      return
+    }
+    if (pe.type === "permission.replied") {
+      setPermissions((prev) => prev.filter((p) => p.id !== pe.properties.requestID))
+      return
+    }
     if (event.type === "message.updated") {
       const info = event.properties.info
       if (info.sessionID !== sessionRef.current) return
@@ -394,6 +425,7 @@ export default function ChatPanel({
       const part = event.properties.part
       const own = part.sessionID === sessionRef.current
       if (!own && !childRef.current.has(part.sessionID)) return
+      if (seenRef.current.has(part.messageID)) return
       partsRef.current.set(part.id, part)
       // A task tool part names the child session it spawned; track that session
       // so its reasoning/tool parts get admitted and nest under this step.
@@ -419,9 +451,14 @@ export default function ChatPanel({
     if (!busyRef.current || !sessionRef.current) return
     const msgs = await getMessages(client, sessionRef.current)
     for (const m of msgs) {
+      if (seenRef.current.has(m.info.id)) continue
       rolesRef.current.set(m.info.id, m.info.role)
       for (const p of m.parts) partsRef.current.set(p.id, p)
     }
+    // A permission.asked emitted during the gap was missed the same way as the
+    // parts — without it the turn sits parked on an approval nobody can see.
+    const pending = await listPermissions(directory)
+    setPermissions(pending.filter((p) => p.sessionID === sessionRef.current || childRef.current.has(p.sessionID)))
     bump((n) => n + 1)
     const last = [...msgs].reverse().find((m) => m.info.role === "assistant")?.info
     if (last?.role === "assistant" && last.time.completed) finalize()
@@ -431,10 +468,15 @@ export default function ChatPanel({
   // in-flight turn from refs. The reload gives every turn its authoritative
   // message id, which edit/retry need to revert the session to a given turn.
   async function finalize() {
-    if (sessionRef.current) setTurns(toTurns(await getMessages(client, sessionRef.current), matterName))
+    if (sessionRef.current) {
+      const msgs = await getMessages(client, sessionRef.current)
+      setTurns(toTurns(msgs, matterName))
+      for (const m of msgs) seenRef.current.add(m.info.id)
+    }
     partsRef.current.clear()
     rolesRef.current.clear()
     childRef.current.clear()
+    setPermissions([])
     setBusy(false)
     if (freshRef.current) {
       freshRef.current = false
@@ -502,6 +544,14 @@ export default function ChatPanel({
     setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], redlines: [], steps: [] }])
     await revertMessage(client, sessionRef.current, turn.id)
     await sendPrompt(client, sessionRef.current, agent, text)
+  }
+
+  // Optimistic removal — the engine's permission.replied event confirms it, and
+  // a reject cascades rejection to the session's other pending requests, whose
+  // replied events clear them here too.
+  async function onPermissionReply(id: string, reply: PermissionReply) {
+    setPermissions((prev) => prev.filter((p) => p.id !== id))
+    await replyPermission(directory, id, reply)
   }
 
   const live = readTurn(partsRef.current, rolesRef.current, matterName, sessionRef.current)
@@ -606,6 +656,9 @@ export default function ChatPanel({
           </div>
         )}
       </div>
+      {permissions.map((p) => (
+        <PermissionCard key={p.id} request={p} onReply={onPermissionReply} />
+      ))}
       <div className="composer-tools">
         <ModelSelector available={available} value={agent} onChange={onAgentChange} />
         <WorkflowLauncher available={available} onLaunch={runWorkflow} />
@@ -698,6 +751,53 @@ function StepRow({ step, busy, last }: { step: Step; busy: boolean; last: boolea
         <Markdown>{step.text}</Markdown>
       </details>
     </li>
+  )
+}
+
+// What each gated tool is asking to do, phrased for the approval card's title.
+const PERMISSION_VERBS: Record<string, string> = {
+  "word-integration": "edit",
+  "tracked-changes": "propose a tracked change in",
+  redline: "propose a redline in",
+}
+
+// One parked edit-tool call awaiting the user's decision. The metadata the tool
+// attached (find/replace or clause/replacement) previews the change in the same
+// red/green the redline cards use. "Always allow" approves this document for the
+// rest of the server's life — the engine remembers it per matter directory.
+function PermissionCard({
+  request,
+  onReply,
+}: {
+  request: PermissionRequest
+  onReply: (id: string, reply: PermissionReply) => void
+}) {
+  const meta = request.metadata
+  const document = typeof meta.document === "string" ? meta.document : request.patterns[0] && basename(request.patterns[0])
+  const oldText = (meta.find ?? meta.clause) as string | undefined
+  const newText = (meta.replace ?? meta.replacement) as string | undefined
+  const verb = PERMISSION_VERBS[request.permission] ?? `use ${humanizeTool(request.permission)} on`
+  return (
+    <div className="permission-card">
+      <div className="permission-title">
+        The assistant wants to {verb} {document ?? "a document"}
+      </div>
+      {(oldText || newText) && (
+        <div className="permission-preview">
+          {oldText && <div className="redline-old">{oldText}</div>}
+          {newText && <div className="redline-new">{newText}</div>}
+        </div>
+      )}
+      <div className="permission-actions">
+        <button className="primary" onClick={() => onReply(request.id, "once")}>
+          Allow once
+        </button>
+        <button onClick={() => onReply(request.id, "always")}>Always allow for this document</button>
+        <button className="permission-reject" onClick={() => onReply(request.id, "reject")}>
+          Reject
+        </button>
+      </div>
+    </div>
   )
 }
 

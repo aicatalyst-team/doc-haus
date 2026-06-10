@@ -112,6 +112,50 @@ export async function getProviderOptions(id: string) {
   return (cfg.provider?.[id]?.options ?? {}) as Record<string, string | undefined>
 }
 
+// A pending permission request from the engine. The edit tools (word-integration,
+// tracked-changes, redline) call ctx.ask before mutating or proposing against a
+// document; the engine parks the tool call and emits a permission.asked event,
+// then resumes (or fails) it when we reply. metadata carries what the tool is
+// about to do (document, find/replace or clause/replacement) for display.
+export type PermissionRequest = {
+  id: string
+  sessionID: string
+  permission: string
+  patterns: string[]
+  metadata: Record<string, unknown>
+  always: string[]
+  tool?: { messageID: string; callID: string }
+}
+
+export type PermissionReply = "once" | "always" | "reject"
+
+// The permission events the engine emits on the same SSE stream as everything
+// else. The v1 SDK's Event union does not model them, so the subscriber narrows
+// raw events through this type (see ChatPanel.onEvent).
+export type PermissionEvent =
+  | { type: "permission.asked"; properties: PermissionRequest }
+  | { type: "permission.replied"; properties: { sessionID: string; requestID: string; reply: PermissionReply } }
+
+// Permission state is instance-scoped, so both calls must carry the matter's
+// x-opencode-directory header. The v1 SDK exposes no permission methods — its
+// generated client predates the /permission routes — so these hit them directly.
+export async function listPermissions(directory: string) {
+  const res = await fetch(`${OPENCODE_URL}/permission`, {
+    headers: { "x-opencode-directory": directory },
+  })
+  if (!res.ok) throw new Error(`Failed to list permissions (${res.status})`)
+  return (await res.json()) as PermissionRequest[]
+}
+
+export async function replyPermission(directory: string, requestID: string, reply: PermissionReply) {
+  const res = await fetch(`${OPENCODE_URL}/permission/${requestID}/reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-opencode-directory": directory },
+    body: JSON.stringify({ reply }),
+  })
+  if (!res.ok) throw new Error(`Failed to reply to permission (${res.status})`)
+}
+
 // Shape returned by the search-document tool in its part metadata.citations.
 export type Citation = {
   documentName: string

@@ -46,10 +46,25 @@ export default tool({
       session.close()
       return `Clause not found in ${path.basename(file)}: ${JSON.stringify(args.clause)}`
     }
-    const oldText = session.projectAnchor(target.id).markdown.trim()
+    // projectAnchor emits the block's addressing token (`{#p:body:UNID}`) ahead of
+    // its text and takes no setting to suppress it — strip every `{#…}` marker so
+    // the captured clause is the human-readable text the reviewer sees struck
+    // through, not the engine's internal anchor.
+    const oldText = session.projectAnchor(target.id).markdown.replace(/\{#[^}]*\}/g, "").trim()
     session.close()
 
     const author = args.author ?? "doc.haus"
+    // Recording the proposal is gated on the matter owner's approval (permission
+    // "redline" in opencode.json) — the redline review queue is itself a work
+    // product, so the assistant must not stack proposals into it unasked.
+    // ctx.ask blocks until they reply and throws on reject. "Always" approves
+    // future proposals against this document only.
+    await ctx.ask({
+      permission: "redline",
+      patterns: [file],
+      always: [file],
+      metadata: { document: path.basename(file), clause: args.clause, replacement: args.replacement, author },
+    })
     const id = recordRedline(ctx.directory, {
       docPath: file,
       docName: path.basename(file),

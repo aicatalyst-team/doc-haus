@@ -17,6 +17,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "docxodus@6.4.0": "patches/docxodus@6.4.0.patch",
+  },
   "packages": {
     "@huggingface/jinja": ["@huggingface/jinja@0.2.2", "", {}, "sha512-/KPde26khDUIPkTGU82jdtTW9UAuvUTumCAbFs/7giR0SxsvZC4hru51PBvpijH6BVkHcROcvZM/lpy5h1jRRA=="],
 

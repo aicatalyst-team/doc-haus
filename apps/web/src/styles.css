@@ -1697,3 +1697,38 @@ button.linklike:hover {
     transform: none;
   }
 }
+
+/* Approval card for a parked edit-tool call (see ChatPanel PermissionCard).
+   Accent border so a waiting request reads as the thing blocking the turn. */
+.permission-card {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.permission-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.permission-preview {
+  margin-bottom: 8px;
+}
+
+.permission-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.permission-actions button {
+  font-size: 13px;
+}
+
+.permission-reject {
+  border-color: var(--danger);
+  color: var(--danger);
+}

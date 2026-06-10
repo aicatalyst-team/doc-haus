@@ -22,6 +22,21 @@ export default tool({
     const file = path.isAbsolute(args.document) ? args.document : path.join(ctx.directory, args.document)
     if (!existsSync(file)) return `Document not found in this matter: ${args.document}`
 
+    // Replace rewrites the canonical .docx in place with no review step, so it
+    // is gated on the matter owner's approval (permission "word-integration" in
+    // opencode.json). ctx.ask blocks until they reply and throws on reject —
+    // asked before the Docxodus session opens so a rejection leaks nothing.
+    // "Always" approves future edits to this document only.
+    if (args.action === "replace") {
+      if (!args.find || args.replace === undefined) return 'Replace requires both "find" and "replace".'
+      await ctx.ask({
+        permission: "word-integration",
+        patterns: [file],
+        always: [file],
+        metadata: { document: path.basename(file), find: args.find, replace: args.replace },
+      })
+    }
+
     const dx = await docxodus()
     const session = dx.openDocxSession(await Bun.file(file).bytes(), {})
 
@@ -31,12 +46,7 @@ export default tool({
       return { title: `Read ${path.basename(file)}`, output: markdown }
     }
 
-    if (!args.find || args.replace === undefined) {
-      session.close()
-      return 'Replace requires both "find" and "replace".'
-    }
-
-    const targets = session.findAllByText(args.find)
+    const targets = session.findAllByText(args.find!)
     if (!targets.length) {
       session.close()
       return `Text not found in ${path.basename(file)}: ${JSON.stringify(args.find)}`

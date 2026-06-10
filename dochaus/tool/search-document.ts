@@ -2,6 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { Database } from "bun:sqlite"
 import { existsSync } from "node:fs"
 import path from "node:path"
+import { formatCitations } from "../lib/citations"
 
 // doc.haus retrieval tool. Reads the per-matter legal.db that
 // `services/ingest` populates, embeds the query with the same local MiniLM model
@@ -112,13 +113,9 @@ export default tool({
       score,
     }))
 
-    const output = citations
-      .map((c, i) => `${i + 1}. [${c.documentName} § ${c.section}] (score ${c.score.toFixed(3)})\n${c.excerpt}`)
-      .join("\n\n")
-
     return {
       title: `${citations.length} passage(s) for "${args.query}"`,
-      output: output || "No relevant passages found.",
+      output: formatCitations(citations) || "No relevant passages found.",
       metadata: { citations },
     }
   },
