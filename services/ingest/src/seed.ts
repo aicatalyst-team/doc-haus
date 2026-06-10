@@ -1,4 +1,18 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx"
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  ImageRun,
+  AlignmentType,
+  BorderStyle,
+  Footer,
+  PageNumber,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+} from "docx"
 import { mkdirSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { createMatter, listMatters } from "./matter"
@@ -88,34 +102,164 @@ const CLAUSES: [string, string][] = [
   ],
 ]
 
+// House palette for the (fictional) firm's letterhead.
+const NAVY = "1C2B3A"
+const GOLD = "C9A24B"
+const INK = "222222"
+
+// The firm's emblem — a serif "A&C" monogram in a gold-ruled navy square. A
+// static asset (see assets/README.md for how it was drawn); read at build time
+// so the .docx carries a real embedded image with no image-processing dependency.
+const logoPng = await Bun.file(path.join(import.meta.dir, "..", "assets", "logo.png")).bytes()
+
+// 22 half-points = 11pt body; clause/heading sizes follow. Rules are drawn as
+// bottom paragraph borders so they print without a table.
+const RULE = { bottom: { style: BorderStyle.SINGLE, size: 6, space: 4, color: GOLD } }
+
 function body(text: string) {
-  return new Paragraph({ children: [new TextRun(text)], spacing: { after: 160 } })
+  return new Paragraph({
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { after: 160, line: 276 },
+    children: [new TextRun(text)],
+  })
 }
 
 function clause([title, text]: [string, string]) {
+  const [num, ...rest] = title.split(". ")
   return [
-    new Paragraph({ children: [new TextRun({ text: title, bold: true })], spacing: { before: 160, after: 60 } }),
+    new Paragraph({
+      spacing: { before: 220, after: 60 },
+      children: [
+        new TextRun({ text: `${num}.`, bold: true, color: GOLD }),
+        new TextRun({ text: `  ${rest.join(". ")}`, bold: true, color: NAVY, allCaps: true, size: 20 }),
+      ],
+    }),
     body(text),
   ]
 }
 
+// Two-column block: recipient on the left, our ref / date on the right. A
+// borderless table keeps the columns aligned the way a real letter sets them.
+function metaCell(lines: string[], alignment: (typeof AlignmentType)[keyof typeof AlignmentType]) {
+  return new TableCell({
+    width: { size: 50, type: WidthType.PERCENTAGE },
+    margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    children: lines.map(
+      (text, i) =>
+        new Paragraph({
+          alignment,
+          spacing: { after: 20 },
+          children: [new TextRun({ text, bold: i === 0, color: INK, size: 19 })],
+        }),
+    ),
+  })
+}
+
+const NO_BORDERS = {
+  top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+  bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+  left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+  right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+  insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
+  insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
+}
+
 const doc = new Document({
+  styles: { default: { document: { run: { font: "Georgia", size: 22, color: INK } } } },
   sections: [
     {
+      properties: { page: { margin: { top: 1100, bottom: 1100, left: 1300, right: 1300 } } },
+      footers: {
+        default: new Footer({
+          children: [
+            new Paragraph({
+              border: { top: { style: BorderStyle.SINGLE, size: 4, space: 6, color: GOLD } },
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 60 },
+              children: [
+                new TextRun({
+                  text: "Aldgate & Crane LLP — a limited liability partnership registered in England and Wales (OC384726).  ",
+                  size: 14,
+                  color: "888888",
+                }),
+                new TextRun({ text: "Authorised and regulated by the Solicitors Regulation Authority.", size: 14, color: "888888" }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ children: ["Page ", PageNumber.CURRENT, " of ", PageNumber.TOTAL_PAGES], size: 14, color: "888888" })],
+            }),
+          ],
+        }),
+      },
       children: [
-        new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("ALDGATE & CRANE LLP")] }),
-        body("Solicitors — 14 Saffron Court, London EC3N 4QX"),
-        body("Aldgate Mills Limited — FAO: Ms R. Okafor, Director — 27 Wharf Road, London E1 8GW"),
-        body("3 June 2026 — Our ref: A&C/2026-0042"),
-        new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("LETTER OF ENGAGEMENT")] }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 40 },
+          children: [new ImageRun({ data: logoPng, type: "png", transformation: { width: 76, height: 76 } })],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 20 },
+          children: [new TextRun({ text: "ALDGATE & CRANE LLP", bold: true, color: NAVY, size: 30, allCaps: true })],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 120 },
+          border: RULE,
+          children: [new TextRun({ text: "S O L I C I T O R S", color: GOLD, size: 16 })],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 240 },
+          children: [
+            new TextRun({ text: "14 Saffron Court, London EC3N 4QX", size: 18, color: "555555" }),
+            new TextRun({ text: "   ·   +44 (0)20 7946 0042   ·   law@aldgatecrane.co.uk", size: 18, color: "555555" }),
+          ],
+        }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: NO_BORDERS,
+          rows: [
+            new TableRow({
+              children: [
+                metaCell(
+                  ["Aldgate Mills Limited", "FAO: Ms R. Okafor, Director", "27 Wharf Road", "London E1 8GW"],
+                  AlignmentType.LEFT,
+                ),
+                metaCell(["Our ref: A&C/2026-0042", "3 June 2026", "By email and post"], AlignmentType.RIGHT),
+              ],
+            }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 240, after: 160 },
+          children: [new TextRun({ text: "LETTER OF ENGAGEMENT", bold: true, color: NAVY, size: 26, allCaps: true })],
+        }),
         body("Dear Ms Okafor,"),
-        body(
-          "Re: Proposed acquisition of the long leasehold of Unit 5, Saffron Wharf, London E1. Thank you for instructing Aldgate & Crane LLP. This letter sets out the basis on which we will act for you. Please read it, and let us know if anything is unclear, before signing and returning the acceptance at the end.",
-        ),
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { after: 160, line: 276 },
+          children: [
+            new TextRun({ text: "Re: Proposed acquisition of the long leasehold of Unit 5, Saffron Wharf, London E1. ", bold: true }),
+            new TextRun(
+              "Thank you for instructing Aldgate & Crane LLP. This letter sets out the basis on which we will act for you. Please read it, and let us know if anything is unclear, before signing and returning the acceptance at the end.",
+            ),
+          ],
+        }),
         ...CLAUSES.flatMap(clause),
+        new Paragraph({ spacing: { before: 240, after: 160 }, border: RULE, children: [] }),
         body("Yours sincerely,"),
-        body("Daniel Crane — Partner, for and on behalf of Aldgate & Crane LLP"),
-        body("Signed (client): ____________________   Date: ____________"),
+        new Paragraph({
+          spacing: { before: 200, after: 40 },
+          children: [new TextRun({ text: "Daniel Crane", bold: true, color: NAVY })],
+        }),
+        body("Partner, for and on behalf of Aldgate & Crane LLP"),
+        new Paragraph({
+          spacing: { before: 240, after: 40 },
+          children: [new TextRun({ text: "Signed (client):  ____________________________     Date:  ______________", color: INK })],
+        }),
         body("Ms R. Okafor, for and on behalf of Aldgate Mills Limited"),
       ],
     },
