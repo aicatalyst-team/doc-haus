@@ -9,6 +9,7 @@ import {
   settingsClient,
   type Client,
 } from "../api/opencode"
+import { defaultProvider, pickForProvider, providerOf } from "../models"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 
@@ -23,6 +24,9 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
   const client = useMemo<Client>(() => settingsClient(), [])
   const [all, setAll] = useState<Provider[]>([])
   const [connected, setConnected] = useState<Set<string>>(new Set())
+  // Both models are locked to one provider so they can never straddle clouds
+  // (the Auto router runs the fast model — see routeAgent).
+  const [provider, setProvider] = useState("")
   const [primary, setPrimary] = useState("")
   const [fast, setFast] = useState("")
   const [notice, setNotice] = useState("")
@@ -71,14 +75,30 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
     [all, connected],
   )
 
-  // Once models become available, preselect the best primary + fast for whatever
-  // provider was detected (see MODEL_PREFS), so the modal is one confirming click.
+  // Once models become available, seed the provider — the one a saved model
+  // already uses, else the priority default (see PROVIDER_PRIORITY) — then
+  // preselect its best primary + fast (see MODEL_PREFS), so the modal is one
+  // confirming click. Keep any already-set value so re-opening shows live config.
   useEffect(() => {
     if (!models.length) return
-    const defaults = pickDefaults(models)
+    const seed = providerOf(primary) || defaultProvider(models)
+    const defaults = pickForProvider(models, seed)
+    setProvider((v) => v || seed)
     setPrimary((p) => p || defaults.primary)
     setFast((f) => f || defaults.fast)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [models])
+
+  // Switching provider re-clamps both slots into it: keep a model already on the
+  // new provider, otherwise drop to that provider's curated default.
+  function changeProvider(id: string) {
+    setProvider(id)
+    const defaults = pickForProvider(models, id)
+    setPrimary((p) => (providerOf(p) === id ? p : defaults.primary))
+    setFast((f) => (providerOf(f) === id ? f : defaults.fast))
+  }
+
+  const providerModels = models.filter((m) => m.providerId === provider)
 
   // Providers connectable with a typed API key: the whole catalog minus ones
   // already ready, since any provider is keyable through auth.set.
@@ -105,12 +125,28 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
               </p>
 
               <section className="settings-section">
+                <h3>Provider</h3>
+                <p className="settings-hint muted">
+                  Both models run on this provider, so they can't end up on different clouds.
+                </p>
+                <div className="row settings-row">
+                  <select value={provider} onChange={(e) => changeProvider(e.target.value)}>
+                    {connectedProviders.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </section>
+
+              <section className="settings-section">
                 <h3>Primary model</h3>
                 <p className="settings-hint muted">Handles every matter unless an assistant pins its own model.</p>
                 <div className="row settings-row">
                   <select value={primary} onChange={(e) => setPrimary(e.target.value)}>
                     <option value="">Select a model</option>
-                    {models.map((m) => (
+                    {providerModels.map((m) => (
                       <option key={m.value} value={m.value}>
                         {m.label}
                       </option>
@@ -127,7 +163,7 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
                 <div className="row settings-row">
                   <select value={fast} onChange={(e) => setFast(e.target.value)}>
                     <option value="">Same as primary</option>
-                    {models.map((m) => (
+                    {providerModels.map((m) => (
                       <option key={m.value} value={m.value}>
                         {m.label}
                       </option>
@@ -252,55 +288,4 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
       </div>
     </div>
   )
-}
-
-type ModelOption = { value: string; label: string; providerId: string; modelId: string }
-
-// Curated best primary + fast model per provider, as ordered model-id patterns:
-// the first pattern that matches a real catalog id wins. Order encodes the
-// preference, so for Bedrock the global cross-region inference profile is tried
-// before any single-region variant. Patterns, not hardcoded ids, so a catalog
-// refresh that renames a variant still resolves.
-const MODEL_PREFS: Record<string, { primary: RegExp[]; fast: RegExp[] }> = {
-  // Anthropic on Bedrock — Opus 4.8 primary, Haiku 4.5 fast, both via the global
-  // inference profile (global.anthropic.*) when available.
-  "amazon-bedrock": {
-    primary: [/^global\.anthropic\.claude-opus-4-8/i, /anthropic\.claude-opus-4-8/i],
-    fast: [/^global\.anthropic\.claude-haiku-4-5/i, /anthropic\.claude-haiku-4-5/i],
-  },
-  // Vertex — Gemini 3.5 Flash for both primary and fast.
-  "google-vertex": {
-    primary: [/^gemini-3\.5-flash$/i, /gemini-3\.5-flash/i],
-    fast: [/^gemini-3\.5-flash$/i, /gemini-3\.5-flash/i],
-  },
-  // Azure OpenAI — GPT-5.5 primary, its mini variant for fast.
-  azure: {
-    primary: [/^gpt-5\.5$/i, /gpt-5\.5(?!.*mini)(?!.*nano)/i],
-    fast: [/gpt-5\.5-mini/i, /o4-mini/i, /mini/i],
-  },
-}
-
-// First-run defaults favour one provider for BOTH slots, chosen by this priority
-// rather than catalog order: Vertex/Gemini is the doc.haus default, then Bedrock,
-// then Azure. Both models coming from the same provider keeps them from straddling
-// providers — the Auto router runs the fast model, so a fast model on a different
-// provider than the primary is a misconfiguration (see routeAgent).
-const PROVIDER_PRIORITY = ["google-vertex", "amazon-bedrock", "azure"]
-
-// Both defaults come from the first priority provider present in the catalog that
-// resolves a curated primary: Vertex -> Gemini 3.5 Flash for both; Bedrock -> Opus
-// 4.8 (global) primary, Haiku 4.5 (global) fast. With no curated provider present,
-// fall back to the first model as primary and an obvious cheap model as fast.
-function pickDefaults(models: ModelOption[]) {
-  const match = (id: string, kind: "primary" | "fast") =>
-    (MODEL_PREFS[id]?.[kind] ?? [])
-      .map((re) => models.find((m) => m.providerId === id && re.test(m.modelId)))
-      .find(Boolean)?.value
-  for (const id of PROVIDER_PRIORITY) {
-    const primary = match(id, "primary")
-    if (primary) return { primary, fast: match(id, "fast") ?? primary }
-  }
-  const primary = models[0].value
-  const fast = models.find((m) => /flash|mini|haiku|lite|nano|small|fast/i.test(m.label))?.value ?? primary
-  return { primary, fast }
 }

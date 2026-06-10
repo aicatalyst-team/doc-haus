@@ -13,6 +13,7 @@ import {
   settingsClient,
   type Client,
 } from "../api/opencode"
+import { defaultProvider, pickForProvider, providerOf } from "../models"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 type Methods = Record<string, { type: "oauth" | "api"; label: string }[]>
@@ -26,6 +27,9 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
   const [all, setAll] = useState<Provider[]>([])
   const [connected, setConnected] = useState<Set<string>>(new Set())
   const [methods, setMethods] = useState<Methods>({})
+  // Both models are locked to one provider so they can never straddle clouds
+  // (the Auto router runs the fast model — see routeAgent).
+  const [provider, setProvider] = useState("")
   const [model, setModel] = useState("")
   // The engine's small/fast model, used for title generation and for routing the
   // chat's "Auto" assistant. Picked from the same provider models as the default.
@@ -92,10 +96,36 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // Every model across connected providers, as the "providerID/modelID" strings
-  // the engine expects, for the default-model picker.
+  // the engine expects, for the model pickers.
   const models = connectedProviders
-    .flatMap((p) => Object.values(p.models).map((m) => ({ value: `${p.id}/${m.id}`, label: `${p.name} — ${m.name}` })))
+    .flatMap((p) =>
+      Object.values(p.models).map((m) => ({
+        value: `${p.id}/${m.id}`,
+        label: `${p.name} — ${m.name}`,
+        providerId: p.id,
+        modelId: m.id,
+      })),
+    )
     .sort((a, b) => a.label.localeCompare(b.label))
+
+  // Seed the provider from the saved default's provider, else the priority
+  // default, once models load. Keep any value already chosen this session.
+  useEffect(() => {
+    if (!models.length) return
+    setProvider((v) => v || providerOf(model) || defaultProvider(models))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [models.length])
+
+  // Switching provider re-clamps both slots into it: keep a model already on the
+  // new provider, otherwise drop to that provider's curated default.
+  function changeProvider(id: string) {
+    setProvider(id)
+    const defaults = pickForProvider(models, id)
+    setModel((m) => (providerOf(m) === id ? m : defaults.primary))
+    setSmallModelValue((s) => (providerOf(s) === id ? s : defaults.fast))
+  }
+
+  const providerModels = models.filter((m) => m.providerId === provider)
 
   return (
     <div className="viewer-overlay" onClick={onClose}>
@@ -114,57 +144,57 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
           {notice && <p className="settings-notice">{notice}</p>}
 
           <section className="settings-section">
-            <h3>Default model</h3>
-            <p className="settings-hint muted">Used for every matter unless an assistant pins its own model.</p>
+            <h3>Models</h3>
+            <p className="settings-hint muted">
+              Pick a provider, then a default and a fast model from it — both stay on the one provider, so the Auto
+              router (which runs the fast model) can never call across clouds.
+            </p>
             <div className="row settings-row">
-              <select value={model} onChange={(e) => setModel(e.target.value)} disabled={models.length === 0}>
-                <option value="">{models.length ? "Select a model" : "Connect a provider first"}</option>
-                {models.map((m) => (
+              <span className="muted">Provider</span>
+              <select value={provider} onChange={(e) => changeProvider(e.target.value)} disabled={models.length === 0}>
+                <option value="">{models.length ? "Select a provider" : "Connect a provider first"}</option>
+                {connectedProviders.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="row settings-row">
+              <span className="muted">Default</span>
+              <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!provider}>
+                <option value="">Select a model</option>
+                {providerModels.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="row settings-row">
+              <span className="muted">Fast</span>
+              <select value={smallModel} onChange={(e) => setSmallModelValue(e.target.value)} disabled={!provider}>
+                <option value="">Same as default</option>
+                {providerModels.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="row settings-row">
               <button
                 className="primary"
                 disabled={!model}
                 onClick={async () => {
+                  // Save both slots together so the persisted config is always
+                  // same-provider — no window where default and fast disagree.
                   await setDefaultModel(model)
+                  await setSmallModel(smallModel || model)
                   // On first run, picking a model is the whole point of the modal —
                   // close once it's saved so the user lands straight in the app.
                   if (firstRun) return onClose()
-                  setNotice(`Default model set to ${model}.`)
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>Fast model</h3>
-            <p className="settings-hint muted">
-              A cheap model for quick tasks — title generation and routing the chat's Auto assistant.
-            </p>
-            <div className="row settings-row">
-              <select
-                value={smallModel}
-                onChange={(e) => setSmallModelValue(e.target.value)}
-                disabled={models.length === 0}
-              >
-                <option value="">{models.length ? "Select a model" : "Connect a provider first"}</option>
-                {models.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="primary"
-                disabled={!smallModel}
-                onClick={async () => {
-                  await setSmallModel(smallModel)
-                  setNotice(`Fast model set to ${smallModel}.`)
+                  setNotice(`Models saved.`)
                 }}
               >
                 Save
