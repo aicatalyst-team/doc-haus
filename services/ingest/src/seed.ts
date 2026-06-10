@@ -108,8 +108,8 @@ const GOLD = "C9A24B"
 const INK = "222222"
 
 // The firm's emblem — a serif "A&C" monogram in a gold-ruled navy square. A
-// static asset (see assets/README.md for how it was drawn); read at build time
-// so the .docx carries a real embedded image with no image-processing dependency.
+// committed static asset, read at build time so the .docx carries a real
+// embedded image with no image-processing dependency.
 const logoPng = await Bun.file(path.join(import.meta.dir, "..", "assets", "logo.png")).bytes()
 
 // 22 half-points = 11pt body; clause/heading sizes follow. Rules are drawn as
