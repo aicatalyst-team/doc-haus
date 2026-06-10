@@ -30,13 +30,15 @@ export GOOGLE_VERTEX_LOCATION="${GOOGLE_VERTEX_LOCATION:-global}"
 # Install dependencies before launch so a fresh clone just works. The engine runs
 # from the repo-root workspace; dochaus (its config-layer tools), the ingest
 # service, and the web app each carry their own lockfile, so each needs its own
-# install. bun install is idempotent and fast once a lockfile is satisfied, so
-# running it every launch also picks up a pulled change to any package.json with
-# no manual step. Set SKIP_INSTALL=1 to skip it on quick restarts.
+# install. --frozen-lockfile keeps boot supply-chain-safe: it only ever installs
+# the hash-verified versions committed in bun.lock and fails loudly if a
+# package.json has drifted — dependency changes must go through a deliberate
+# `bun install` whose bun.lock diff gets reviewed, never a routine launch.
+# Set SKIP_INSTALL=1 to skip it on quick restarts.
 if [ -z "${SKIP_INSTALL:-}" ]; then
   for dir in . dochaus services/ingest apps/web; do
     echo "doc.haus: installing dependencies ($dir)"
-    (cd "$dir" && bun install)
+    (cd "$dir" && bun install --frozen-lockfile)
   done
 fi
 
