@@ -27,6 +27,19 @@ mkdir -p "$WORKSPACE_ROOT"
 # provider — set GOOGLE_VERTEX_PROJECT then, or leave them unset for any other.
 export GOOGLE_VERTEX_LOCATION="${GOOGLE_VERTEX_LOCATION:-global}"
 
+# Install dependencies before launch so a fresh clone just works. The engine runs
+# from the repo-root workspace; dochaus (its config-layer tools), the ingest
+# service, and the web app each carry their own lockfile, so each needs its own
+# install. bun install is idempotent and fast once a lockfile is satisfied, so
+# running it every launch also picks up a pulled change to any package.json with
+# no manual step. Set SKIP_INSTALL=1 to skip it on quick restarts.
+if [ -z "${SKIP_INSTALL:-}" ]; then
+  for dir in . dochaus services/ingest apps/web; do
+    echo "doc.haus: installing dependencies ($dir)"
+    (cd "$dir" && bun install)
+  done
+fi
+
 # The three fixed ports the stack binds: engine (web hardcodes :4096), ingest
 # (services/ingest defaults :4500), web (vite :5173). The engine prefers 4096 but
 # silently falls back to a random port when 4096 is taken — the web app can only
