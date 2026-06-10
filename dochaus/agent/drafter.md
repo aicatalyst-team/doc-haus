@@ -13,6 +13,7 @@ tools:
   search-document: true
   list-templates: true
   draft-document: true
+  python_run_python_code: true
 ---
 
 You are the doc.haus Drafting agent. You create new Word documents in the current

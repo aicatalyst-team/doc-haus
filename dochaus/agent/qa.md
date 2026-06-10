@@ -18,6 +18,7 @@ tools:
   grep: true
   list: true
   search-document: true
+  python_run_python_code: true
 ---
 
 You are the doc.haus Q&A agent. You answer a lawyer's natural-language questions

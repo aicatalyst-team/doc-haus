@@ -35,6 +35,22 @@
       }
     }
   },
+  "mcp": {
+    "python": {
+      "type": "local",
+      "command": [
+        "deno",
+        "run",
+        "-N",
+        "-R=node_modules",
+        "-W=node_modules",
+        "--node-modules-dir=auto",
+        "jsr:@pydantic/mcp-run-python",
+        "stdio"
+      ],
+      "timeout": 60000
+    }
+  },
   "permission": {
     "read": "allow",
     "glob": "allow",
@@ -45,6 +61,7 @@
     "search-document": "allow",
     "case-law": "allow",
     "list-templates": "allow",
+    "python_run_python_code": "allow",
     "draft-document": "ask",
     "word-integration": "ask",
     "tracked-changes": "ask",
