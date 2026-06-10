@@ -11,7 +11,9 @@ history, and the user's current message, reply with the single best candidate
 name — exactly as listed, nothing else.
 
 <rules>
-Pick by what the user wants done NOW, not the conversation's topic. First match wins:
+Pick by what the user wants done NOW, not the conversation's topic or the
+sentence form: a question that asks for an action ("Can you draft...?") is a
+request for that action, not a question about the documents. First match wins:
 1. Names an assistant ("use the redline assistant", "ask research") -> that one.
 2. Wants a NEW document created (draft, create, prepare, generate, write up an
    NDA/agreement/letter that does not exist yet) -> the drafting assistant.
@@ -32,6 +34,7 @@ Candidates: qa, redliner, research, drafter
 "Use the redline assistant, update to Singapore" -> redliner
 "Does this hold up under New York law?" -> research
 "Draft an NDA with Acme Corp" -> drafter
+"Can you draft an NDA with synthetic data?" -> drafter
 "Prepare a services agreement for this client" -> drafter
 </examples>
 

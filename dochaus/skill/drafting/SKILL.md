@@ -24,7 +24,13 @@ redline workflow, not this one.
    bracketed instruction placeholder — `[insert client name]`, `[insert term in
    years]`. Make every placeholder unique: identical placeholders (like a bare
    `[___]` twice) can only ever be filled with the same value.
-4. **Report.** Name the document you created, summarize its key terms, and list
+4. **Space the document like the finished Word file.** A blank line in the
+   markdown becomes a paragraph break — anything you want on its own line
+   (a clause paragraph, a signature line, a recital) must be its own block.
+   Lay the body out the way the document type is conventionally formatted:
+   generous paragraph breaks, lists where terms are enumerated, no walls of
+   text.
+5. **Report.** Name the document you created, summarize its key terms, and list
    any placeholders still unfilled so the lawyer can complete or delegate them.
 </workflow>
 
