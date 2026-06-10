@@ -1115,6 +1115,31 @@ textarea {
   font-size: 13px;
 }
 
+/* In-chat drafted-document card: the new file's name with a link into the
+   document viewer, so a draft the assistant just created is one click away. */
+.drafts {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.draft-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.draft-doc {
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* Empty chat: a quiet intro line plus clickable starter questions. */
 .chat-empty {
   margin: auto 0;

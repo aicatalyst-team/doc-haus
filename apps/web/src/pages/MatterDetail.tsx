@@ -142,6 +142,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
                 setFocusRedline(redlineId)
                 setViewing(name)
               }}
+              onDocumentsChanged={refresh}
             />
           </div>
           <DocumentUpload
