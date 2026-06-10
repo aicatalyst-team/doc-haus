@@ -2,6 +2,8 @@
 
 <p align="center"><strong>Not a chatbot. A legal team that works on your machine.</strong><br />Open-source multi-agent legal AI — your documents stay on your machine; the redlines land in Word.</p>
 
+<p align="center"><a href="https://doc.haus"><strong>doc.haus</strong></a> — the website, with video demos of everything below.</p>
+
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" /></a>
   <a href="https://github.com/anomalyco/opencode"><img alt="Built on OpenCode" src="https://img.shields.io/badge/built%20on-OpenCode-f59e0b?style=flat-square" /></a>
@@ -47,35 +49,25 @@ conversations, documents, the index — persists on your machine.
 
 ## What you can do
 
-### Every engagement gets its own private workspace
+- **Every engagement gets its own private workspace.** Matters are separate,
+  self-contained workspaces — each holds its documents, conversations, and a private
+  search index, and nothing is shared between them.
+- **Ask in plain English; get citations or redlines.** One conversation handles both:
+  questions come back with the clause cited and quoted, and edit requests land as
+  tracked changes in the `.docx` itself.
+- **Pick an assistant — or let Auto choose.** Switch between focused assistants —
+  *Q&A*, *Redline*, *Research* — or leave it on *Auto* and doc.haus routes each
+  message to the right agent as the conversation moves between asking, editing, and
+  researching.
+- **Run a full multi-agent review in one click.** Pick a workflow like *Full review*
+  and a reviewer, an adversarial challenger, and a summarizer each read every
+  document, then hand back one combined report — the multi-agent engine doc.haus
+  inherits from OpenCode, pointed at contracts.
+- **Review every contract in the matter as a grid.** Define question-columns once —
+  *Liability cap*, *Payment terms*, *Governing law* — and doc.haus answers them for
+  every document in the matter, side by side.
 
-Matters are separate, self-contained workspaces. Each one holds its documents,
-conversations, and a private search index — nothing is shared between them.
-
-<p align="center">
-  <img alt="Matter listing in doc.haus" src="screenshots/matters.png" width="800" />
-</p>
-
-### Ask in plain English; it answers with citations or redlines the document
-
-One conversation handles both. Ask a question and the right agent answers it with the
-clause cited and quoted. Ask for a change and the redlining agent writes it as tracked
-changes into the `.docx` itself — doc.haus picks the right agent for each request
-automatically.
-
-<p align="center">
-  <img alt="Cited answers and tracked-change redlines from one conversation" src="screenshots/conversation.gif" width="800" />
-</p>
-
-### Review every contract in the matter as a grid
-
-Define question-columns once — *Liability cap*, *Payment terms*, *Governing law* — and
-doc.haus answers them for every document in the matter, side by side, instead of one
-conversation at a time.
-
-<p align="center">
-  <img alt="Tabular review grid in doc.haus" src="screenshots/review.gif" width="800" />
-</p>
+Video demos of each on [doc.haus](https://doc.haus).
 
 ## Why firms can trust it
 
@@ -120,6 +112,7 @@ it, and review anything doc.haus produces with a licensed attorney before relyin
 
 ## Learn more
 
+- [doc.haus](https://doc.haus) — the website, with video demos.
 - [docs/architecture.md](docs/architecture.md) — how it works: the three processes, the
   agents and tools, models and providers, running pieces by hand, mergeability.
 - [docs/providers.md](docs/providers.md) — connect Anthropic, OpenAI, Google Vertex, or
