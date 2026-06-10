@@ -1121,6 +1121,66 @@ textarea {
   padding: 8px 2px;
 }
 
+/* Loading placeholder for a reopened conversation: shimmer bubbles that echo the
+   chat rhythm (right-aligned user turn, left-aligned assistant block) so the gap
+   before messages arrive reads as a thread loading, not an empty matter. */
+.chat-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sk-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sk-bubble {
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sk-bubble.sk-user {
+  align-self: flex-end;
+  max-width: 80%;
+  min-width: 140px;
+  background: var(--accent-soft);
+}
+
+.sk-bubble.sk-assistant {
+  align-self: flex-start;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.sk-line {
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--accent-soft) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes sk-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-line {
+    animation: none;
+  }
+}
+
 .chat-empty .starters {
   display: flex;
   flex-direction: column;
