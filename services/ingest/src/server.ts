@@ -14,6 +14,7 @@ import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir } from "./matter"
 import { readGrid, writeGrid, type Grid } from "./grid"
+import { routeAssistant, type RouteRequest } from "./route"
 import { existsSync, rmSync } from "node:fs"
 import path from "node:path"
 
@@ -28,6 +29,14 @@ app.use(
   "*",
   cors({ origin: (origin) => (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ? origin : null) }),
 )
+
+// Route the chat's "Auto" assistant: a fast Gemini model picks which real
+// assistant should answer the outgoing message. Returns the chosen agent name so
+// the web app sends the prompt to a real agent (Auto never reaches the engine).
+app.post("/route", async (c) => {
+  const body = await c.req.json<RouteRequest>()
+  return c.json({ agent: await routeAssistant(body) })
+})
 
 app.get("/matters", (c) => c.json(listMatters()))
 

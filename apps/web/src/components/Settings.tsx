@@ -9,6 +9,7 @@ import {
   setDisabledProviders,
   setProviderKey,
   setProviderOptions,
+  setSmallModel,
   settingsClient,
   type Client,
 } from "../api/opencode"
@@ -26,6 +27,9 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
   const [connected, setConnected] = useState<Set<string>>(new Set())
   const [methods, setMethods] = useState<Methods>({})
   const [model, setModel] = useState("")
+  // The engine's small/fast model, used for title generation and for routing the
+  // chat's "Auto" assistant. Picked from the same provider models as the default.
+  const [smallModel, setSmallModelValue] = useState("")
   const [disabled, setDisabled] = useState<string[]>([])
   const [notice, setNotice] = useState("")
 
@@ -43,6 +47,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
     setConnected(new Set(providers.connected))
     setMethods(auth)
     setModel(cfg.model ?? "")
+    setSmallModelValue(cfg.small_model ?? "")
     setDisabled(cfg.disabled_providers ?? [])
   }
 
@@ -129,6 +134,37 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                   // close once it's saved so the user lands straight in the app.
                   if (firstRun) return onClose()
                   setNotice(`Default model set to ${model}.`)
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>Fast model</h3>
+            <p className="settings-hint muted">
+              A cheap model for quick tasks — title generation and routing the chat's Auto assistant.
+            </p>
+            <div className="row settings-row">
+              <select
+                value={smallModel}
+                onChange={(e) => setSmallModelValue(e.target.value)}
+                disabled={models.length === 0}
+              >
+                <option value="">{models.length ? "Select a model" : "Connect a provider first"}</option>
+                {models.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="primary"
+                disabled={!smallModel}
+                onClick={async () => {
+                  await setSmallModel(smallModel)
+                  setNotice(`Fast model set to ${smallModel}.`)
                 }}
               >
                 Save

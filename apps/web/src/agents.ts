@@ -10,7 +10,8 @@ export type AssistantMeta = { name: string; label: string; description: string }
 // thread you are already in and run in the current chat.
 export type WorkflowMeta = AssistantMeta & { prompt: string; scope: "matter" | "document" }
 
-// Conversational assistants offered in the chat picker.
+// Conversational assistants offered in the chat picker. Every name here MUST be a
+// real agent id in dochaus/agent/*.md — these are sent to the engine verbatim.
 export const CHAT_ASSISTANTS: AssistantMeta[] = [
   {
     name: "qa",
@@ -22,7 +23,27 @@ export const CHAT_ASSISTANTS: AssistantMeta[] = [
     label: "Redline",
     description: "Edits and redlines this matter's documents as tracked changes you accept or reject in Word.",
   },
+  {
+    name: "research",
+    label: "Research",
+    description:
+      "Researches legal questions across the matter's documents and U.S. case law, always with citations to real sources.",
+  },
 ]
+
+// "Auto" is a pseudo-assistant, not a real agent: when it is selected each message
+// is first routed by a cheap model to one of the CHAT_ASSISTANTS, and only that
+// resolved real agent is ever sent to the engine. AUTO stays out of CHAT_ASSISTANTS
+// so the "names match dochaus/agent ids" invariant above holds, and is surfaced at
+// the top of the picker separately. isAuto guards the one place that matters — the
+// send path — so AUTO can never leak to the engine as an agent.
+export const AUTO = "auto"
+export const AUTO_ASSISTANT: AssistantMeta = {
+  name: AUTO,
+  label: "Auto",
+  description: "Picks the best assistant for each message automatically.",
+}
+export const isAuto = (name: string) => name === AUTO
 
 // Multi-step routines launched from the Workflows control. Each runs as its own
 // session and renders into the artifact panel.

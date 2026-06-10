@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import type { Event, Part } from "@opencode-ai/sdk"
 import {
   createSession,
+  getConfig,
   getMessages,
   listPermissions,
   matterClient,
@@ -15,7 +16,8 @@ import {
   type PermissionReply,
   type PermissionRequest,
 } from "../api/opencode"
-import { WORKFLOWS } from "../agents"
+import { routeAssistant } from "../api/ingest"
+import { CHAT_ASSISTANTS, isAuto, WORKFLOWS } from "../agents"
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
 import ModelSelector from "./ModelSelector"
@@ -132,9 +134,10 @@ function humanizeTool(tool: string) {
   return tool.charAt(0).toUpperCase() + tool.slice(1).replace(/-/g, " ")
 }
 
-// The agent name as a byline on an answer. Most names humanize cleanly
-// ("redline" -> "Redline"); the few that don't get a friendlier label here.
-const AGENT_LABELS: Record<string, string> = { qa: "Q&A" }
+// The agent name as a byline on an answer. Prefer the registry's own label (so
+// "qa" reads "Q&A" and "redliner" reads "Redline"); anything off-registry
+// humanizes cleanly ("redline" -> "Redline").
+const AGENT_LABELS: Record<string, string> = Object.fromEntries(CHAT_ASSISTANTS.map((a) => [a.name, a.label]))
 const agentLabel = (name: string) => AGENT_LABELS[name] ?? humanizeTool(name)
 
 // Verbs that turn a raw tool name + its target into a readable action line
@@ -341,6 +344,10 @@ export default function ChatPanel({
   // composer; the turn stays "working" until every request is answered.
   const [permissions, setPermissions] = useState<PermissionRequest[]>([])
   const [editing, setEditing] = useState<{ index: number; draft: string } | null>(null)
+  // While Auto is selected, the real agent the last message routed to — drives the
+  // "Auto · Redline" chip and the in-flight bubble's byline. Cleared when the user
+  // leaves Auto so a stale routing never lingers on the chip.
+  const [resolvedAgent, setResolvedAgent] = useState<string>()
   const [, bump] = useState(0)
 
   const sessionRef = useRef<string>("")
@@ -493,15 +500,54 @@ export default function ChatPanel({
     }
   }
 
+  // Resolve which real agent answers this message. With Auto selected, a cheap
+  // model routes the message to one of the real assistants; otherwise the picked
+  // agent is used as-is. `prior` is the user turns before this one, newest last —
+  // the last two seed the router with conversational context. The result stamps
+  // the user message, so it must be a real agent id: routing never returns "auto",
+  // and any failure or timeout falls back to "qa". The resolved agent drives
+  // the "Auto · <label>" chip and the in-flight bubble's byline.
+  async function resolveAgent(text: string, prior: Turn[]) {
+    if (!isAuto(agent)) return agent
+    const history = prior
+      .filter((t) => t.role === "user")
+      .slice(-2)
+      .map((t) => t.text)
+    const config = await getConfig().catch(() => undefined)
+    const model = (config?.small_model ?? "gemini-3.5-flash").split("/").pop() ?? "gemini-3.5-flash"
+    // Vertex project/location live in the engine config's provider options (set by
+    // connecting Vertex in Settings, not env), so the router must carry them along.
+    const vertex = config?.provider?.["google-vertex"]?.options as
+      | { project?: string; location?: string }
+      | undefined
+    const resolved = await routeAssistant({
+      text,
+      history,
+      candidates: CHAT_ASSISTANTS.map((a) => ({ name: a.name, description: a.description })),
+      model,
+      project: vertex?.project,
+      location: vertex?.location,
+    })
+      .then((r) => r.agent)
+      .catch((err) => {
+        console.warn("Auto routing failed, falling back to Q&A", err)
+        return "qa"
+      })
+    setResolvedAgent(resolved)
+    return resolved
+  }
+
   async function onSend() {
     const text = input.trim()
     if (!text || busy) return
+    const prior = turns
     setTurns((prev) => [...prev, { role: "user", text, citations: [], redlines: [], steps: [] }])
     setInput("")
     setBusy(true)
     partsRef.current.clear()
     rolesRef.current.clear()
     childRef.current.clear()
+    const resolved = await resolveAgent(text, prior)
     // Create the session lazily, titled from this first message so it reads as a
     // distinct conversation in the rail rather than an interchangeable "Q&A".
     if (!sessionRef.current) {
@@ -509,7 +555,7 @@ export default function ChatPanel({
       freshRef.current = true
       onSessionStarted?.()
     }
-    await sendPrompt(client, sessionRef.current, agent, text)
+    await sendPrompt(client, sessionRef.current, resolved, text)
   }
 
   // A workflow is a canned, orchestrated run that streams into the chat like any
@@ -551,8 +597,9 @@ export default function ChatPanel({
     rolesRef.current.clear()
     childRef.current.clear()
     setTurns((prev) => [...prev.slice(0, index), { role: "user", text, citations: [], redlines: [], steps: [] }])
+    const resolved = await resolveAgent(text, turns.slice(0, index))
     await revertMessage(client, sessionRef.current, turn.id)
-    await sendPrompt(client, sessionRef.current, agent, text)
+    await sendPrompt(client, sessionRef.current, resolved, text)
   }
 
   // Optimistic removal — the engine's permission.replied event confirms it, and
@@ -654,7 +701,7 @@ export default function ChatPanel({
         )}
         {busy && (
           <div className="msg assistant">
-            <div className="msg-agent">{agentLabel(agent)}</div>
+            <div className="msg-agent">{agentLabel(isAuto(agent) && resolvedAgent ? resolvedAgent : agent)}</div>
             <StepsPanel steps={live.steps} busy answered={Boolean(live.text)} />
             {live.text ? (
               <Markdown>{live.text}</Markdown>
@@ -673,8 +720,12 @@ export default function ChatPanel({
         <ModelSelector
           available={available}
           value={agent}
+          resolvedLabel={isAuto(agent) && resolvedAgent ? agentLabel(resolvedAgent) : undefined}
           onChange={(a) => {
             onAgentChange(a)
+            // Leaving Auto drops the last routing so the chip does not keep showing
+            // a resolved label under a manually-picked assistant.
+            if (!isAuto(a)) setResolvedAgent(undefined)
             inputRef.current?.focus()
           }}
         />

@@ -64,6 +64,13 @@ export async function setDefaultModel(model: string) {
   return patchConfig({ model })
 }
 
+// Set the engine-wide small/fast model, as a "providerID/modelID" string. The
+// engine uses it for cheap tasks like title generation; doc.haus also reads it to
+// route the chat's "Auto" assistant (see ingest /route).
+export async function setSmallModel(model: string) {
+  return patchConfig({ small_model: model })
+}
+
 // Hide providers from routing entirely. A disabled provider drops out of the
 // catalog, the model picker, and any agent that would route to it.
 export async function setDisabledProviders(ids: string[]) {
