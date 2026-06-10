@@ -81,6 +81,22 @@ export async function deleteDocument(id: string, name: string): Promise<void> {
   await fetch(`${INGEST_URL}/matters/${id}/documents?name=${encodeURIComponent(name)}`, { method: "DELETE" })
 }
 
+// Convert a matter's uploaded .pdf into an editable .docx sibling and index it, so
+// the PDF can enter the DOCX redline pipeline. Returns the new .docx document.
+export async function convertPdfToDocx(id: string, name: string): Promise<IngestResult> {
+  const res = await fetch(`${INGEST_URL}/matters/${id}/documents/convert?name=${encodeURIComponent(name)}`, {
+    method: "POST",
+  })
+  if (!res.ok) throw new Error(`Could not convert ${name} (${res.status})`)
+  return res.json()
+}
+
+// URL the PDF viewer points an <iframe> at — the browser renders the PDF natively
+// from our own ingest service, so the file never leaves for a third-party service.
+export function documentContentUrl(id: string, name: string): string {
+  return `${INGEST_URL}/matters/${id}/documents/content?name=${encodeURIComponent(name)}`
+}
+
 export async function getGrid(id: string): Promise<Grid> {
   const res = await fetch(`${INGEST_URL}/matters/${id}/grid`)
   return res.json()

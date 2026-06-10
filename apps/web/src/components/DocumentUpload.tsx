@@ -102,12 +102,12 @@ export default function DocumentUpload({
           if (files.length) onFiles(files)
         }}
       >
-        {busy ? "Working..." : "Drop .docx contracts here, or click to choose files."}
+        {busy ? "Working..." : "Drop .docx or .pdf contracts here, or click to choose files."}
       </div>
       <input
         ref={input}
         type="file"
-        accept=".docx"
+        accept=".docx,.pdf"
         multiple
         hidden
         onChange={(e) => {

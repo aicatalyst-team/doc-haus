@@ -9,7 +9,8 @@ import {
   setRedlineStatus,
   pendingRedlineCounts,
 } from "./db"
-import { ingestDocx } from "./ingest"
+import { ingestDocument } from "./ingest"
+import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir } from "./matter"
 import { readGrid, writeGrid, type Grid } from "./grid"
@@ -61,7 +62,21 @@ app.post("/matters/:id/documents", async (c) => {
   const body = await c.req.parseBody()
   const file = body["file"] as File
   const buffer = Buffer.from(await file.arrayBuffer())
-  const result = await ingestDocx(dir, file.name, buffer)
+  const result = await ingestDocument(dir, file.name, buffer)
+  return c.json(result)
+})
+
+// Convert an uploaded .pdf into an editable .docx sibling and index it, so a PDF
+// contract can enter the DOCX redline pipeline. The source .pdf is kept; the new
+// .docx lands beside it under the same base name. LibreOffice is used when present
+// on the host, otherwise a MIT text-only rebuild (see convert.ts).
+app.post("/matters/:id/documents/convert", async (c) => {
+  const dir = matterDir(c.req.param("id"))
+  const name = path.basename(c.req.query("name") ?? "")
+  const file = path.join(dir, name)
+  if (!name.toLowerCase().endsWith(".pdf") || !existsSync(file)) return c.notFound()
+  const docxName = name.replace(/\.pdf$/i, ".docx")
+  const result = await ingestDocument(dir, docxName, await pdfToDocx(Buffer.from(await Bun.file(file).bytes())))
   return c.json(result)
 })
 
@@ -90,9 +105,12 @@ app.put("/matters/:id/grid", async (c) => {
 app.get("/matters/:id/documents/content", async (c) => {
   const file = path.join(matterDir(c.req.param("id")), path.basename(c.req.query("name") ?? ""))
   if (!existsSync(file)) return c.notFound()
+  const mime = file.toLowerCase().endsWith(".pdf")
+    ? "application/pdf"
+    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   return new Response(Bun.file(file).stream(), {
     headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "Content-Type": mime,
       "Content-Disposition": `inline; filename="${path.basename(file)}"`,
     },
   })
@@ -132,7 +150,7 @@ app.post("/matters/:id/redlines/:rid/accept", async (c) => {
   const row = getRedline(openDb(dir), Number(c.req.param("rid")))
   if (!row || row.status !== "pending") return c.json({ error: "Redline not found or already resolved" }, 404)
   const baked = await bake(await Bun.file(row.doc_path).bytes(), [row])
-  await ingestDocx(dir, row.doc_name, Buffer.from(baked))
+  await ingestDocument(dir, row.doc_name, Buffer.from(baked))
   setRedlineStatus(openDb(dir), row.id, "accepted")
   return c.json({ ok: true })
 })
@@ -153,7 +171,7 @@ app.post("/matters/:id/redlines/accept-all", async (c) => {
   if (!existsSync(file) || !existsSync(path.join(dir, ".dochaus", "legal.db"))) return c.json({ ok: true, accepted: 0 })
   const rows = listPendingRedlines(openDb(dir), file)
   if (rows.length) {
-    await ingestDocx(dir, path.basename(file), Buffer.from(await bake(await Bun.file(file).bytes(), rows)))
+    await ingestDocument(dir, path.basename(file), Buffer.from(await bake(await Bun.file(file).bytes(), rows)))
     for (const row of rows) setRedlineStatus(openDb(dir), row.id, "accepted")
   }
   return c.json({ ok: true, accepted: rows.length })

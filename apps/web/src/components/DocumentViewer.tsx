@@ -8,6 +8,8 @@ import {
   rejectRedline,
   acceptAllRedlines,
   rejectAllRedlines,
+  convertPdfToDocx,
+  documentContentUrl,
   type Redline,
 } from "../api/ingest"
 
@@ -23,6 +25,7 @@ export default function DocumentViewer({
   focusId,
   onClose,
   onChanged,
+  onConverted,
 }: {
   matterId: string
   name: string
@@ -31,7 +34,14 @@ export default function DocumentViewer({
   focusId?: number
   onClose: () => void
   onChanged?: () => void
+  // Called with the new .docx name after a PDF is converted, so the parent can
+  // swap the viewer onto the freshly indexed editable document.
+  onConverted?: (name: string) => void
 }) {
+  // PDFs render natively in an <iframe>; the docxodus WASM path and the redline
+  // pipeline are DOCX-only. A PDF carries no redlines until it is converted.
+  const isPdf = name.toLowerCase().endsWith(".pdf")
+  const [converting, setConverting] = useState(false)
   const { isReady, error: wasmError, convertToHtml } = useDocxodus("/wasm/")
   const [html, setHtml] = useState<string>()
   const [redlines, setRedlines] = useState<Redline[]>([])
@@ -43,7 +53,7 @@ export default function DocumentViewer({
   const focusRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!isReady) return
+    if (!isReady || isPdf) return
     let cancelled = false
     setHtml(undefined)
     setError(undefined)
@@ -98,6 +108,49 @@ export default function DocumentViewer({
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  // Convert this PDF into an editable .docx sibling, index it, and swap the viewer
+  // onto the new document so it can be redlined like any other contract.
+  async function convert() {
+    setConverting(true)
+    setError(undefined)
+    try {
+      const result = await convertPdfToDocx(matterId, name)
+      onChanged?.()
+      onConverted?.(result.name)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setConverting(false)
+    }
+  }
+
+  if (isPdf)
+    return (
+      <div className="viewer-overlay" onClick={onClose}>
+        <div className="viewer-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="viewer-bar">
+            <span className="viewer-title">{name}</span>
+            <div className="viewer-bar-actions">
+              <button
+                onClick={convert}
+                disabled={converting}
+                title="Convert this PDF to an editable Word document so it can be redlined"
+              >
+                {converting ? "Converting..." : "Convert to DOCX"}
+              </button>
+              <button onClick={onClose}>Close</button>
+            </div>
+          </div>
+          <div className="viewer-body">
+            <div className="viewer-doc">
+              {error && <p className="muted">{error}</p>}
+              <iframe className="pdf-render" title={name} src={documentContentUrl(matterId, name)} />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
 
   return (
     <div className="viewer-overlay" onClick={onClose}>

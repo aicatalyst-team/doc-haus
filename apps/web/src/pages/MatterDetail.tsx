@@ -152,6 +152,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
           focusId={focusRedline}
           onClose={() => setViewing(undefined)}
           onChanged={refresh}
+          onConverted={(name) => setViewing(name)}
         />
       )}
     </>
