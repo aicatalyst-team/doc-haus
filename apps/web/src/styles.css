@@ -1203,6 +1203,7 @@ textarea {
 }
 
 .composer {
+  position: relative;
   display: flex;
   gap: 8px;
   margin-top: 12px;

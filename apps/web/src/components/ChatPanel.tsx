@@ -694,11 +694,10 @@ export default function ChatPanel({
           Send
         </button>
       </div>
-      <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-        Cmd/Ctrl + Enter to send. Answers cite [Document § section] from indexed documents.
-      </p>
-      <p className="muted" style={{ marginTop: 2, fontSize: 12 }}>
-        Not legal advice. AI can make mistakes — verify answers against the cited source before relying on them.
+      <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
+        Not legal advice. AI can make mistakes.
+        <br />
+        Verify answers against the cited source before relying on them.
       </p>
     </div>
   )
