@@ -3,24 +3,40 @@ import { Route, Routes } from "react-router-dom"
 import Matters from "./pages/Matters"
 import MatterDetail from "./pages/MatterDetail"
 import Settings from "./components/Settings"
+import Onboarding from "./components/Onboarding"
 import Sidebar from "./components/Sidebar"
 import { ToastProvider } from "./components/Toast"
 import { getConfig } from "./api/opencode"
 
 export default function App() {
   const [settings, setSettings] = useState(false)
-  // First launch with no default model picked yet: there is no hard-coded default
-  // (a client may run Vertex, Anthropic, a local model...), so open Settings in
-  // first-run mode and let them connect a provider and choose their model.
   const [firstRun, setFirstRun] = useState(false)
+  // First launch with no default model picked yet: there is no hard-coded default
+  // (a client may run Vertex, Anthropic, a local model...), so open the focused
+  // onboarding modal — it auto-detects connected providers and asks only for the
+  // primary + fast models, falling back to a connect step when none are found.
+  const [onboarding, setOnboarding] = useState(false)
   useEffect(() => {
-    getConfig()
-      .then((cfg) => {
-        if (cfg.model) return
-        setFirstRun(true)
-        setSettings(true)
-      })
-      .catch(() => {})
+    let cancelled = false
+    // The engine ('opencode serve') may still be booting when the web app loads,
+    // so getConfig rejects until it's reachable. Poll until it answers, then gate
+    // onboarding on the real config rather than silently skipping it on the first
+    // failed call.
+    async function check() {
+      while (!cancelled) {
+        try {
+          const cfg = await getConfig()
+          if (!cancelled && !cfg.model) setOnboarding(true)
+          return
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+        }
+      }
+    }
+    check()
+    return () => {
+      cancelled = true
+    }
   }, [])
   // Bumped when a matter mints a new conversation, so the sidebar re-lists its
   // chats the instant one starts rather than waiting for the turn to settle.
@@ -40,6 +56,16 @@ export default function App() {
             </Routes>
           </div>
         </main>
+        {onboarding && (
+          <Onboarding
+            onClose={() => setOnboarding(false)}
+            onOpenSettings={() => {
+              setOnboarding(false)
+              setFirstRun(true)
+              setSettings(true)
+            }}
+          />
+        )}
         {settings && (
           <Settings
             firstRun={firstRun}
