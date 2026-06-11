@@ -325,7 +325,11 @@ export async function subscribeEvents(
   let first = true
   while (!signal.aborted) {
     try {
-      const res = await client.event.subscribe()
+      // The signal must reach the fetch itself: without it, abort only flips the
+      // loop flag and the idle SSE socket stays open until the next event — each
+      // panel remount then leaks a connection until the browser's per-origin cap
+      // starves every other request to the engine.
+      const res = await client.event.subscribe({ signal })
       if (!first) onReconnect?.()
       first = false
       for await (const event of res.stream) {
