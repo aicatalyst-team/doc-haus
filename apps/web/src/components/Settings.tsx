@@ -114,7 +114,15 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
     setProbeErr((e) => ({ ...e, ...Object.fromEntries(targets.map((p) => [p.id, ""])) }))
     // Sequential: setProviderOptions does a read-merge-write of the whole
     // provider map, so concurrent saves would drop each other's entry.
-    if (options && Object.keys(options).length) for (const p of targets) await setProviderOptions(p.id, options)
+    // Claude-on-Vertex needs the endpoint spelled out: its SDK builds the host
+    // as "{location}-aiplatform.googleapis.com", which is wrong for "global"
+    // (the global endpoint has no location prefix), so the probe hangs on a
+    // bogus host instead of failing with a real credential/quota error.
+    const optionsFor = (id: string) =>
+      id === "google-vertex-anthropic" && options?.project
+        ? { ...options, baseURL: vertexAnthropicBaseURL(options.project, options.location || "global") }
+        : options
+    if (options && Object.keys(options).length) for (const p of targets) await setProviderOptions(p.id, optionsFor(p.id)!)
     const results = await Promise.all(
       targets.map(async (p) => {
         const modelID = probeModel(p.id, Object.keys(p.models))
@@ -428,6 +436,13 @@ type CloudField = {
   suggest?: "gcp-projects" | "aws-profiles"
 }
 type CloudSpec = { ids: string[]; name: string; signin: string; fields: CloudField[] }
+
+// The Vertex endpoint for Anthropic publisher models, mirroring Google's
+// scheme: regional locations prefix the host, "global" does not.
+function vertexAnthropicBaseURL(project: string, location: string) {
+  const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`
+  return `https://${host}/v1/projects/${project}/locations/${location}/publishers/anthropic/models`
+}
 
 const VERTEX_LOCATIONS = [
   "global",
