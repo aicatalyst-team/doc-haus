@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Document, Packer, Paragraph } from "docx"
+import { looksScanned, ocrPdfText } from "./pdf"
 
 // Best-effort PDF -> DOCX. There is no MIT pure-JS engine that preserves PDF
 // layout, so the reliable floor is text-only: pull the text with unpdf and rebuild
@@ -35,13 +36,16 @@ async function sofficeConvert(pdfBytes: Buffer): Promise<Buffer | null> {
 }
 
 // Text-only path: unpdf returns one string per page; each page becomes a run of
-// paragraphs split on blank lines so clause breaks survive into the DOCX.
+// paragraphs split on blank lines so clause breaks survive into the DOCX. Flat
+// scans have no text layer to pull, so those go through OCR instead — otherwise
+// a converted scanned filing would open as a blank document.
 async function textOnlyConvert(pdfBytes: Buffer): Promise<Buffer> {
   const { extractText, getDocumentProxy } = await import("unpdf")
-  const { text } = await extractText(await getDocumentProxy(new Uint8Array(pdfBytes)), { mergePages: false })
-  const paragraphs = text
-    .flatMap((page) => page.split(/\n/))
-    .map((line) => new Paragraph({ text: line.trim() }))
+  const pdf = await getDocumentProxy(new Uint8Array(pdfBytes))
+  const { text } = await extractText(pdf, { mergePages: false })
+  const layerText = text.join("\n")
+  const source = looksScanned(layerText, pdf.numPages) ? ((await ocrPdfText(pdfBytes)) ?? layerText) : layerText
+  const paragraphs = source.split(/\n/).map((line) => new Paragraph({ text: line.trim() }))
   const doc = new Document({ sections: [{ children: paragraphs }] })
   return Buffer.from(await Packer.toBuffer(doc))
 }

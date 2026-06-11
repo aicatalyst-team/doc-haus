@@ -9,9 +9,15 @@ FROM oven/bun:1.3.14
 #     native node-gyp modules (e.g. tree-sitter-*).
 #   - lsof + procps: start.sh reaps stale port holders (lsof) and tears the
 #     process tree down (pgrep) on exit.
+#   - poppler-utils + tesseract-ocr + markitdown: PDF and scanned-document
+#     ingestion. services/ingest shells out to markitdown (PDF -> Markdown) and
+#     to pdftoppm + tesseract (OCR for flat scans) when they are on PATH, so the
+#     self-host image bakes them in.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 build-essential lsof procps \
-  && rm -rf /var/lib/apt/lists/*
+    python3 python3-pip build-essential lsof procps \
+    poppler-utils tesseract-ocr \
+  && rm -rf /var/lib/apt/lists/* \
+  && pip3 install --no-cache-dir --break-system-packages "markitdown[pdf]"
 
 WORKDIR /app
 COPY . .

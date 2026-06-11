@@ -3,6 +3,7 @@ import path from "node:path"
 import mammoth from "mammoth"
 import { openDb, upsertDocument, insertChunk } from "./db"
 import { embed } from "./embed"
+import { pdfToText } from "./pdf"
 
 // ~500 tokens at roughly 4 chars/token.
 const CHUNK_CHARS = 2000
@@ -14,16 +15,19 @@ const HEADING_RE = /^[A-Z0-9][A-Z0-9 ,'\-&/]{2,79}$/
 
 type Section = { label: string; text: string; charStart: number; charEnd: number }
 
-function sectionize(text: string): Section[] {
+export function sectionize(text: string): Section[] {
   const sections: Section[] = []
   let current: Section = { label: "Preamble", text: "", charStart: 0, charEnd: 0 }
   let offset = 0
 
   for (const line of text.split("\n")) {
-    const trimmed = line.trim()
+    // markitdown emits Markdown headings; strip the hashes so "## 7.2 Termination"
+    // sections the same as a plain "7.2 Termination" line.
+    const trimmed = line.trim().replace(/^#{1,6}\s+/, "")
+    const isMdHeading = trimmed !== line.trim()
     const clause = trimmed.match(CLAUSE_RE)
-    const isHeading = clause || (trimmed.length > 0 && HEADING_RE.test(trimmed))
-    if (isHeading) {
+    const isHeading = clause || isMdHeading || (trimmed.length > 0 && HEADING_RE.test(trimmed))
+    if (isHeading && trimmed.length > 0) {
       if (current.text.trim()) {
         current.charEnd = offset
         sections.push(current)
@@ -85,13 +89,10 @@ export async function ingestDocument(matterDir: string, fileName: string, buffer
 }
 
 // Pull plain text from a source document for indexing. DOCX goes through mammoth;
-// PDF through unpdf's pdf.js build (merged into one string). Both feed the same
-// sectionize/chunk/embed path, so the rest of ingestion is format-agnostic.
+// PDF through markitdown/unpdf with an OCR fallback for flat scans (see pdf.ts).
+// Both feed the same sectionize/chunk/embed path, so the rest of ingestion is
+// format-agnostic.
 export async function extractDocumentText(fileName: string, buffer: Buffer) {
-  if (fileName.toLowerCase().endsWith(".pdf")) {
-    const { extractText, getDocumentProxy } = await import("unpdf")
-    const { text } = await extractText(await getDocumentProxy(new Uint8Array(buffer)), { mergePages: true })
-    return text
-  }
+  if (fileName.toLowerCase().endsWith(".pdf")) return pdfToText(buffer)
   return (await mammoth.extractRawText({ buffer })).value
 }
