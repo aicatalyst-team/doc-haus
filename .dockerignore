@@ -10,3 +10,6 @@ node_modules
 **/.turbo
 **/.vite
 **/coverage
+workspace
+.playwright-mcp
+sandbox/fresh.tar

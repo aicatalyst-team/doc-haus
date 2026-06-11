@@ -8,6 +8,7 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" /></a>
   <a href="https://github.com/anomalyco/opencode"><img alt="Built on OpenCode" src="https://img.shields.io/badge/built%20on-OpenCode-f59e0b?style=flat-square" /></a>
   <img alt="Runtime" src="https://img.shields.io/badge/runtime-Bun-000000?style=flat-square" />
+  <img alt="Docker Compose" src="https://img.shields.io/badge/docker%20compose-up-2496ED?style=flat-square&logo=docker&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white" />
 </p>
 
@@ -46,6 +47,19 @@ the exact clause, quoted from the document. More things to try in
 
 To work on your own documents: create a matter, upload a `.docx`, and ask. Everything —
 conversations, documents, the index — persists on your machine.
+
+### Or with Docker
+
+No Bun install needed — just Docker:
+
+```bash
+git clone https://github.com/sure-scale/doc-haus.git && cd doc-haus
+docker compose up
+```
+
+Open <http://localhost:5173> and connect a provider in **Settings** on first run. Matters
+persist in a `dochaus-workspace` volume. For the Google Vertex provider, uncomment the
+gcloud mount in `docker-compose.yml`.
 
 ## What you can do
 

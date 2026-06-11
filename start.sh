@@ -90,8 +90,10 @@ echo "doc.haus: starting engine, ingest, web (workspace: $WORKSPACE_ROOT)"
 echo "doc.haus: web UI will be at $WEB_URL"
 
 # Pin the engine to 4096 so it fails loudly if the port is still taken rather than
-# silently drifting to a random port the web app cannot reach.
-OPENCODE_CONFIG_DIR="$PWD/dochaus" bun run packages/opencode/src/index.ts serve --port 4096 &
+# silently drifting to a random port the web app cannot reach. Bind loopback by
+# default; set OPENCODE_HOSTNAME=0.0.0.0 to expose it (Docker, reverse proxy) — the
+# same loopback-default the engine, ingest, and vite all keep.
+OPENCODE_CONFIG_DIR="$PWD/dochaus" bun run packages/opencode/src/index.ts serve --port 4096 --hostname "${OPENCODE_HOSTNAME:-127.0.0.1}" &
 pids+=($!)
 
 (cd services/ingest && bun run start) &

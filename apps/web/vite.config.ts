@@ -45,6 +45,9 @@ export default defineConfig({
     },
   },
   server: {
+    // Bind localhost by default; set WEB_HOST=0.0.0.0 to expose the dev server
+    // (Docker, reverse proxy), matching the engine and ingest loopback default.
+    host: process.env.WEB_HOST || undefined,
     port: 5173,
   },
 })
