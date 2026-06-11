@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { deleteDocument, uploadDocument, type Document } from "../api/ingest"
 import { useToast } from "./Toast"
 
@@ -25,7 +25,15 @@ export default function DocumentUpload({
 }) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
   const toast = useToast()
+
+  useEffect(() => {
+    if (!confirmId) return
+    const dismiss = () => setConfirmId(null)
+    window.addEventListener("click", dismiss)
+    return () => window.removeEventListener("click", dismiss)
+  }, [confirmId])
 
   async function onFiles(files: File[]) {
     setBusy(true)
@@ -38,7 +46,7 @@ export default function DocumentUpload({
   }
 
   async function onRemove(name: string) {
-    if (!confirm(`Remove ${name} from this matter? Its indexed text is deleted and answers can no longer cite it.`)) return
+    setConfirmId(null)
     setBusy(true)
     await deleteDocument(matterId, name)
     setBusy(false)
@@ -74,19 +82,44 @@ export default function DocumentUpload({
       ) : (
         <ul className="matter-list">
           {documents.map((d) => (
-            <li key={d.id}>
-              <button className="linklike" onClick={() => onView(d.name)}>
-                {d.name}
-              </button>
-              {d.pending ? (
-                <span className="redline-badge" title={`${d.pending} pending change${d.pending === 1 ? "" : "s"} to review`}>
-                  {d.pending}
-                </span>
-              ) : null}
-              <span className="muted">{new Date(d.created_at).toLocaleDateString()}</span>
-              <button className="doc-remove" onClick={() => onRemove(d.name)} title={`Remove ${d.name}`} disabled={busy}>
-                <IconTrash />
-              </button>
+            <li key={d.id} className="doc-row">
+              <div className="doc-row-main">
+                <button className="linklike" onClick={() => onView(d.name)}>
+                  {d.name}
+                </button>
+                {d.pending ? (
+                  <span className="redline-badge" title={`${d.pending} pending change${d.pending === 1 ? "" : "s"} to review`}>
+                    {d.pending}
+                  </span>
+                ) : null}
+              </div>
+              <div className="doc-row-meta">
+                <span className="muted">{new Date(d.created_at).toLocaleDateString()}</span>
+                {confirmId === d.id ? (
+                  <button
+                    className="icon-btn danger"
+                    title={`Remove ${d.name} — indexed text is deleted and answers can no longer cite it`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRemove(d.name)
+                    }}
+                  >
+                    Confirm
+                  </button>
+                ) : (
+                  <button
+                    className="doc-remove"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setConfirmId(d.id)
+                    }}
+                    title={`Remove ${d.name}`}
+                    disabled={busy}
+                  >
+                    <IconTrash />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

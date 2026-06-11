@@ -1505,6 +1505,36 @@ button.linklike:hover {
   text-decoration: underline;
 }
 
+/* Document row: name (wrapping) on the first line, date and remove control on
+   a second line, so long filenames never squeeze the metadata. */
+.matter-list li.doc-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.doc-row-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.doc-row-main .linklike {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.doc-row-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.doc-row-meta .muted {
+  font-size: 12px;
+}
+
 /* Remove control on a document row — floats right, reddens on hover. */
 .doc-remove {
   margin-left: auto;
