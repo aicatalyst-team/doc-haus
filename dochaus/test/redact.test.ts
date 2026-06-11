@@ -1,6 +1,10 @@
 // True-redaction guarantees, exercised through the real redact tool against
 // documents built from the checked-in nda.docx template — no mocks beyond the
-// tool ctx. Run from dochaus/: bun test tool/redact.test.ts
+// tool ctx. Run from dochaus/: bun test test/redact.test.ts
+//
+// Lives in test/, not tool/: the engine's ToolRegistry imports every .ts under
+// {tool,tools}/ as a custom tool, and importing a bun:test file outside the
+// test runner throws ("Cannot use describe outside of the test runner").
 import { describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
 import { mkdtempSync } from "node:fs"
@@ -15,7 +19,7 @@ import { recordRedline, pendingRedlinesForDoc } from "../lib/redlines"
 // The tool reads INGEST_URL at import time; point it at a dead port so a live
 // dev ingest server never receives test uploads.
 process.env.INGEST_URL = "http://127.0.0.1:1"
-const redact = (await import("./redact")).default
+const redact = (await import("../tool/redact")).default
 
 const SSN = "123-45-6789"
 const here = path.dirname(fileURLToPath(import.meta.url))
