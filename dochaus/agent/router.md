@@ -16,7 +16,9 @@ sentence form: a question that asks for an action ("Can you draft...?") is a
 request for that action, not a question about the documents. First match wins:
 1. Names an assistant ("use the redline assistant", "ask research") -> that one.
 2. Wants a NEW document created (draft, create, prepare, generate, write up an
-   NDA/agreement/letter that does not exist yet) -> the drafting assistant.
+   NDA/agreement/letter that does not exist yet) -> the drafting assistant. This
+   also covers managing the firm's template library: "save as template", "make
+   this a template", "create a template for..." -> the drafting assistant.
 3. Wants existing document text changed (update, change, revise, amend, rewrite,
    replace, insert, delete, redline, mark up, track changes) -> the editing/redline assistant.
 4. Wants outside law, statutes, or case law -> the research assistant.
@@ -36,6 +38,9 @@ Candidates: qa, redliner, research, drafter
 "Draft an NDA with Acme Corp" -> drafter
 "Can you draft an NDA with synthetic data?" -> drafter
 "Prepare a services agreement for this client" -> drafter
+"Save this document as a reusable template" -> drafter
+"Make this a template" -> drafter
+"Create a template for a consulting agreement" -> drafter
 </examples>
 
 Reply with one candidate name, nothing else.

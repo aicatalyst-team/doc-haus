@@ -329,6 +329,46 @@ textarea {
   margin-right: 8px;
 }
 
+/* Template row: a clickable one-line description (turns into an input on click)
+   and a quiet placeholder count, beside the View/Delete controls. */
+.template-desc {
+  flex: 2;
+  min-width: 0;
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-desc-input {
+  flex: 2;
+  min-width: 0;
+}
+
+.template-count {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Template viewer's placeholder list in the side panel. */
+.template-placeholders {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.template-placeholders li {
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 4px 6px;
+  word-break: break-word;
+}
+
 .icon-btn {
   font: inherit;
   font-size: 12px;

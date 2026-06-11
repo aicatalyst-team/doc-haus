@@ -1,36 +1,33 @@
 import { tool } from "@opencode-ai/plugin"
-import { readdirSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import path from "node:path"
-import { docxodus } from "../lib/docxodus"
 
-// doc.haus list-templates tool. Enumerates the drafting templates that ship in
-// dochaus/templates and, for each, the placeholders Docxodus finds in it — so the
-// model knows exactly which fills to gather before calling draft-document.
-// `_base.docx` is the blank from-scratch seed, not a template, and is hidden.
+// doc.haus list-templates tool. Enumerates the firm's drafting templates and, for
+// each, the placeholders Docxodus finds in it — so the model knows exactly which
+// fills to gather before calling draft-document. The templates live in the global
+// library owned by the ingest service (WORKSPACE_ROOT/.templates); we read them
+// over HTTP so ingest stays the single writer over WORKSPACE_ROOT.
 
-const templatesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates")
+const ingestUrl = process.env.INGEST_URL ?? "http://127.0.0.1:4500"
 
 export default tool({
   description:
-    "List the document templates available for drafting, with the placeholders each one needs filled. Use before draft-document to pick a template and gather its fills.",
+    "List the document templates available for drafting, with a description of what each is for and the placeholders each one needs filled. Use before draft-document to pick a template by its description and gather its fills.",
   args: {},
   async execute() {
-    const names = readdirSync(templatesDir).filter((n) => n.endsWith(".docx") && !n.startsWith("_"))
-    const dx = await docxodus()
-    const templates = []
-    for (const name of names) {
-      const session = dx.openDocxSession(await Bun.file(path.join(templatesDir, name)).bytes(), {})
-      templates.push({
-        template: name,
-        placeholders: session.findPlaceholders().map((p) => ({ text: p.match.text, kind: p.kind, hint: p.hint })),
-      })
-      session.close()
+    const { templates } = (await (await fetch(`${ingestUrl}/templates`)).json()) as {
+      templates: {
+        name: string
+        description: string
+        placeholders: { text: string; kind: string; hint?: string }[]
+      }[]
     }
     return {
       title: `${templates.length} template(s)`,
-      output: JSON.stringify(templates, null, 2),
-      metadata: { templates: names },
+      output: JSON.stringify(
+        templates.map((t) => ({ template: t.name, description: t.description, placeholders: t.placeholders })),
+        null,
+        2,
+      ),
+      metadata: { templates: templates.map((t) => t.name) },
     }
   },
 })

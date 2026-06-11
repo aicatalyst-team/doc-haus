@@ -26,6 +26,7 @@ export default function DocumentViewer({
   onClose,
   onChanged,
   onConverted,
+  onSaveTemplate,
 }: {
   matterId: string
   name: string
@@ -37,6 +38,10 @@ export default function DocumentViewer({
   // Called with the new .docx name after a PDF is converted, so the parent can
   // swap the viewer onto the freshly indexed editable document.
   onConverted?: (name: string) => void
+  // Hand this document to the drafter to turn into a reusable template (a chat
+  // with the prompt prefilled). DOCX only — the redline pipeline and templates
+  // are DOCX-only. Omitted on surfaces that do not offer the action.
+  onSaveTemplate?: () => void
 }) {
   // PDFs render natively in an <iframe>; the docxodus WASM path and the redline
   // pipeline are DOCX-only. A PDF carries no redlines until it is converted.
@@ -161,6 +166,11 @@ export default function DocumentViewer({
             <button onClick={download} disabled={!html} title="Download as a Word file with tracked changes">
               {redlines.length ? "Download redline" : "Download"}
             </button>
+            {onSaveTemplate && (
+              <button onClick={onSaveTemplate} title="Turn this document into a reusable template (with client details removed)">
+                Save as template
+              </button>
+            )}
             <button onClick={onClose}>Close</button>
           </div>
         </div>

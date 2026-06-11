@@ -18,6 +18,12 @@ export type Redline = {
   created_at: number
 }
 export type MatterDetail = Matter & { documents: Document[] }
+// A drafting template in the firm's global library. placeholders are the
+// bracketed terms a draft fills in (text, with a kind and an optional hint).
+export type TemplatePlaceholder = { text: string; kind: string; hint?: string }
+// description is a one-line summary of what the template is for, stored in the
+// ingest-owned manifest beside the .docx (empty string when none was set).
+export type Template = { name: string; description: string; placeholders: TemplatePlaceholder[] }
 export type IngestResult = { name: string; docPath: string; sections: number; chunks: number }
 
 // Tabular-review grid. Columns are questions; cells are keyed `<docName>::<colId>`.
@@ -148,4 +154,44 @@ export async function acceptAllRedlines(id: string, name: string): Promise<void>
 
 export async function rejectAllRedlines(id: string, name: string): Promise<void> {
   await fetch(`${INGEST_URL}/matters/${id}/redlines/reject-all?name=${encodeURIComponent(name)}`, { method: "POST" })
+}
+
+// The firm's global template library, owned by the ingest service. Templates are
+// shared across every matter, so unlike documents they are not scoped to a matter.
+// The response carries the library directory alongside the list — the templates
+// chat scopes its engine sessions to that directory (there is no matter to scope
+// to), so the page needs it from the same call.
+export async function listTemplates(): Promise<{ dir: string; templates: Template[] }> {
+  const res = await fetch(`${INGEST_URL}/templates`)
+  return res.json()
+}
+
+export async function uploadTemplate(file: File): Promise<Template> {
+  const form = new FormData()
+  form.append("file", file)
+  const res = await fetch(`${INGEST_URL}/templates`, { method: "POST", body: form })
+  return res.json()
+}
+
+export async function updateTemplateDescription(name: string, description: string): Promise<Template> {
+  const res = await fetch(`${INGEST_URL}/templates?name=${encodeURIComponent(name)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description }),
+  })
+  if (!res.ok) throw new Error(`Could not update ${name} (${res.status})`)
+  return res.json()
+}
+
+export async function deleteTemplate(name: string): Promise<void> {
+  await fetch(`${INGEST_URL}/templates?name=${encodeURIComponent(name)}`, { method: "DELETE" })
+}
+
+// Raw .docx bytes for a template, rendered client-side by the template viewer via
+// WASM — the file is fetched from our own ingest service and converted in the
+// browser, so it never leaves for any third-party service.
+export async function fetchTemplateBytes(name: string): Promise<Uint8Array> {
+  const res = await fetch(`${INGEST_URL}/templates/content?name=${encodeURIComponent(name)}`)
+  if (!res.ok) throw new Error(`Could not load ${name} (${res.status})`)
+  return new Uint8Array(await res.arrayBuffer())
 }
