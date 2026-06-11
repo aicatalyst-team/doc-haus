@@ -15,7 +15,7 @@ import {
   type Client,
 } from "../api/opencode"
 import { defaultProvider, pickForProvider, probeModel, providerOf } from "../models"
-import { listAwsProfiles, listGcpProjects } from "../api/ingest"
+import { listAwsProfiles, listGcpProjects, probeVertexHost } from "../api/ingest"
 import { isGated, loadVerified, saveVerified } from "../providers"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
@@ -127,8 +127,20 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
       targets.map(async (p) => {
         const modelID = probeModel(p.id, Object.keys(p.models))
         if (!modelID) return { p, ok: false as const, error: "Provider has no models to test." }
-        const result = await probeProvider(client, p.id, modelID)
-        if (!result.ok) return { p, ok: false as const, error: result.error }
+        // Vertex verifies via the ingest host probe — one direct REST call with
+        // the host's ADC — because prompting through the engine's header-less
+        // settings client cold-boots a second instance and times out.
+        const vertex = p.id === "google-vertex" || p.id === "google-vertex-anthropic"
+        const result =
+          vertex && options?.project
+            ? await probeVertexHost({
+                project: options.project,
+                location: options.location || "global",
+                publisher: p.id === "google-vertex" ? "google" : "anthropic",
+                model: modelID,
+              })
+            : await probeProvider(client, p.id, modelID)
+        if (!result.ok) return { p, ok: false as const, error: result.error || "Verification failed." }
         return { p, ok: true as const, error: "" }
       }),
     )

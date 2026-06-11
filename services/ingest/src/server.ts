@@ -15,7 +15,7 @@ import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions } from "./matter"
 import { seedTemplates, listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
 import { docxodus } from "./docxodus"
-import { listGcpProjects, listAwsProfiles } from "./host"
+import { listGcpProjects, listAwsProfiles, probeVertex } from "./host"
 import { readGrid, writeGrid, type Grid } from "./grid"
 import { existsSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
@@ -43,6 +43,18 @@ app.use(
 app.get("/host/gcp-projects", async (c) => c.json({ projects: await listGcpProjects().catch(() => []) }))
 
 app.get("/host/aws-profiles", async (c) => c.json({ profiles: await listAwsProfiles() }))
+
+// Verify a Vertex project/location with one real publisher-model call using the
+// host's ADC. The web's provider gate calls this instead of prompting through
+// the engine, whose first-touch cold boot can outlast any probe timeout.
+app.post("/host/probe-vertex", async (c) =>
+  c.json(
+    await probeVertex(await c.req.json()).catch((e) => ({
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    })),
+  ),
+)
 
 app.get("/matters", (c) => c.json(listMatters()))
 

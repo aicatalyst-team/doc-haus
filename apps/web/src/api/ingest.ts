@@ -73,6 +73,25 @@ export async function listAwsProfiles(): Promise<string[]> {
   return ((await res.json()) as { profiles: string[] }).profiles
 }
 
+// Verify a Vertex project/location with one real call made by the ingest
+// service on the host — the same ADC the engine will use — instead of
+// prompting through the engine, whose first-touch cold boot can outlast any
+// probe timeout. Failures carry Google's error message verbatim.
+export async function probeVertexHost(input: {
+  project: string
+  location: string
+  publisher: "google" | "anthropic"
+  model: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${INGEST_URL}/host/probe-vertex`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  }).catch(() => null)
+  if (!res) return { ok: false, error: "Ingest service unreachable." }
+  return res.json()
+}
+
 export async function listJurisdictions(): Promise<Jurisdiction[]> {
   const res = await fetch(`${INGEST_URL}/jurisdictions`)
   return res.json()
