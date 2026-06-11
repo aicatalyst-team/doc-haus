@@ -655,7 +655,7 @@ input[type="checkbox"]:checked::before {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 18px 22px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-xs);
 }
