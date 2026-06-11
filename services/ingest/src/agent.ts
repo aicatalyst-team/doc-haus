@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import path from "node:path"
 import { WORKSPACE_ROOT } from "./matter"
 import { DOCHAUS_DIR, NAME_RE, RESERVED_NAMES, listWorkflows } from "./workflow"
+import { disabledAgents, setAgentDisabled } from "./engine-config"
 
 // The firm's custom specialist agents: subagents composed conversationally by the
 // agent-builder and written as dochaus/agent/<name>.md, the same namespace the
@@ -34,6 +35,7 @@ export type AgentSummary = {
   description: string
   instructions: string
   builtin: boolean
+  enabled: boolean
   created_at: number
 }
 
@@ -149,6 +151,7 @@ function stripFrontmatter(src: string) {
 // plus the registry's custom ones. Workflow orchestrators are mode: primary and
 // the registry's own files are skipped by name, so neither double-lists.
 export function listAgents(): AgentSummary[] {
+  const disabled = disabledAgents()
   const custom = readRegistry()
   const customNames = new Set(custom.map((a) => a.name))
   const builtins = !existsSync(AGENT_DIR())
@@ -167,6 +170,7 @@ export function listAgents(): AgentSummary[] {
               description: fm["description"] ?? "",
               instructions: stripFrontmatter(src),
               builtin: true,
+              enabled: !disabled.has(name),
               created_at: 0,
             },
           ]
@@ -174,9 +178,20 @@ export function listAgents(): AgentSummary[] {
   return [
     ...builtins.sort((a, b) => a.name.localeCompare(b.name)),
     ...custom
-      .map((a) => ({ ...a, builtin: false }))
+      .map((a) => ({ ...a, builtin: false, enabled: !disabled.has(a.name) }))
       .sort((a, b) => a.name.localeCompare(b.name)),
   ]
+}
+
+// Flip an agent on or off — builtin and custom alike. Off sets
+// `agent.<name>.disable` in dochaus/opencode.json, the same flag the config
+// already uses for the engine's stock agents, so the engine drops it from the
+// task/workflow roster; the .md and registry entry stay put.
+export function setAgentEnabled(name: string, enabled: boolean): AgentSummary {
+  const agent = listAgents().find((a) => a.name === name)
+  if (!agent) throw new AgentError(`agent "${name}" not found`, 404)
+  setAgentDisabled(name, !enabled)
+  return { ...agent, enabled }
 }
 
 function validate(input: { label: string; instructions: string }) {
@@ -235,4 +250,6 @@ export function deleteAgent(name: string) {
     throw new AgentError(`agent "${name}" is used by workflow(s): ${dependents.join(", ")} — update them first`, 409)
   rmSync(agentPath(name), { force: true })
   writeRegistry(registry.filter((_, i) => i !== idx))
+  // Drop any disable flag so a later agent reusing the name starts enabled.
+  setAgentDisabled(name, false)
 }

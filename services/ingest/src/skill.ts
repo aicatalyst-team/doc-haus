@@ -3,6 +3,7 @@ import path from "node:path"
 import { WORKSPACE_ROOT } from "./matter"
 import { DOCHAUS_DIR } from "./workflow"
 import { extractDocumentText } from "./ingest"
+import { disabledSkills, setSkillDisabled } from "./engine-config"
 
 // The firm's custom skill library: reference knowledge (clause standards,
 // checklists, drafting guidance) the engine's agents load on demand. Custom
@@ -24,6 +25,7 @@ export type Skill = {
   description: string
   content: string
   builtin: boolean
+  enabled: boolean
 }
 
 class SkillError extends Error {
@@ -60,7 +62,7 @@ function parseSkillMarkdown(source: string) {
   return { name: read("name"), description: read("description"), content: lines.slice(end + 1).join("\n").trim() }
 }
 
-function readSkillDir(dir: string, builtin: boolean): Skill[] {
+function readSkillDir(dir: string, builtin: boolean) {
   if (!existsSync(dir)) return []
   return readdirSync(dir)
     .map((entry) => path.join(dir, entry, "SKILL.md"))
@@ -74,9 +76,20 @@ function readSkillDir(dir: string, builtin: boolean): Skill[] {
 }
 
 export function listSkills(): Skill[] {
-  return [...readSkillDir(BUILTIN_SKILL_DIR(), true), ...readSkillDir(SKILLS_DIR(), false)].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  )
+  const disabled = disabledSkills()
+  return [...readSkillDir(BUILTIN_SKILL_DIR(), true), ...readSkillDir(SKILLS_DIR(), false)]
+    .map((s) => ({ ...s, enabled: !disabled.has(s.name) }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+// Flip a skill on or off — builtin and custom alike. Off means the engine
+// permission-denies it, so it leaves every agent's available list; the file
+// stays on disk and the library keeps showing it.
+export function setSkillEnabled(name: string, enabled: boolean): Skill {
+  const skill = listSkills().find((s) => s.name === name)
+  if (!skill) throw new SkillError(`skill "${name}" not found`, 404)
+  setSkillDisabled(name, !enabled)
+  return { ...skill, enabled }
 }
 
 function validateName(name: string) {
@@ -90,7 +103,7 @@ export function createSkill(input: { name: string; description: string; content:
   if (listSkills().some((s) => s.name === input.name)) throw new SkillError(`skill "${input.name}" already exists`, 409)
   mkdirSync(path.join(SKILLS_DIR(), input.name), { recursive: true })
   writeFileSync(skillFile(input.name), renderSkillMarkdown(input.name, input.description, input.content))
-  return { name: input.name, description: input.description, content: input.content.trim(), builtin: false }
+  return { name: input.name, description: input.description, content: input.content.trim(), builtin: false, enabled: true }
 }
 
 export function updateSkill(name: string, input: { description: string; content: string }): Skill {
@@ -101,7 +114,7 @@ export function updateSkill(name: string, input: { description: string; content:
   }
   if (!input.content.trim()) throw new SkillError("content must be non-empty", 400)
   writeFileSync(skillFile(name), renderSkillMarkdown(name, input.description, input.content))
-  return { name, description: input.description, content: input.content.trim(), builtin: false }
+  return { name, description: input.description, content: input.content.trim(), builtin: false, enabled: !disabledSkills().has(name) }
 }
 
 export function deleteSkill(name: string) {
@@ -111,6 +124,8 @@ export function deleteSkill(name: string) {
     throw new SkillError(`skill "${name}" not found`, 404)
   }
   rmSync(path.join(SKILLS_DIR(), name), { recursive: true, force: true })
+  // Drop any deny rule so a later skill reusing the name starts enabled.
+  setSkillDisabled(name, false)
 }
 
 // Import an uploaded file as a skill. A .md keeps its own frontmatter name and

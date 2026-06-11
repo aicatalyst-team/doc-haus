@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { deleteAgent, listAgents, type AgentRecord } from "../api/ingest"
+import { deleteAgent, listAgents, setAgentEnabled, type AgentRecord } from "../api/ingest"
 import { useToast } from "../components/Toast"
 import ChatPanel from "../components/ChatPanel"
 import { DocMarkdown } from "../components/Markdown"
@@ -55,6 +55,18 @@ export default function Agents() {
     }
   }
 
+  // Flip the row straight away so the switch feels instant; revert on failure.
+  async function onToggle(a: AgentRecord) {
+    const enabled = !a.enabled
+    setAgents((prev) => prev.map((x) => (x.name === a.name ? { ...x, enabled } : x)))
+    try {
+      await setAgentEnabled(a.name, enabled)
+    } catch (e) {
+      setAgents((prev) => prev.map((x) => (x.name === a.name ? { ...x, enabled: a.enabled } : x)))
+      toast("error", e instanceof Error ? e.message : `Could not update ${a.name}.`)
+    }
+  }
+
   const visible = [...agents].sort((a, b) => Number(b.builtin) - Number(a.builtin) || a.name.localeCompare(b.name))
 
   return (
@@ -76,6 +88,16 @@ export default function Agents() {
                   <span className="muted template-desc">{a.description}</span>
                 </div>
                 {a.builtin && <span className="muted template-count">Built-in</span>}
+                <button
+                  className={a.enabled ? "settings-switch on" : "settings-switch"}
+                  title={a.enabled ? "Disable agent — it leaves the workflow roster" : "Enable agent"}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggle(a)
+                  }}
+                >
+                  {a.enabled ? "On" : "Off"}
+                </button>
                 <button
                   className="icon-btn"
                   title="View agent instructions"

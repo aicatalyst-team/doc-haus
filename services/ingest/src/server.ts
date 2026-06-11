@@ -15,8 +15,8 @@ import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions, listPlaybooks, WORKSPACE_ROOT } from "./matter"
 import { listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
 import { listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow, WORKFLOWS_DIR } from "./workflow"
-import { listSkills, createSkill, updateSkill, deleteSkill, importSkill, SKILLS_DIR } from "./skill"
-import { listAgents, createAgent, updateAgent, deleteAgent, AGENTS_DIR } from "./agent"
+import { listSkills, createSkill, updateSkill, deleteSkill, importSkill, setSkillEnabled, SKILLS_DIR } from "./skill"
+import { listAgents, createAgent, updateAgent, deleteAgent, setAgentEnabled, AGENTS_DIR } from "./agent"
 import { docxodus } from "./docxodus"
 import { listGcpProjects, listAwsProfiles, probeVertex } from "./host"
 import { readGrid, writeGrid, type Grid } from "./grid"
@@ -159,6 +159,17 @@ app.delete("/skills/:name", (c) => {
   }
 })
 
+// Flip a skill on or off (builtin or custom) — the engine permission-denies a
+// disabled skill so it leaves every agent's roster without touching the file.
+app.patch("/skills/:name", async (c) => {
+  const input = await c.req.json<{ enabled: boolean }>()
+  try {
+    return c.json(setSkillEnabled(c.req.param("name"), input.enabled))
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
 // The firm's specialist agents: repo-shipped subagents (read-only) plus the custom
 // ones composed by the agent-builder. Custom agents are written to dochaus/agent/
 // and registered in dochaus/agents.json; they immediately become available as
@@ -191,6 +202,17 @@ app.delete("/agents/:name", (c) => {
   try {
     deleteAgent(c.req.param("name"))
     return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+// Flip an agent on or off (builtin or custom) via agent.<name>.disable in
+// dochaus/opencode.json — the same flag the engine's stock agents use.
+app.patch("/agents/:name", async (c) => {
+  const input = await c.req.json<{ enabled: boolean }>()
+  try {
+    return c.json(setAgentEnabled(c.req.param("name"), input.enabled))
   } catch (e: any) {
     return c.json({ error: e.message }, e.status ?? 400)
   }

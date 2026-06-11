@@ -1,8 +1,17 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["./plugin/legal.ts"],
-  "skills": { "paths": ["{env:WORKSPACE_ROOT}/.playbooks", "{env:WORKSPACE_ROOT}/.skills"] },
-  "disabled_providers": ["opencode"],
+  "plugin": [
+    "./plugin/legal.ts"
+  ],
+  "skills": {
+    "paths": [
+      "{env:WORKSPACE_ROOT}/.playbooks",
+      "{env:WORKSPACE_ROOT}/.skills"
+    ]
+  },
+  "disabled_providers": [
+    "opencode"
+  ],
   "provider": {
     "google-vertex": {
       "npm": "@ai-sdk/google-vertex",
@@ -15,10 +24,19 @@
           "reasoning": true,
           "temperature": true,
           "tool_call": true,
-          "limit": { "context": 1048576, "output": 65536 },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
           "modalities": {
-            "input": ["text", "image", "pdf"],
-            "output": ["text"]
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
           }
         },
         "gemini-3.5-flash": {
@@ -28,10 +46,19 @@
           "reasoning": true,
           "temperature": true,
           "tool_call": true,
-          "limit": { "context": 1048576, "output": 65536 },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
           "modalities": {
-            "input": ["text", "image", "pdf"],
-            "output": ["text"]
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
           }
         }
       }
@@ -54,7 +81,9 @@
     "grep": "allow",
     "list": "allow",
     "task": "allow",
-    "skill": "allow",
+    "skill": {
+      "*": "allow"
+    },
     "search-document": "allow",
     "cite": "allow",
     "case-law": "allow",
@@ -85,9 +114,17 @@
     "websearch": "deny"
   },
   "agent": {
-    "explore": { "disable": true },
-    "general": { "disable": true },
-    "build": { "disable": true },
-    "plan": { "disable": true }
+    "explore": {
+      "disable": true
+    },
+    "general": {
+      "disable": true
+    },
+    "build": {
+      "disable": true
+    },
+    "plan": {
+      "disable": true
+    }
   }
 }

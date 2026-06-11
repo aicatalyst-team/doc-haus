@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { deleteSkill, importSkill, listSkills, type Skill } from "../api/ingest"
+import { deleteSkill, importSkill, listSkills, setSkillEnabled, type Skill } from "../api/ingest"
 import { useToast } from "../components/Toast"
 import ChatPanel from "../components/ChatPanel"
 import { DocMarkdown } from "../components/Markdown"
@@ -76,6 +76,18 @@ export default function Skills() {
     }
   }
 
+  // Flip the row straight away so the switch feels instant; revert on failure.
+  async function onToggle(s: Skill) {
+    const enabled = !s.enabled
+    setSkills((prev) => prev.map((x) => (x.name === s.name ? { ...x, enabled } : x)))
+    try {
+      await setSkillEnabled(s.name, enabled)
+    } catch (e) {
+      setSkills((prev) => prev.map((x) => (x.name === s.name ? { ...x, enabled: s.enabled } : x)))
+      toast("error", e instanceof Error ? e.message : `Could not update ${s.name}.`)
+    }
+  }
+
   const visible = [...skills].sort((a, b) => Number(b.builtin) - Number(a.builtin) || a.name.localeCompare(b.name))
 
   return (
@@ -125,6 +137,16 @@ export default function Skills() {
                   <span className="muted template-desc">{s.description || "No description yet"}</span>
                 </div>
                 {s.builtin && <span className="muted template-count">Built-in</span>}
+                <button
+                  className={s.enabled ? "settings-switch on" : "settings-switch"}
+                  title={s.enabled ? "Disable skill — agents stop loading it" : "Enable skill"}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggle(s)
+                  }}
+                >
+                  {s.enabled ? "On" : "Off"}
+                </button>
                 <button
                   className="icon-btn"
                   title="View skill"

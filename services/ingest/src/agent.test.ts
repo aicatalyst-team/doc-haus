@@ -42,6 +42,36 @@ test("listAgents: builtin subagents only, primaries and hidden excluded", () => 
   expect(agents.some((a) => a.name === "secret")).toBe(false)
 })
 
+test("setAgentEnabled: disable flag round-trips through opencode.json, other agent entries kept", () => {
+  // Mimic the real config, where stock engine agents are already disabled.
+  writeFileSync(
+    path.join(dochaus, "opencode.json"),
+    JSON.stringify({ agent: { explore: { disable: true } } }, null, 2),
+  )
+  expect(ag.listAgents().find((a) => a.name === "legal-reviewer")!.enabled).toBe(true)
+
+  const off = ag.setAgentEnabled("legal-reviewer", false)
+  expect(off.enabled).toBe(false)
+  expect(ag.listAgents().find((a) => a.name === "legal-reviewer")!.enabled).toBe(false)
+  const config = JSON.parse(readFileSync(path.join(dochaus, "opencode.json"), "utf8"))
+  expect(config.agent).toEqual({ explore: { disable: true }, "legal-reviewer": { disable: true } })
+
+  const on = ag.setAgentEnabled("legal-reviewer", true)
+  expect(on.enabled).toBe(true)
+  const restored = JSON.parse(readFileSync(path.join(dochaus, "opencode.json"), "utf8"))
+  expect(restored.agent).toEqual({ explore: { disable: true } })
+})
+
+test("setAgentEnabled: unknown agent → 404", () => {
+  let err: any
+  try {
+    ag.setAgentEnabled("nope", false)
+  } catch (e) {
+    err = e
+  }
+  expect(err.status).toBe(404)
+})
+
 test("renderCustomAgentMarkdown: frontmatter, task body, citation discipline", () => {
   const md = ag.renderCustomAgentMarkdown({
     name: "ip-specialist",

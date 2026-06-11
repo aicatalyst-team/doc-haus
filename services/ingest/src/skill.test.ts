@@ -124,6 +124,39 @@ test("deleteSkill: builtin → 403", () => {
   expect(existsSync(path.join(dochaus, "skill", "clause-library", "SKILL.md"))).toBe(true)
 })
 
+test("setSkillEnabled: deny rule round-trips through opencode.json, bare-action form preserved", () => {
+  // Mimic the real config, where `skill` is the bare action "allow".
+  writeFileSync(path.join(dochaus, "opencode.json"), JSON.stringify({ permission: { skill: "allow" } }, null, 2))
+  expect(sk.listSkills().find((s) => s.name === "clause-library")!.enabled).toBe(true)
+
+  const off = sk.setSkillEnabled("clause-library", false)
+  expect(off.enabled).toBe(false)
+  expect(sk.listSkills().find((s) => s.name === "clause-library")!.enabled).toBe(false)
+  const config = JSON.parse(readFileSync(path.join(dochaus, "opencode.json"), "utf8"))
+  expect(config.permission.skill).toEqual({ "*": "allow", "clause-library": "deny" })
+
+  const on = sk.setSkillEnabled("clause-library", true)
+  expect(on.enabled).toBe(true)
+  const restored = JSON.parse(readFileSync(path.join(dochaus, "opencode.json"), "utf8"))
+  expect(restored.permission.skill).toEqual({ "*": "allow" })
+})
+
+test("setSkillEnabled: unknown skill → 404; deleteSkill drops the deny rule", () => {
+  let err: any
+  try {
+    sk.setSkillEnabled("nope", false)
+  } catch (e) {
+    err = e
+  }
+  expect(err.status).toBe(404)
+
+  sk.createSkill({ name: "toggle-me", description: "", content: "body" })
+  sk.setSkillEnabled("toggle-me", false)
+  sk.deleteSkill("toggle-me")
+  const config = JSON.parse(readFileSync(path.join(dochaus, "opencode.json"), "utf8"))
+  expect(config.permission.skill["toggle-me"]).toBeUndefined()
+})
+
 test("importSkill: .md keeps its frontmatter name and description", async () => {
   const md = '---\nname: deal-checklist\ndescription: "Closing checklist"\n---\n\n## Steps\nDo things.'
   const skill = await sk.importSkill("anything.md", Buffer.from(md))
