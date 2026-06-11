@@ -101,13 +101,21 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
   // shown under "Needs setup" with their project/region fields and an Enable button.
   const needsSetup = all.filter((p) => isGated(p.id) && !verified.has(p.id))
 
+  // A cloud card shows only while its primary provider is unverified. Secondary
+  // ids on the same card (Claude on Vertex) verify silently when the shared
+  // check passes and silently stay out of the model picker when it doesn't —
+  // showing their failure under a card that just verified reads as the whole
+  // setup being broken when it's only an optional model family without quota.
+  const setupCards = CLOUD_SETUPS.filter((spec) => needsSetup.some((p) => p.id === spec.ids[0]))
+
   // Save the card's project/region to every provider it covers, then probe each
   // one's credentials with one real call; each that passes is marked verified
-  // (persisted) and joins the picker, each that fails keeps its own error and
-  // stays gated — so one Vertex card can verify Gemini while Claude (a separate
-  // provider id on the same project) still needs model access enabled. The probe
-  // model must be the curated one — the first id in the merged Vertex catalog is
-  // a Claude-on-Vertex model that hits a different endpoint and 400s even when
+  // (persisted) and joins the picker, each that fails stays gated. Only the
+  // card's primary id surfaces its error — a secondary like Claude-on-Vertex
+  // (separate provider id, same GCP project) fails silently and its models stay
+  // out of the picker until a later Reconfigure passes. The probe model must be
+  // the curated one — the first id in the merged Vertex catalog is a
+  // Claude-on-Vertex model that hits a different endpoint and 400s even when
   // the Gemini setup is correct.
   async function enable(targets: Provider[], options?: Record<string, string>) {
     setProbing(targets[0].id)
@@ -281,7 +289,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
             </div>
           </section>
 
-          {needsSetup.length > 0 && (
+          {setupCards.length > 0 && (
             <section className="settings-section">
               <h3>Needs setup</h3>
               <p className="settings-hint muted">
@@ -289,16 +297,15 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                 sign in on the server, then Enable to verify — until a live check passes they stay out of the model
                 picker so you can't pick a provider that will fail on the first call.
               </p>
-              {CLOUD_SETUPS.map((spec) => {
+              {setupCards.map((spec) => {
                 const pending = needsSetup.filter((p) => spec.ids.includes(p.id))
-                if (!pending.length) return null
                 return (
                   <NeedsSetupCard
                     key={spec.ids[0]}
                     spec={spec}
                     providers={pending}
                     probing={pending.some((p) => probing === p.id)}
-                    errors={probeErr}
+                    error={probeErr[spec.ids[0]] ?? ""}
                     onEnable={(options) => enable(pending, options)}
                   />
                 )
@@ -432,7 +439,8 @@ function statusLabel(provider: Provider, methods: Methods) {
 // can cover several provider ids that share the same credentials and settings —
 // Gemini (google-vertex) and Claude (google-vertex-anthropic) are separate
 // provider ids but the same GCP project and gcloud sign-in, so they get one
-// card. Each field maps to a provider.options key the engine reads (see
+// card. ids[0] is the primary: the card's visibility and displayed error track
+// it alone. Each field maps to a provider.options key the engine reads (see
 // provider.ts): vertex -> { project, location }, bedrock -> { region, profile }.
 // A field is either a select over a fixed list (locations/regions, defaulting
 // via fallback), or an input whose suggestions come from what the host's
@@ -525,19 +533,19 @@ const CLOUD_SETUPS: CloudSpec[] = [
 // project/region fields shared by every provider the card covers, and a single
 // Enable that saves the fields and runs the live probe in one go. The old split
 // (Save here, Enable elsewhere) let you probe values you had typed but never
-// saved. Per-provider results render under the button, so a card covering
-// Gemini + Claude can pass one and keep the other pending with its error.
+// saved. Only the primary provider's result shows — the card verifies or fails
+// on it alone, and a secondary like Claude-on-Vertex rides along silently.
 function NeedsSetupCard({
   spec,
   providers,
   probing,
-  errors,
+  error,
   onEnable,
 }: {
   spec: CloudSpec
   providers: Provider[]
   probing: boolean
-  errors: Record<string, string>
+  error: string
   onEnable: (options: Record<string, string>) => void
 }) {
   const [values, setValues] = useState<Record<string, string>>({})
@@ -561,7 +569,6 @@ function NeedsSetupCard({
       )
   }, [spec])
   const ready = spec.fields.every((f) => !f.required || values[f.key]?.trim() || f.fallback)
-  const failed = providers.filter((p) => errors[p.id])
   return (
     <div className="settings-needs">
       <div className="row settings-row">
@@ -622,11 +629,7 @@ function NeedsSetupCard({
           {probing ? "Verifying..." : "Enable"}
         </button>
       </div>
-      {failed.map((p) => (
-        <span key={p.id} className="settings-error">
-          {providers.length > 1 ? `${p.name}: ${errors[p.id]}` : errors[p.id]}
-        </span>
-      ))}
+      {error && <span className="settings-error">{error}</span>}
     </div>
   )
 }
