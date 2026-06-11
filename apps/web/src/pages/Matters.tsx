@@ -18,6 +18,7 @@ export default function Matters() {
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState("")
   const [reference, setReference] = useState("")
+  const [newJurisdictions, setNewJurisdictions] = useState<string[]>([])
   const [filter, setFilter] = useState("")
   const [busy, setBusy] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -45,10 +46,15 @@ export default function Matters() {
   async function onCreate() {
     if (!title.trim()) return
     setBusy(true)
-    const matter = await createMatter(title.trim(), reference.trim() || undefined, undefined)
+    const matter = await createMatter(
+      title.trim(),
+      reference.trim() || undefined,
+      newJurisdictions.length ? newJurisdictions : undefined,
+    )
     setMatters((prev) => [...prev, matter])
     setTitle("")
     setReference("")
+    setNewJurisdictions([])
     setBusy(false)
     toast("success", `Created matter "${matter.title}".`)
   }
@@ -106,6 +112,11 @@ export default function Matters() {
             onChange={(e) => setReference(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onCreate()}
             style={{ width: 160 }}
+          />
+          <JurisdictionSelect
+            jurisdictions={jurisdictions}
+            selected={newJurisdictions}
+            onChange={setNewJurisdictions}
           />
           <button className="primary" onClick={onCreate} disabled={busy || !title.trim()}>
             Create matter
