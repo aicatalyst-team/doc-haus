@@ -54,9 +54,10 @@ export type GridCellData = {
   }
   status: "filled" | "reviewed"
   questionHash: string
-  // Free-text reviewer note on the cell; survives recomputes.
-  comment?: string
+  // Reviewer comment thread on the cell; survives recomputes.
+  comments?: GridCellComment[]
 }
+export type GridCellComment = { id: string; text: string; at: number }
 export type Grid = { columns: GridColumn[]; cells: Record<string, GridCellData> }
 
 export type WorkflowStep = { agent: string; instructions: string }

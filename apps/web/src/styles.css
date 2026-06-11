@@ -884,16 +884,49 @@ textarea {
 }
 
 .review-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: var(--accent);
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+}
+
+.review-comments {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .review-comment {
-  width: 100%;
-  min-height: 64px;
-  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.review-comment-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.review-comment-text {
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.review-comment-compose {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.review-comment-compose textarea {
+  flex: 1;
+  min-height: 44px;
   resize: vertical;
 }
 
