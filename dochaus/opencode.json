@@ -40,14 +40,9 @@
     "python": {
       "type": "local",
       "command": [
-        "deno",
-        "run",
-        "-N=cdn.jsdelivr.net,pypi.org,files.pythonhosted.org",
-        "-R=node_modules",
-        "-W=node_modules",
-        "--node-modules-dir=auto",
-        "jsr:@pydantic/mcp-run-python",
-        "stdio"
+        "sh",
+        "-c",
+        "cd \"$OPENCODE_CONFIG_DIR\" && exec deno run -N=cdn.jsdelivr.net,pypi.org,files.pythonhosted.org -R=node_modules -W=node_modules --node-modules-dir=auto jsr:@pydantic/mcp-run-python stdio"
       ],
       "timeout": 60000
     }
