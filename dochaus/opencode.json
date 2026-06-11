@@ -124,6 +124,8 @@
     "word-integration": "ask",
     "tracked-changes": "ask",
     "redline": "ask",
+    "redact": "ask",
+    "redaction-log": "allow",
     "edit": "deny",
     "bash": "deny",
     "webfetch": "deny",

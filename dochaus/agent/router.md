@@ -20,26 +20,32 @@ request for that action, not a question about the documents. First match wins:
    NDA/agreement/letter that does not exist yet) -> the drafting assistant. This
    also covers managing the firm's template library: "save as template", "make
    this a template", "create a template for..." -> the drafting assistant.
-3. Wants existing document text changed (update, change, revise, amend, rewrite,
+3. Wants sensitive content permanently removed (redact, remove/strip PII, SSNs,
+   names, sanitize or scrub for production or disclosure) -> the redaction assistant.
+4. Wants existing document text changed (update, change, revise, amend, rewrite,
    replace, insert, delete, redline, mark up, track changes) -> the editing/redline assistant.
-4. Wants two documents or versions compared (compare, diff, what changed, how does
+5. Wants two documents or versions compared (compare, diff, what changed, how does
    their draft differ from ours, side-by-side) -> the compare assistant.
-5. Wants obligations, deliverables, deadlines, key dates, renewal or notice dates
+6. Wants obligations, deliverables, deadlines, key dates, renewal or notice dates
    pulled across the matter ("what are our obligations", "list every deadline",
    "when does this renew") -> the obligations assistant.
-6. Wants the firm's existing playbook (an uploaded playbook document) imported,
+7. Wants the firm's existing playbook (an uploaded playbook document) imported,
    converted, or added to the playbook library -> the playbook importer.
-7. Wants outside law, statutes, or case law -> the research assistant.
-8. Otherwise (a question about what these documents say) -> the Q&A assistant.
+8. Wants outside law, statutes, or case law -> the research assistant.
+9. Otherwise (a question about what these documents say) -> the Q&A assistant.
 
-"Update X to Y" / "change clause 15" / "show a redline" is editing (rule 3), not a question.
+"Update X to Y" / "change clause 15" / "show a redline" is editing (rule 4), not a question.
 "Draft an NDA" / "create an engagement letter" is drafting (rule 2), not editing.
+"Redact the SSNs" / "remove the client's personal details" is redaction (rule 3), not editing —
+redaction permanently removes content; redlining proposes reviewable changes.
 </rules>
 
 <examples>
-Candidates: qa, redliner, research, drafter, compare, obligations, playbook-importer
+Candidates: qa, redliner, redactor, research, drafter, compare, obligations, playbook-importer
 "What is the governing law?" -> qa
 "Update the governing law to Singapore" -> redliner
+"Redact all social security numbers before we produce this" -> redactor
+"Strip the employee's personal information from the agreement" -> redactor
 "Show me a redline updating the jurisdiction" -> redliner
 "Use the redline assistant, update to Singapore" -> redliner
 "Does this hold up under New York law?" -> research
