@@ -12,18 +12,13 @@ import {
 import { ingestDocument, extractDocumentText } from "./ingest"
 import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
-import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions } from "./matter"
-import { seedTemplates, listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
+import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions, listPlaybooks, WORKSPACE_ROOT } from "./matter"
+import { listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
 import { docxodus } from "./docxodus"
 import { listGcpProjects, listAwsProfiles, probeVertex } from "./host"
 import { readGrid, writeGrid, type Grid } from "./grid"
 import { existsSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
-
-// Seed the global template library from the repo's nda.docx on first boot. The
-// directory's existence is the marker, so restarts never re-seed or resurrect a
-// deleted template.
-seedTemplates()
 
 const app = new Hono()
 
@@ -62,22 +57,44 @@ app.get("/matters", (c) => c.json(listMatters()))
 // layer. The web app populates its matter-creation dropdown from this (issue #18).
 app.get("/jurisdictions", (c) => c.json(listJurisdictions()))
 
+// The playbook skills a matter can be reviewed against: the repo-shipped ones plus
+// any the firm imported into WORKSPACE_ROOT/.playbooks. The web app offers these as
+// the matter's playbook choice; create-playbook reads it to dedupe before writing.
+app.get("/playbooks", (c) => c.json(listPlaybooks()))
+
+// Import a firm playbook skill into WORKSPACE_ROOT/.playbooks. Ingest is the single
+// writer over WORKSPACE_ROOT (same rationale as the .templates library), so the
+// dochaus create-playbook tool POSTs here rather than writing the file itself. The
+// frontmatter (name + quoted description) is added here; the body is supplied raw.
+app.post("/playbooks", async (c) => {
+  const { name, description, content } = await c.req.json<{ name: string; description: string; content: string }>()
+  if (!name.startsWith("playbook-")) return c.json({ error: 'Playbook name must start with "playbook-"' }, 400)
+  const skill = path.basename(name)
+  await Bun.write(
+    path.join(WORKSPACE_ROOT, ".playbooks", skill, "SKILL.md"),
+    `---\nname: ${skill}\ndescription: "${description}"\n---\n\n${content}`,
+  )
+  return c.json({ name: skill, description })
+})
+
 app.post("/matters", async (c) => {
-  const { title, reference, jurisdictions } = await c.req.json<{
+  const { title, reference, jurisdictions, playbook } = await c.req.json<{
     title: string
     reference?: string
     jurisdictions?: string[]
+    playbook?: string
   }>()
-  return c.json(createMatter(title, reference, jurisdictions))
+  return c.json(createMatter(title, reference, jurisdictions, playbook))
 })
 
 app.patch("/matters/:id", async (c) => {
-  const { title, reference, jurisdictions } = await c.req.json<{
+  const { title, reference, jurisdictions, playbook } = await c.req.json<{
     title: string
     reference?: string
     jurisdictions?: string[]
+    playbook?: string
   }>()
-  return c.json(renameMatter(c.req.param("id"), title, reference, jurisdictions))
+  return c.json(renameMatter(c.req.param("id"), title, reference, jurisdictions, playbook))
 })
 
 app.delete("/matters/:id", (c) => {

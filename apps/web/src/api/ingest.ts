@@ -9,11 +9,15 @@ export type Matter = {
   title: string
   reference?: string
   jurisdictions?: string[]
+  playbook?: string
   dir: string
   created_at: number
 }
 // A jurisdiction pack the matter can be steered by (dochaus/jurisdiction/<code>).
 export type Jurisdiction = { code: string; name: string; citationStyle: string }
+// A playbook the matter can be steered by (dochaus/playbook-<name>). Names start
+// with "playbook-"; unlike jurisdictions a matter binds at most one.
+export type Playbook = { name: string; description: string }
 export type Document = { id: number; name: string; doc_path: string; created_at: number; pending?: number }
 // A pending redline proposal: one tracked change awaiting accept/reject.
 export type Redline = {
@@ -97,11 +101,21 @@ export async function listJurisdictions(): Promise<Jurisdiction[]> {
   return res.json()
 }
 
-export async function createMatter(title: string, reference?: string, jurisdictions?: string[]): Promise<Matter> {
+export async function listPlaybooks(): Promise<Playbook[]> {
+  const res = await fetch(`${INGEST_URL}/playbooks`)
+  return res.json()
+}
+
+export async function createMatter(
+  title: string,
+  reference?: string,
+  jurisdictions?: string[],
+  playbook?: string,
+): Promise<Matter> {
   const res = await fetch(`${INGEST_URL}/matters`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, reference, jurisdictions }),
+    body: JSON.stringify({ title, reference, jurisdictions, playbook }),
   })
   return res.json()
 }
@@ -111,11 +125,12 @@ export async function renameMatter(
   title: string,
   reference?: string,
   jurisdictions?: string[],
+  playbook?: string,
 ): Promise<Matter> {
   const res = await fetch(`${INGEST_URL}/matters/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, reference, jurisdictions }),
+    body: JSON.stringify({ title, reference, jurisdictions, playbook }),
   })
   return res.json()
 }

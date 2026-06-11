@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
-import { getMatter, renameMatter, type MatterDetail as Detail } from "../api/ingest"
+import { getMatter, listPlaybooks, renameMatter, type MatterDetail as Detail, type Playbook } from "../api/ingest"
 import { listAgents, matterClient } from "../api/opencode"
 import { AUTO } from "../agents"
 import DocumentUpload from "../components/DocumentUpload"
@@ -21,6 +21,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   const view = params.get("view") ?? "chat"
   const session = params.get("session") ?? undefined
   const [matter, setMatter] = useState<Detail>()
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [agent, setAgent] = useState(AUTO)
   const [viewing, setViewing] = useState<string>()
@@ -40,6 +41,10 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   useEffect(() => {
     localStorage.setItem("dh.docs", docsOpen ? "1" : "0")
   }, [docsOpen])
+
+  useEffect(() => {
+    listPlaybooks().then(setPlaybooks)
+  }, [])
 
   function refresh() {
     if (id) getMatter(id).then(setMatter)
@@ -95,9 +100,15 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
     setRenaming(false)
     const next = draftTitle.trim()
     if (!matter || !next || next === matter.title) return
-    const updated = await renameMatter(matter.id, next, matter.reference, matter.jurisdictions)
+    const updated = await renameMatter(matter.id, next, matter.reference, matter.jurisdictions, matter.playbook)
     setMatter((m) => m && { ...m, title: updated.title })
     onSessionsChanged()
+  }
+
+  async function changePlaybook(next?: string) {
+    if (!matter) return
+    const updated = await renameMatter(matter.id, matter.title, matter.reference, matter.jurisdictions, next)
+    setMatter((m) => m && { ...m, playbook: updated.playbook })
   }
 
   return (
@@ -142,6 +153,9 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
               initialPrompt={params.get("prompt") ?? undefined}
               agent={agent}
               available={available}
+              playbooks={playbooks}
+              playbook={matter.playbook}
+              onPlaybookChange={changePlaybook}
               onAgentChange={setAgent}
               onSessionCreated={(sid) => {
                 createdRef.current = sid

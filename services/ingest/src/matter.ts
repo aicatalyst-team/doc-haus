@@ -13,11 +13,14 @@ export const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? path.join(process.cw
 // jurisdictions are pack codes (e.g. ["EW", "US-NY"]) the engine reads from
 // matter.json to steer reasoning and citation style; a matter can span several
 // (cross-border deal), so it is a list — see dochaus/jurisdiction/ (issue #18).
+// playbook is the single playbook skill name (e.g. "playbook-nda") the matter is
+// reviewed against; one matter binds at most one playbook, so it is a string.
 export type Matter = {
   id: string
   title: string
   reference?: string
   jurisdictions?: string[]
+  playbook?: string
   dir: string
   created_at: number
 }
@@ -45,21 +48,21 @@ export function listMatters(): Matter[] {
     .sort((a, b) => a.created_at - b.created_at)
 }
 
-export function createMatter(title: string, reference?: string, jurisdictions?: string[]): Matter {
+export function createMatter(title: string, reference?: string, jurisdictions?: string[], playbook?: string): Matter {
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
   const id = `${slug}-${crypto.randomUUID().slice(0, 6)}`
   const dir = matterDir(id)
   mkdirSync(dir, { recursive: true })
-  const matter: Matter = { id, title, reference, jurisdictions, dir, created_at: Date.now() }
+  const matter: Matter = { id, title, reference, jurisdictions, playbook, dir, created_at: Date.now() }
   writeFileSync(matterFile(dir), JSON.stringify(matter, null, 2))
   return matter
 }
 
 // Rename keeps the directory id stable (it backs every session and document
-// path); only the display title/reference/jurisdictions in matter.json change.
-export function renameMatter(id: string, title: string, reference?: string, jurisdictions?: string[]): Matter {
+// path); only the display title/reference/jurisdictions/playbook in matter.json change.
+export function renameMatter(id: string, title: string, reference?: string, jurisdictions?: string[], playbook?: string): Matter {
   const dir = matterDir(id)
-  const matter = { ...getMatter(id), title, reference, jurisdictions }
+  const matter = { ...getMatter(id), title, reference, jurisdictions, playbook }
   writeFileSync(matterFile(dir), JSON.stringify(matter, null, 2))
   return matter
 }
@@ -93,4 +96,36 @@ export function listJurisdictions() {
     .filter((file) => existsSync(file))
     .map((file) => JSON.parse(readFileSync(file, "utf8")) as { code: string; name: string; citationStyle: string })
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+// Playbooks are opencode skills named playbook-*. Two sources feed the list: the
+// repo-shipped skills under dochaus/skill/ (resolved relative to this module like
+// the jurisdiction packs, so it is cwd-independent), and the imported ones the
+// ingest service writes under WORKSPACE_ROOT/.playbooks. Each SKILL.md carries the
+// name and description in its leading frontmatter block. The web app reads this to
+// offer the playbook choices for a matter; the engine binds one via matter.json.
+const SKILL_DIR = path.join(path.dirname(JURISDICTION_DIR), "skill")
+const PLAYBOOK_DIR = path.join(WORKSPACE_ROOT, ".playbooks")
+
+export function listPlaybooks(): { name: string; description: string }[] {
+  return [SKILL_DIR, PLAYBOOK_DIR]
+    .filter((dir) => existsSync(dir))
+    .flatMap((dir) =>
+      readdirSync(dir)
+        .map((entry) => path.join(dir, entry, "SKILL.md"))
+        .filter((file) => existsSync(file))
+        .map((file) => readPlaybookFrontmatter(readFileSync(file, "utf8"))),
+    )
+    .filter((p) => p.name.startsWith("playbook-"))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function readPlaybookFrontmatter(source: string) {
+  const frontmatter = source.split("---")[1] ?? ""
+  const read = (key: string) =>
+    (frontmatter.split("\n").find((line) => line.startsWith(`${key}:`)) ?? "")
+      .slice(key.length + 1)
+      .trim()
+      .replace(/^"(.*)"$/, "$1")
+  return { name: read("name"), description: read("description") }
 }

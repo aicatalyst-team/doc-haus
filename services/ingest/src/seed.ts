@@ -13,10 +13,11 @@ import {
   TableCell,
   WidthType,
 } from "docx"
-import { mkdirSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync, copyFileSync } from "node:fs"
 import path from "node:path"
-import { createMatter, listMatters } from "./matter"
+import { createMatter, listMatters, WORKSPACE_ROOT } from "./matter"
 import { ingestDocument } from "./ingest"
+import { seedTemplates } from "./template"
 
 // Seeds the demo matter: a wholly fictional letter of engagement, ingested
 // through the real pipeline so a first-time user lands on a matter that already
@@ -272,6 +273,20 @@ const buffer = await Packer.toBuffer(doc)
 const demoDir = path.join(import.meta.dir, "..", "..", "..", "demo")
 mkdirSync(demoDir, { recursive: true })
 writeFileSync(path.join(demoDir, "Letter-of-Engagement-Aldgate-Mills.docx"), buffer)
+
+// dochaus/playbooks/ holds demo/starter playbook assets that ship only via this
+// demo seed — kept out of dochaus/skill/ so the engine and listPlaybooks() never
+// auto-discover them on a non-demo boot. Copy the starter NDA playbook into the
+// firm's WORKSPACE_ROOT/.playbooks library so it appears as a selectable playbook;
+// it is not bound to the demo matter (the demo is an engagement letter, not an NDA).
+const playbookSrc = path.join(import.meta.dir, "..", "..", "..", "dochaus", "playbooks", "playbook-nda", "SKILL.md")
+const playbookDst = path.join(WORKSPACE_ROOT, ".playbooks", "playbook-nda", "SKILL.md")
+mkdirSync(path.dirname(playbookDst), { recursive: true })
+copyFileSync(playbookSrc, playbookDst)
+
+// Seed the firm's template library from the repo's nda.docx. Demo-only: a non-demo
+// boot ships an empty template library so first-run users start with nothing seeded.
+seedTemplates()
 
 // Idempotent: `start.sh --demo` runs this on every boot, so skip ingestion if the
 // demo matter is already present rather than piling up duplicates. The .docx above

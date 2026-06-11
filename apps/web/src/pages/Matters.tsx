@@ -45,7 +45,7 @@ export default function Matters() {
   async function onCreate() {
     if (!title.trim()) return
     setBusy(true)
-    const matter = await createMatter(title.trim(), reference.trim() || undefined)
+    const matter = await createMatter(title.trim(), reference.trim() || undefined, undefined)
     setMatters((prev) => [...prev, matter])
     setTitle("")
     setReference("")
@@ -75,6 +75,7 @@ export default function Matters() {
       draftTitle.trim(),
       draftReference.trim() || undefined,
       draftJurisdictions.length ? draftJurisdictions : undefined,
+      editing.playbook,
     )
     setMatters((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
     setEditing(null)

@@ -21,6 +21,7 @@ import { CHAT_ASSISTANTS, isAuto, TEMPLATE_BUILDER, WORKFLOWS, type AssistantMet
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
 import ModelSelector from "./ModelSelector"
+import PlaybookSelector from "./PlaybookSelector"
 import WorkflowLauncher from "./WorkflowLauncher"
 
 // One row in the assistant's reasoning timeline: a thinking block or a tool call.
@@ -329,6 +330,9 @@ export default function ChatPanel({
   emptyHint = "Ask a question about this matter's documents. Every answer cites the source section.",
   starters = STARTERS,
   composerPlaceholder = "e.g. What termination rights does each party have?",
+  playbooks,
+  playbook,
+  onPlaybookChange,
   onAgentChange,
   onSessionCreated,
   onSessionStarted,
@@ -358,6 +362,14 @@ export default function ChatPanel({
   emptyHint?: string
   starters?: string[]
   composerPlaceholder?: string
+  // The firm playbooks available to bind to this matter, plus the currently-bound
+  // one and its setter — surfaced as a composer control alongside the assistant
+  // and workflow pickers. All optional so a fixed surface (the template library,
+  // which passes `pinned`) renders no playbook control; the selector shows only
+  // when onPlaybookChange is provided.
+  playbooks?: { name: string; description: string }[]
+  playbook?: string
+  onPlaybookChange?: (name?: string) => void
   onAgentChange: (name: string) => void
   // Open the redline viewer on a document, optionally scrolled to a specific
   // proposal — fired by the in-chat redline preview's "View in document" link.
@@ -883,6 +895,9 @@ export default function ChatPanel({
               }}
             />
             <WorkflowLauncher available={available} onLaunch={runWorkflow} />
+            {onPlaybookChange && (
+              <PlaybookSelector playbooks={playbooks ?? []} value={playbook} onChange={onPlaybookChange} />
+            )}
           </>
         )}
       </div>
