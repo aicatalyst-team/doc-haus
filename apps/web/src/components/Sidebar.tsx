@@ -116,6 +116,14 @@ export default function Sidebar({
           <IconWorkflows />
           {!collapsed && <span>Workflows</span>}
         </NavLink>
+        <NavLink to="/skills" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} title="Skills">
+          <IconSkills />
+          {!collapsed && <span>Skills</span>}
+        </NavLink>
+        <NavLink to="/agents" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} title="Agents">
+          <IconAgents />
+          {!collapsed && <span>Agents</span>}
+        </NavLink>
       </nav>
 
       {matterId && (
@@ -255,6 +263,27 @@ function IconWorkflows() {
       <circle cx="19" cy="19" r="2" />
       <path d="M7 12h4l3-5" />
       <path d="M11 12l3 5" />
+    </svg>
+  )
+}
+
+function IconSkills() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  )
+}
+
+function IconAgents() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="5" y="8" width="14" height="11" rx="2" />
+      <path d="M12 8V5" />
+      <circle cx="12" cy="4" r="1" />
+      <path d="M9 13h.01M15 13h.01" />
+      <path d="M5 12H3M21 12h-2" />
     </svg>
   )
 }

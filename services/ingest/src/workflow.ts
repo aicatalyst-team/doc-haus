@@ -4,8 +4,10 @@ import path from "node:path"
 import { WORKSPACE_ROOT } from "./matter"
 
 // Resolved relative to this module so it does not depend on the ingest process cwd.
-// DOCHAUS_DIR env override lets tests point at a throwaway temp dir.
-export const DOCHAUS_DIR =
+// DOCHAUS_DIR env override lets tests point at a throwaway temp dir; read lazily
+// because bun test loads every test file into one process — a module-load capture
+// would freeze whichever file imported first.
+export const DOCHAUS_DIR = () =>
   process.env.DOCHAUS_DIR ??
   path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "dochaus")
 
@@ -13,14 +15,15 @@ export const DOCHAUS_DIR =
 // mirroring how template-builder runs in TEMPLATES_DIR).
 export const WORKFLOWS_DIR = path.join(WORKSPACE_ROOT, ".workflows")
 
-const REGISTRY_FILE = () => path.join(DOCHAUS_DIR, "workflows.json")
-const AGENT_DIR = () => path.join(DOCHAUS_DIR, "agent")
+const REGISTRY_FILE = () => path.join(DOCHAUS_DIR(), "workflows.json")
+const AGENT_DIR = () => path.join(DOCHAUS_DIR(), "agent")
 
 // A dochaus/agent/<name>.md that overrides a name the opencode engine reserves at
-// config merge would silently hijack that built-in agent. Block them here.
-const RESERVED_NAMES = ["auto", "build", "plan", "general", "explore", "summary", "title", "compaction", "triage"]
+// config merge would silently hijack that built-in agent. Block them here. Shared
+// with agent.ts — custom specialist agents land in the same namespace.
+export const RESERVED_NAMES = ["auto", "build", "plan", "general", "explore", "summary", "title", "compaction", "triage"]
 
-const NAME_RE = /^[a-z0-9][a-z0-9-]*$/
+export const NAME_RE = /^[a-z0-9][a-z0-9-]*$/
 
 export type WorkflowStep = {
   agent: string

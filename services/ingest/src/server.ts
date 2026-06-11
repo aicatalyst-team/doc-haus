@@ -15,6 +15,8 @@ import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions, listPlaybooks, WORKSPACE_ROOT } from "./matter"
 import { listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
 import { listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow, WORKFLOWS_DIR } from "./workflow"
+import { listSkills, createSkill, updateSkill, deleteSkill, importSkill, SKILLS_DIR } from "./skill"
+import { listAgents, createAgent, updateAgent, deleteAgent, AGENTS_DIR } from "./agent"
 import { docxodus } from "./docxodus"
 import { listGcpProjects, listAwsProfiles, probeVertex } from "./host"
 import { readGrid, writeGrid, type Grid } from "./grid"
@@ -104,6 +106,90 @@ app.put("/workflows/:name", async (c) => {
 app.delete("/workflows/:name", (c) => {
   try {
     deleteWorkflow(c.req.param("name"))
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+// The firm's skill library: repo-shipped reference skills (read-only) plus the
+// custom ones ingest writes under WORKSPACE_ROOT/.skills. The library directory
+// ships alongside the list so the web app can scope its skill-builder chat to it.
+app.get("/skills", (c) => {
+  mkdirSync(SKILLS_DIR(), { recursive: true })
+  return c.json({ dir: SKILLS_DIR(), skills: listSkills() })
+})
+
+app.post("/skills", async (c) => {
+  const input = await c.req.json<{ name: string; description: string; content: string }>()
+  try {
+    return c.json(createSkill(input), 201)
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+// Import an uploaded file as a skill: .md keeps its own frontmatter, .docx/.pdf/.txt
+// are text-extracted raw for the skill builder to refine afterwards.
+app.post("/skills/import", async (c) => {
+  const body = await c.req.parseBody()
+  const file = body["file"] as File
+  try {
+    return c.json(await importSkill(file.name, Buffer.from(await file.arrayBuffer())), 201)
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+app.put("/skills/:name", async (c) => {
+  const input = await c.req.json<{ description: string; content: string }>()
+  try {
+    return c.json(updateSkill(c.req.param("name"), input))
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+app.delete("/skills/:name", (c) => {
+  try {
+    deleteSkill(c.req.param("name"))
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+// The firm's specialist agents: repo-shipped subagents (read-only) plus the custom
+// ones composed by the agent-builder. Custom agents are written to dochaus/agent/
+// and registered in dochaus/agents.json; they immediately become available as
+// workflow pipeline steps. The library directory ships alongside the list so the
+// web app can scope its agent-builder chat to it.
+app.get("/agents", (c) => {
+  mkdirSync(AGENTS_DIR(), { recursive: true })
+  return c.json({ dir: AGENTS_DIR(), agents: listAgents() })
+})
+
+app.post("/agents", async (c) => {
+  const input = await c.req.json<{ label: string; description: string; instructions: string }>()
+  try {
+    return c.json(createAgent(input), 201)
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+app.put("/agents/:name", async (c) => {
+  const input = await c.req.json<{ label: string; description: string; instructions: string }>()
+  try {
+    return c.json(updateAgent(c.req.param("name"), input))
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+app.delete("/agents/:name", (c) => {
+  try {
+    deleteAgent(c.req.param("name"))
     return c.json({ ok: true })
   } catch (e: any) {
     return c.json({ error: e.message }, e.status ?? 400)

@@ -54,6 +54,24 @@ export const WORKFLOW_BUILDER: AssistantMeta = {
   description: "Builds and maintains the firm's custom multi-agent review workflows.",
 }
 
+// The Skills page's pinned assistant. Kept out of CHAT_ASSISTANTS on purpose: it
+// runs in the skill library directory rather than a matter, so the matter chat
+// picker and Auto routing never offer it.
+export const SKILL_BUILDER: AssistantMeta = {
+  name: "skill-builder",
+  label: "Skill Builder",
+  description: "Builds and maintains the firm's skill library — knowledge the specialist agents apply.",
+}
+
+// The Agents page's pinned assistant. Kept out of CHAT_ASSISTANTS on purpose: it
+// runs in the agent library directory rather than a matter, so the matter chat
+// picker and Auto routing never offer it.
+export const AGENT_BUILDER: AssistantMeta = {
+  name: "agent-builder",
+  label: "Agent Builder",
+  description: "Builds and maintains the firm's custom specialist subagents.",
+}
+
 // "Auto" is a pseudo-assistant, not a real agent: when it is selected each message
 // is first routed by a cheap model to one of the CHAT_ASSISTANTS, and only that
 // resolved real agent is ever sent to the engine. AUTO stays out of CHAT_ASSISTANTS
