@@ -55,7 +55,12 @@ export async function probeVertex(input: { project: string; location: string; pu
   })
   if (res.ok) return { ok: true }
   const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-  return { ok: false, error: err?.error?.message ?? `HTTP ${res.status}` }
+  const message = err?.error?.message ?? `HTTP ${res.status}`
+  // 429 means the sign-in and project are fine — the model just has no quota
+  // granted yet. Say so, or the raw quota text reads like broken credentials.
+  if (res.status === 429)
+    return { ok: false, error: `Sign-in and project are valid, but this model has no quota in the project yet. ${message}` }
+  return { ok: false, error: message }
 }
 
 // Profile names from ~/.aws/config ([profile x] plus the bare [default]) and
