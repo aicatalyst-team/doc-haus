@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "model": "google-vertex/gemini-3.1-pro-preview",
   "plugin": [
     "./plugin/legal.ts"
   ],
@@ -73,6 +74,11 @@
         "cd \"$OPENCODE_CONFIG_DIR\" && exec deno run -N=cdn.jsdelivr.net,pypi.org,files.pythonhosted.org -R=node_modules -W=node_modules --node-modules-dir=auto jsr:@pydantic/mcp-run-python stdio"
       ],
       "timeout": 60000
+    },
+    "courtlistener": {
+      "type": "remote",
+      "url": "https://mcp.courtlistener.com/",
+      "timeout": 30000
     }
   },
   "permission": {
@@ -88,6 +94,12 @@
     "cite": "allow",
     "case-law": "allow",
     "list-templates": "allow",
+    "get-template": "allow",
+    "update-template": "ask",
+    "delete-template": "ask",
+    "list-playbooks": "allow",
+    "update-playbook": "ask",
+    "delete-playbook": "ask",
     "list-workflows": "allow",
     "create-workflow": "ask",
     "update-workflow": "ask",
@@ -102,6 +114,7 @@
     "delete-agent": "ask",
     "read-document": "allow",
     "python_run_python_code": "allow",
+    "courtlistener_*": "allow",
     "draft-document": "ask",
     "create-template": "ask",
     "create-playbook": "ask",

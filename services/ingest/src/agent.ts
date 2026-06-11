@@ -100,7 +100,7 @@ export function renderCustomAgentMarkdown(record: CustomAgent): string {
   const output = [
     "<output>",
     "A list of findings. For each: a one-line headline, the citation + excerpt, and a",
-    "short explanation of why it matters. No preamble. No edge case handling, ever.",
+    "short explanation of why it matters. No preamble.",
     "</output>",
   ].join("\n")
 
@@ -190,6 +190,16 @@ export function listAgents(): AgentSummary[] {
 export function setAgentEnabled(name: string, enabled: boolean): AgentSummary {
   const agent = listAgents().find((a) => a.name === name)
   if (!agent) throw new AgentError(`agent "${name}" not found`, 404)
+  // Disabling an agent a workflow step still names would break that workflow at
+  // launch (and updateWorkflow's enabled-agent check would reject re-saving it) —
+  // refuse while any workflow references it, same as deleteAgent.
+  if (!enabled) {
+    const dependents = listWorkflows()
+      .filter((w) => w.steps.some((s) => s.agent === name))
+      .map((w) => w.name)
+    if (dependents.length)
+      throw new AgentError(`agent "${name}" is used by workflow(s): ${dependents.join(", ")} — update them first`, 409)
+  }
   setAgentDisabled(name, !enabled)
   return { ...agent, enabled }
 }

@@ -13,25 +13,65 @@ import {
   TableCell,
   WidthType,
 } from "docx"
-import { mkdirSync, writeFileSync, copyFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs"
 import path from "node:path"
 import { createMatter, listMatters, WORKSPACE_ROOT } from "./matter"
 import { ingestDocument } from "./ingest"
 import { seedTemplates } from "./template"
 
-// Seeds the demo matter: a wholly fictional letter of engagement, ingested
-// through the real pipeline so a first-time user lands on a matter that already
-// answers cited questions and runs a legal review — no upload, no data of their
-// own required.
+// Two seeds live here, with different lifetimes:
 //
-//   cd services/ingest && bun run seed
+//   seedPlaybooks() — the repo-shipped starter playbook library, copied into the
+//   firm's WORKSPACE_ROOT/.playbooks on every ingest server boot (server.ts calls
+//   it on startup). Not demo content: every install gets the starter set.
 //
-// It also writes the generated .docx to repo `demo/` so the same file can be
-// dropped into a new matter through the web UI. Everything below is invented;
+//   seedDemo() — the demo matter: a wholly fictional letter of engagement,
+//   ingested through the real pipeline so a first-time user lands on a matter
+//   that already answers cited questions and runs a legal review — no upload, no
+//   data of their own required. Demo-gated: it only runs via this script
+//   (`start.sh --demo` / `cd services/ingest && bun run seed`).
+//
+// seedDemo also writes the generated .docx to repo `demo/` so the same file can
+// be dropped into a new matter through the web UI. Everything in it is invented;
 // Aldgate & Crane LLP and Aldgate Mills Limited do not exist.
+
+// dochaus/playbooks/ holds the repo-shipped starter playbooks — kept out of
+// dochaus/skill/ so the engine and listPlaybooks() never auto-discover them from
+// the repo; the firm's selectable library is WORKSPACE_ROOT/.playbooks, the same
+// directory POST /playbooks imports into. Each starter is copied in at most once,
+// tracked by name in the .seeded marker file: a starter the firm deleted stays
+// deleted (delete-playbook is first-class), edits and same-name imports are never
+// clobbered, and newly shipped starters still reach existing installs.
+const PLAYBOOKS_SRC = path.join(import.meta.dir, "..", "..", "..", "dochaus", "playbooks")
+
+export function seedPlaybooks() {
+  const playbooksDir = path.join(WORKSPACE_ROOT, ".playbooks")
+  const marker = path.join(playbooksDir, ".seeded")
+  const seeded = new Set(existsSync(marker) ? readFileSync(marker, "utf8").split("\n").filter(Boolean) : [])
+  const fresh = readdirSync(PLAYBOOKS_SRC)
+    .filter((name) => name.startsWith("playbook-"))
+    .filter((name) => existsSync(path.join(PLAYBOOKS_SRC, name, "SKILL.md")))
+    .filter((name) => !seeded.has(name))
+  if (!fresh.length) return
+  fresh
+    // A same-name import already present wins — record it as seeded without copying.
+    .filter((name) => !existsSync(path.join(playbooksDir, name, "SKILL.md")))
+    .forEach((name) => {
+      mkdirSync(path.join(playbooksDir, name), { recursive: true })
+      copyFileSync(path.join(PLAYBOOKS_SRC, name, "SKILL.md"), path.join(playbooksDir, name, "SKILL.md"))
+      console.log(`Seeded starter playbook "${name}"`)
+    })
+  mkdirSync(playbooksDir, { recursive: true })
+  writeFileSync(marker, [...seeded, ...fresh].join("\n") + "\n")
+}
 
 const DOC_NAME = "Letter of Engagement — Aldgate Mills.docx"
 const MATTER_TITLE = "Aldgate Mills — Engagement (Demo)"
+
+// The demo letter is an E&W law-firm engagement letter, so the matter binds the
+// matching starter playbook — the full review pipeline (reviewer, playbook,
+// challenger, summarizer) then demos end-to-end on first run.
+const DEMO_PLAYBOOK = "playbook-engagement-letter"
 
 // Each clause is a bold "N. Title" heading paragraph followed by its body. The
 // ingest sectionizer keys sections off the leading clause number, so a citation
@@ -108,11 +148,6 @@ const NAVY = "1C2B3A"
 const GOLD = "C9A24B"
 const INK = "222222"
 
-// The firm's emblem — a serif "A&C" monogram in a gold-ruled navy square. A
-// committed static asset, read at build time so the .docx carries a real
-// embedded image with no image-processing dependency.
-const logoPng = await Bun.file(path.join(import.meta.dir, "..", "assets", "logo.png")).bytes()
-
 // 22 half-points = 11pt body; clause/heading sizes follow. Rules are drawn as
 // bottom paragraph borders so they print without a table.
 const RULE = { bottom: { style: BorderStyle.SINGLE, size: 6, space: 4, color: GOLD } }
@@ -165,143 +200,147 @@ const NO_BORDERS = {
   insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
 }
 
-const doc = new Document({
-  styles: { default: { document: { run: { font: "Georgia", size: 22, color: INK } } } },
-  sections: [
-    {
-      properties: { page: { margin: { top: 1100, bottom: 1100, left: 1300, right: 1300 } } },
-      footers: {
-        default: new Footer({
-          children: [
-            new Paragraph({
-              border: { top: { style: BorderStyle.SINGLE, size: 4, space: 6, color: GOLD } },
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 60 },
-              children: [
-                new TextRun({
-                  text: "Aldgate & Crane LLP — a limited liability partnership registered in England and Wales (OC384726).  ",
-                  size: 14,
-                  color: "888888",
-                }),
-                new TextRun({ text: "Authorised and regulated by the Solicitors Regulation Authority.", size: 14, color: "888888" }),
-              ],
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [new TextRun({ children: ["Page ", PageNumber.CURRENT, " of ", PageNumber.TOTAL_PAGES], size: 14, color: "888888" })],
-            }),
-          ],
-        }),
+export async function seedDemo() {
+  // The firm's emblem — a serif "A&C" monogram in a gold-ruled navy square. A
+  // committed static asset, read at run time so the .docx carries a real
+  // embedded image with no image-processing dependency.
+  const logoPng = await Bun.file(path.join(import.meta.dir, "..", "assets", "logo.png")).bytes()
+
+  const doc = new Document({
+    styles: { default: { document: { run: { font: "Georgia", size: 22, color: INK } } } },
+    sections: [
+      {
+        properties: { page: { margin: { top: 1100, bottom: 1100, left: 1300, right: 1300 } } },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                border: { top: { style: BorderStyle.SINGLE, size: 4, space: 6, color: GOLD } },
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60 },
+                children: [
+                  new TextRun({
+                    text: "Aldgate & Crane LLP — a limited liability partnership registered in England and Wales (OC384726).  ",
+                    size: 14,
+                    color: "888888",
+                  }),
+                  new TextRun({ text: "Authorised and regulated by the Solicitors Regulation Authority.", size: 14, color: "888888" }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ children: ["Page ", PageNumber.CURRENT, " of ", PageNumber.TOTAL_PAGES], size: 14, color: "888888" })],
+              }),
+            ],
+          }),
+        },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 40 },
+            children: [new ImageRun({ data: logoPng, type: "png", transformation: { width: 76, height: 76 } })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 20 },
+            children: [new TextRun({ text: "ALDGATE & CRANE LLP", bold: true, color: NAVY, size: 30, allCaps: true })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            border: RULE,
+            children: [new TextRun({ text: "S O L I C I T O R S", color: GOLD, size: 16 })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 240 },
+            children: [
+              new TextRun({ text: "14 Saffron Court, London EC3N 4QX", size: 18, color: "555555" }),
+              new TextRun({ text: "   ·   +44 (0)20 7946 0042   ·   law@aldgatecrane.co.uk", size: 18, color: "555555" }),
+            ],
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: NO_BORDERS,
+            rows: [
+              new TableRow({
+                children: [
+                  metaCell(
+                    ["Aldgate Mills Limited", "FAO: Ms R. Okafor, Director", "27 Wharf Road", "London E1 8GW"],
+                    AlignmentType.LEFT,
+                  ),
+                  metaCell(["Our ref: A&C/2026-0042", "3 June 2026", "By email and post"], AlignmentType.RIGHT),
+                ],
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 240, after: 160 },
+            children: [new TextRun({ text: "LETTER OF ENGAGEMENT", bold: true, color: NAVY, size: 26, allCaps: true })],
+          }),
+          body("Dear Ms Okafor,"),
+          new Paragraph({
+            alignment: AlignmentType.JUSTIFIED,
+            spacing: { after: 160, line: 276 },
+            children: [
+              new TextRun({ text: "Re: Proposed acquisition of the long leasehold of Unit 5, Saffron Wharf, London E1. ", bold: true }),
+              new TextRun(
+                "Thank you for instructing Aldgate & Crane LLP. This letter sets out the basis on which we will act for you. Please read it, and let us know if anything is unclear, before signing and returning the acceptance at the end.",
+              ),
+            ],
+          }),
+          ...CLAUSES.flatMap(clause),
+          new Paragraph({ spacing: { before: 240, after: 160 }, border: RULE, children: [] }),
+          body("Yours sincerely,"),
+          new Paragraph({
+            spacing: { before: 200, after: 40 },
+            children: [new TextRun({ text: "Daniel Crane", bold: true, color: NAVY })],
+          }),
+          body("Partner, for and on behalf of Aldgate & Crane LLP"),
+          new Paragraph({
+            spacing: { before: 240, after: 40 },
+            children: [new TextRun({ text: "Signed (client):  ____________________________     Date:  ______________", color: INK })],
+          }),
+          body("Ms R. Okafor, for and on behalf of Aldgate Mills Limited"),
+        ],
       },
-      children: [
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 40 },
-          children: [new ImageRun({ data: logoPng, type: "png", transformation: { width: 76, height: 76 } })],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 20 },
-          children: [new TextRun({ text: "ALDGATE & CRANE LLP", bold: true, color: NAVY, size: 30, allCaps: true })],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 120 },
-          border: RULE,
-          children: [new TextRun({ text: "S O L I C I T O R S", color: GOLD, size: 16 })],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 240 },
-          children: [
-            new TextRun({ text: "14 Saffron Court, London EC3N 4QX", size: 18, color: "555555" }),
-            new TextRun({ text: "   ·   +44 (0)20 7946 0042   ·   law@aldgatecrane.co.uk", size: 18, color: "555555" }),
-          ],
-        }),
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          borders: NO_BORDERS,
-          rows: [
-            new TableRow({
-              children: [
-                metaCell(
-                  ["Aldgate Mills Limited", "FAO: Ms R. Okafor, Director", "27 Wharf Road", "London E1 8GW"],
-                  AlignmentType.LEFT,
-                ),
-                metaCell(["Our ref: A&C/2026-0042", "3 June 2026", "By email and post"], AlignmentType.RIGHT),
-              ],
-            }),
-          ],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 240, after: 160 },
-          children: [new TextRun({ text: "LETTER OF ENGAGEMENT", bold: true, color: NAVY, size: 26, allCaps: true })],
-        }),
-        body("Dear Ms Okafor,"),
-        new Paragraph({
-          alignment: AlignmentType.JUSTIFIED,
-          spacing: { after: 160, line: 276 },
-          children: [
-            new TextRun({ text: "Re: Proposed acquisition of the long leasehold of Unit 5, Saffron Wharf, London E1. ", bold: true }),
-            new TextRun(
-              "Thank you for instructing Aldgate & Crane LLP. This letter sets out the basis on which we will act for you. Please read it, and let us know if anything is unclear, before signing and returning the acceptance at the end.",
-            ),
-          ],
-        }),
-        ...CLAUSES.flatMap(clause),
-        new Paragraph({ spacing: { before: 240, after: 160 }, border: RULE, children: [] }),
-        body("Yours sincerely,"),
-        new Paragraph({
-          spacing: { before: 200, after: 40 },
-          children: [new TextRun({ text: "Daniel Crane", bold: true, color: NAVY })],
-        }),
-        body("Partner, for and on behalf of Aldgate & Crane LLP"),
-        new Paragraph({
-          spacing: { before: 240, after: 40 },
-          children: [new TextRun({ text: "Signed (client):  ____________________________     Date:  ______________", color: INK })],
-        }),
-        body("Ms R. Okafor, for and on behalf of Aldgate Mills Limited"),
-      ],
-    },
-  ],
-})
+    ],
+  })
 
-const buffer = await Packer.toBuffer(doc)
+  const buffer = await Packer.toBuffer(doc)
 
-// Keep a copy in repo demo/ so the same .docx can be uploaded through the UI.
-const demoDir = path.join(import.meta.dir, "..", "..", "..", "demo")
-mkdirSync(demoDir, { recursive: true })
-writeFileSync(path.join(demoDir, "Letter-of-Engagement-Aldgate-Mills.docx"), buffer)
+  // Keep a copy in repo demo/ so the same .docx can be uploaded through the UI.
+  const demoDir = path.join(import.meta.dir, "..", "..", "..", "demo")
+  mkdirSync(demoDir, { recursive: true })
+  writeFileSync(path.join(demoDir, "Letter-of-Engagement-Aldgate-Mills.docx"), buffer)
 
-// dochaus/playbooks/ holds demo/starter playbook assets that ship only via this
-// demo seed — kept out of dochaus/skill/ so the engine and listPlaybooks() never
-// auto-discover them on a non-demo boot. Copy the starter NDA playbook into the
-// firm's WORKSPACE_ROOT/.playbooks library so it appears as a selectable playbook;
-// it is not bound to the demo matter (the demo is an engagement letter, not an NDA).
-const playbookSrc = path.join(import.meta.dir, "..", "..", "..", "dochaus", "playbooks", "playbook-nda", "SKILL.md")
-const playbookDst = path.join(WORKSPACE_ROOT, ".playbooks", "playbook-nda", "SKILL.md")
-mkdirSync(path.dirname(playbookDst), { recursive: true })
-copyFileSync(playbookSrc, playbookDst)
+  // Seed the firm's template library from the repo's nda.docx. Demo-only: a non-demo
+  // boot ships an empty template library so first-run users start with nothing seeded.
+  seedTemplates()
 
-// Seed the firm's template library from the repo's nda.docx. Demo-only: a non-demo
-// boot ships an empty template library so first-run users start with nothing seeded.
-seedTemplates()
+  // Idempotent: `start.sh --demo` runs this on every boot, so skip ingestion if the
+  // demo matter is already present rather than piling up duplicates. The .docx above
+  // is still rewritten so demo/ stays in sync with the seed script. The playbook is
+  // bound only at creation — an existing matter's binding (including a deliberate
+  // unbinding) is left alone.
+  const existing = listMatters().find((m) => m.title === MATTER_TITLE)
+  if (existing) {
+    console.log(`Demo matter "${MATTER_TITLE}" already present (${existing.id}); skipping ingest.`)
+    return
+  }
 
-// Idempotent: `start.sh --demo` runs this on every boot, so skip ingestion if the
-// demo matter is already present rather than piling up duplicates. The .docx above
-// is still rewritten so demo/ stays in sync with the seed script.
-const existing = listMatters().find((m) => m.title === MATTER_TITLE)
-if (existing) {
-  console.log(`Demo matter "${MATTER_TITLE}" already present (${existing.id}); skipping ingest.`)
-  process.exit(0)
+  // The demo letter is an England & Wales engagement (SRA-regulated firm, UK GDPR,
+  // E&W governing-law clause), so seed it with the EW jurisdiction pack — the first
+  // run then shows jurisdiction-aware reasoning without any setup.
+  const matter = createMatter(MATTER_TITLE, "A&C/2026-0042", ["EW"], DEMO_PLAYBOOK)
+  const result = await ingestDocument(matter.dir, DOC_NAME, Buffer.from(buffer))
+  console.log(`Seeded matter "${matter.title}" (${matter.id}), bound to ${DEMO_PLAYBOOK}`)
+  console.log(`Ingested ${DOC_NAME}: ${result.sections} sections, ${result.chunks} chunks`)
+  console.log(`Open the web app and select "${MATTER_TITLE}" to try cited Q&A and a legal review.`)
 }
 
-// The demo letter is an England & Wales engagement (SRA-regulated firm, UK GDPR,
-// E&W governing-law clause), so seed it with the EW jurisdiction pack — the first
-// run then shows jurisdiction-aware reasoning without any setup.
-const matter = createMatter(MATTER_TITLE, "A&C/2026-0042", ["EW"])
-const result = await ingestDocument(matter.dir, DOC_NAME, Buffer.from(buffer))
-console.log(`Seeded matter "${matter.title}" (${matter.id})`)
-console.log(`Ingested ${DOC_NAME}: ${result.sections} sections, ${result.chunks} chunks`)
-console.log(`Open the web app and select "${MATTER_TITLE}" to try cited Q&A and a legal review.`)
+if (import.meta.main) {
+  seedPlaybooks()
+  await seedDemo()
+}

@@ -62,7 +62,7 @@ export default tool({
               const steps = w.steps
                 .map((s, i) => `  ${i + 1}. ${s.agent}${s.instructions ? ` — ${s.instructions}` : ""}`)
                 .join("\n")
-              return `[${w.name}] ${w.label} (${w.scope})\n  ${w.description}\n  Steps:\n${steps}`
+              return `[${w.name}] ${w.label} (${w.scope})\n  ${w.description}\n  Launch prompt: ${w.prompt}\n  Steps:\n${steps}`
             })
             .join("\n\n")
 

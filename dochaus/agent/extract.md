@@ -2,6 +2,15 @@
 description: Extracts a single concise answer to one question about one named document, with a citation. Powers the tabular review grid.
 mode: primary
 temperature: 0.1
+model: google-vertex/gemini-3.5-flash
+steps: 20
+# Extraction is retrieval-bound lookup, not deep reasoning. Cap Gemini's thinking
+# to "low" for this agent only (deep agents keep the default "high") so a
+# reasoning spiral cannot burn the whole output budget and truncate the cell.
+# Deep-merges over the provider default, which keeps includeThoughts on.
+options:
+  thinkingConfig:
+    thinkingLevel: low
 color: info
 tools:
   "*": false
@@ -38,5 +47,5 @@ Answer only for that named document. Never pull from other documents in the matt
   `Not addressed` and no `Source:` line. Never invent a clause, section, value,
   or quote.
 - Answer strictly from this document. Do not infer from general knowledge.
-- No edge case handling, ever. Answer the question asked.
+- Answer only the question asked.
 </answer>

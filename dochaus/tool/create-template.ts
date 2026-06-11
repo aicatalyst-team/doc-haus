@@ -24,7 +24,6 @@ export default tool({
     content: tool.schema.string().describe("The complete template body as markdown, with every variable term a unique [insert ...] placeholder"),
     description: tool.schema
       .string()
-      .optional()
       .describe('A one-line summary of what this template is for, e.g. "Mutual NDA for vendor evaluations". Helps future template selection.'),
   },
   async execute(args, ctx) {
@@ -56,7 +55,7 @@ export default tool({
 
     const form = new FormData()
     form.append("file", new File([bytes], name))
-    if (args.description) form.append("description", args.description)
+    form.append("description", args.description)
     const res = await fetch(`${ingestUrl}/templates`, { method: "POST", body: form })
     if (!res.ok) return `Template composed but upload failed (${res.status}): ${await res.text()}`
 

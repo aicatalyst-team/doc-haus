@@ -94,7 +94,7 @@ export function setSkillEnabled(name: string, enabled: boolean): Skill {
 
 function validateName(name: string) {
   if (!NAME_RE.test(name)) throw new SkillError(`"${name}" is not a valid skill name (lowercase, hyphenated)`, 400)
-  if (name.startsWith("playbook-")) throw new SkillError('Playbooks are managed separately — use the playbook importer for "playbook-" names', 400)
+  if (name.startsWith("playbook-")) throw new SkillError('Playbooks are managed separately — run the import-playbook command (or ask the assistant to import a playbook) for "playbook-" names', 400)
 }
 
 export function createSkill(input: { name: string; description: string; content: string }): Skill {

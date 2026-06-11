@@ -38,7 +38,14 @@ export async function loadJurisdiction(code: string): Promise<JurisdictionPack |
   if (!dir || !existsSync(path.join(dir, "profile.json"))) return undefined
   const profile = (await Bun.file(path.join(dir, "profile.json")).json()) as JurisdictionProfile
   const promptPath = path.join(dir, "prompt.md")
-  return { ...profile, prompt: existsSync(promptPath) ? await Bun.file(promptPath).text() : "" }
+  if (!existsSync(promptPath)) {
+    // A pack without a prompt fragment still loads (profile fields keep working),
+    // but the matter loses the pack's reasoning/citation steering — make that
+    // visible instead of silently injecting nothing.
+    console.warn(`[jurisdiction] pack "${profile.code}" has no prompt.md (${promptPath}); injecting profile only`)
+    return { ...profile, prompt: "" }
+  }
+  return { ...profile, prompt: await Bun.file(promptPath).text() }
 }
 
 // The jurisdiction codes a matter carries, read from its matter.json. A matter

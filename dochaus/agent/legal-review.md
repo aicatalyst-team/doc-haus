@@ -42,5 +42,5 @@ citations each subagent produced:
 - **Challenges** (from the challenger)
 - **Bottom line** — your own 2-4 sentence synthesis of where the review nets out.
 
-Do not drop or rewrite the subagents' citations. No edge case handling, ever.
+Do not drop or rewrite the subagents' citations.
 </output>

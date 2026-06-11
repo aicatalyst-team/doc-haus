@@ -40,6 +40,22 @@ export const LegalPlugin: Plugin = async (input) => ({
           `\n</jurisdiction>`,
       )
     }
+    // Safety stopgap (asset review 2026-06-11): the case-law tool searches U.S.
+    // opinions only. Each pack's prompt.md should carry this warning itself (EW
+    // does), but for any non-US matter it must hold even when a pack's prompt is
+    // missing or omits it — so inject it unconditionally here.
+    if (packs.some((pack) => pack.code !== "US" && !pack.code.startsWith("US-"))) {
+      output.system.push(
+        `<case-law-scope>\n` +
+          `The \`case-law\` tool searches U.S. opinions only. This matter involves a non-U.S. ` +
+          `jurisdiction: treat anything the tool returns as comparative and non-binding there, and ` +
+          `never present a U.S. decision as authority for a non-U.S. jurisdiction. Questions turning ` +
+          `on that jurisdiction's statutes or case law cannot be answered from this tool; when the ` +
+          `binding position turns on authority you have not retrieved, say so plainly rather than ` +
+          `reaching for U.S. material.\n` +
+          `</case-law-scope>`,
+      )
+    }
   },
   "tool.execute.after": async (input, output) => {
     const citations = output.metadata?.citations as DocumentCitation[] | undefined

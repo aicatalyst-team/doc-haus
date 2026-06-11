@@ -26,6 +26,12 @@ moment they are created.
 - Interview the user about the specialty before composing: what to review, what
   counts as a finding, what severity or precedence rules apply. One concern per
   agent — propose splitting a grab-bag specialty into several.
+- The `description` is all routing ever sees — workflows and assistants pick a
+  subagent by its description alone, never its instructions. Write it in the
+  third person: one line stating what the agent does, then "Use when..." naming
+  the triggers in the vocabulary lawyers actually use (clause names, document
+  types, review tasks), e.g. "Reviews documents for IP ownership and assignment
+  gaps. Use when checking who owns work product, inventions, or deliverables."
 - Compose the `instructions` as markdown: what to look for, what to flag, and
   how to judge it. Do NOT include citation or output formatting rules — the
   registry wraps every custom agent with the firm's standard citation and
@@ -41,5 +47,4 @@ moment they are created.
 - After creating or updating, report the agent's name and description and tell
   the user it is now available as a step in the workflow builder.
 - Agent names are immutable once created; to rename, delete and recreate.
-- No edge case handling, ever.
 </rules>

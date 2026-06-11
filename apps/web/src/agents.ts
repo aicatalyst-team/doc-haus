@@ -34,6 +34,24 @@ export const CHAT_ASSISTANTS: AssistantMeta[] = [
     label: "Draft",
     description: "Drafts new documents into this matter — from a firm template or from scratch.",
   },
+  {
+    name: "compare",
+    label: "Compare",
+    description:
+      "Compares two drafts or versions of a document clause by clause and reports every substantive difference.",
+  },
+  {
+    name: "obligations",
+    label: "Obligations",
+    description:
+      "Sweeps every document in this matter into one register of obligations, deadlines, and key dates.",
+  },
+  {
+    name: "playbook-importer",
+    label: "Playbook Import",
+    description:
+      "Imports a firm playbook DOCX uploaded to this matter into the firm playbook library.",
+  },
 ]
 
 // The Templates page's pinned assistant. Kept out of CHAT_ASSISTANTS on purpose:
@@ -92,9 +110,9 @@ export const WORKFLOWS: WorkflowMeta[] = [
   {
     name: "legal-review",
     label: "Full review",
-    description: "A reviewer, a challenger, and a summarizer read every document and return one combined report.",
+    description: "A multi-agent pipeline reads every document and returns one combined report.",
     scope: "matter",
     prompt:
-      "Run a complete legal review of the documents in this matter. Coordinate the reviewer, challenger, and summarizer subagents and return the combined report.",
+      "Run a complete legal review of the documents in this matter: run the full review pipeline defined in your instructions, every step in order, and return the combined report.",
   },
 ]

@@ -2,6 +2,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { WORKSPACE_ROOT } from "./matter"
+// Cycle with agent.ts (which imports listWorkflows for deleteAgent's dependent
+// guard) is safe: both modules only call across the boundary at request time.
+import { listAgents } from "./agent"
 
 // Resolved relative to this module so it does not depend on the ingest process cwd.
 // DOCHAUS_DIR env override lets tests point at a throwaway temp dir; read lazily
@@ -121,7 +124,7 @@ export function renderAgentMarkdown(record: Workflow): string {
   outputLines.push(
     "- **Bottom line** — your own 2-4 sentence synthesis of where the workflow nets out.",
     "",
-    "Do not drop or rewrite the subagents' citations. No edge case handling, ever.",
+    "Do not drop or rewrite the subagents' citations.",
     "</output>",
   )
 
@@ -136,8 +139,16 @@ function validate(input: { label: string; description: string; scope: string; pr
   const name = slugify(input.label)
   if (!name || !NAME_RE.test(name)) throw new WorkflowError("label slugifies to an empty or invalid name", 400)
   if (!input.steps.length) throw new WorkflowError("steps must be non-empty", 400)
+  // A step naming a nonexistent or disabled subagent would break the workflow at
+  // every launch — the inverse of deleteAgent's dependent-workflow guard.
+  const enabled = listAgents().filter((a) => a.enabled).map((a) => a.name)
   for (const step of input.steps) {
     if (!NAME_RE.test(step.agent)) throw new WorkflowError(`step agent "${step.agent}" is not a valid name`, 400)
+    if (!enabled.includes(step.agent))
+      throw new WorkflowError(
+        `step agent "${step.agent}" is not an enabled subagent — valid agents: ${enabled.join(", ")}`,
+        400,
+      )
   }
   return name
 }

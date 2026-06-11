@@ -31,7 +31,11 @@ import WorkflowLauncher from "./WorkflowLauncher"
 const MUTATING_TOOLS = new Set([
   "draft-document",
   "create-template",
+  "update-template",
+  "delete-template",
   "create-playbook",
+  "update-playbook",
+  "delete-playbook",
   "create-workflow",
   "update-workflow",
   "delete-workflow",
@@ -209,8 +213,11 @@ const INTERNAL_FILES: Record<string, string> = {
 // The reviewers a workflow spawns, named by legal role rather than subagent id.
 const SUBAGENT_ROLES: Record<string, string> = {
   "legal-reviewer": "Reviewer",
+  "playbook-reviewer": "Playbook",
   "assumption-challenger": "Challenger",
   summarizer: "Summary",
+  compare: "Compare",
+  obligations: "Obligations",
 }
 
 // One readable label for a tool step. search-document is the matter's core

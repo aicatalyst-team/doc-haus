@@ -12,9 +12,9 @@ import {
 import { ingestDocument, extractDocumentText } from "./ingest"
 import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
-import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions, listPlaybooks, WORKSPACE_ROOT } from "./matter"
+import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions, listPlaybooks, updatePlaybook, deletePlaybook, PlaybookError, WORKSPACE_ROOT } from "./matter"
 import { listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
-import { listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow, WORKFLOWS_DIR } from "./workflow"
+import { listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow, NAME_RE, WORKFLOWS_DIR } from "./workflow"
 import { listSkills, createSkill, updateSkill, deleteSkill, importSkill, setSkillEnabled, SKILLS_DIR } from "./skill"
 import { listAgents, createAgent, updateAgent, deleteAgent, setAgentEnabled, AGENTS_DIR } from "./agent"
 import { docxodus } from "./docxodus"
@@ -73,11 +73,42 @@ app.post("/playbooks", async (c) => {
   const { name, description, content } = await c.req.json<{ name: string; description: string; content: string }>()
   if (!name.startsWith("playbook-")) return c.json({ error: 'Playbook name must start with "playbook-"' }, 400)
   const skill = path.basename(name)
+  // Same slug rule skill.ts enforces — the name goes onto an unquoted YAML
+  // `name:` line below, so only lowercase/hyphen slugs are safe to write.
+  if (!NAME_RE.test(skill)) return c.json({ error: `"${skill}" is not a valid playbook name (lowercase, hyphenated)` }, 400)
+  if (listPlaybooks().some((p) => p.name === skill)) return c.json({ error: `playbook "${skill}" already exists` }, 409)
   await Bun.write(
     path.join(WORKSPACE_ROOT, ".playbooks", skill, "SKILL.md"),
-    `---\nname: ${skill}\ndescription: "${description}"\n---\n\n${content}`,
+    // Description is JSON-quoted so a colon or newline cannot inject YAML keys
+    // (same posture as skill.ts renderSkillMarkdown).
+    `---\nname: ${skill}\ndescription: ${JSON.stringify(description)}\n---\n\n${content}`,
   )
-  return c.json({ name: skill, description })
+  return c.json({ name: skill, description }, 201)
+})
+
+// Revise an imported playbook in WORKSPACE_ROOT/.playbooks. Omitted fields keep
+// their current values (the lib backfills from the existing SKILL.md), so a
+// description-only edit never wipes the body. Repo-shipped playbooks are read-only.
+app.put("/playbooks/:name", async (c) => {
+  const input = await c.req.json<{ description?: string; content?: string }>()
+  try {
+    return c.json(updatePlaybook(c.req.param("name"), input))
+  } catch (e: unknown) {
+    if (e instanceof PlaybookError) return c.json({ error: e.message }, e.status)
+    throw e
+  }
+})
+
+// Remove an imported playbook. Refused (409) while any matter is still bound to
+// it, so a binding never dangles; repo-shipped playbooks are read-only (403).
+app.delete("/playbooks/:name", (c) => {
+  try {
+    deletePlaybook(c.req.param("name"))
+    return c.json({ ok: true })
+  } catch (e: unknown) {
+    if (e instanceof PlaybookError) return c.json({ error: e.message }, e.status)
+    throw e
+  }
 })
 
 app.get("/workflows", (c) => {
@@ -355,6 +386,15 @@ app.delete("/templates", (c) => {
   return c.json({ ok: true })
 })
 
+// The plain text of a library template, mammoth-extracted (the same extraction
+// the matter document text route uses). The dochaus get-template tool reads it so
+// template-builder can revise an existing template instead of recreating it blind.
+app.get("/templates/text", async (c) => {
+  const file = templatePath(c.req.query("name") ?? "")
+  if (!existsSync(file)) return c.notFound()
+  return c.json({ text: await extractDocumentText(file, Buffer.from(await Bun.file(file).bytes())) })
+})
+
 // Serve a template's .docx bytes so the dochaus draft-document tool can fill it,
 // mirroring the matter document content route.
 app.get("/templates/content", async (c) => {
@@ -437,6 +477,13 @@ app.post("/matters/:id/redlines/reject-all", (c) => {
   for (const row of rows) setRedlineStatus(openDb(dir), row.id, "rejected")
   return c.json({ ok: true, rejected: rows.length })
 })
+
+// Every install gets the repo-shipped starter playbooks, so seed them on boot —
+// demo content (the Aldgate Mills matter) stays gated behind `start.sh --demo`,
+// which runs seed.ts directly. Dynamic import keeps seed.ts's heavy docx
+// dependency out of the request path's module graph.
+const { seedPlaybooks } = await import("./seed")
+seedPlaybooks()
 
 // Bind loopback by default like opencode (packages/opencode/src/cli/network.ts):
 // the service is self-hosted alongside the engine and web app, not exposed
