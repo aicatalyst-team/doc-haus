@@ -36,6 +36,15 @@ export const CHAT_ASSISTANTS: AssistantMeta[] = [
   },
 ]
 
+// The Templates page's pinned assistant. Kept out of CHAT_ASSISTANTS on purpose:
+// it runs in the template library directory rather than a matter, so the matter
+// chat picker and Auto routing never offer it.
+export const TEMPLATE_BUILDER: AssistantMeta = {
+  name: "template-builder",
+  label: "Template Builder",
+  description: "Builds and maintains the firm's reusable template library.",
+}
+
 // "Auto" is a pseudo-assistant, not a real agent: when it is selected each message
 // is first routed by a cheap model to one of the CHAT_ASSISTANTS, and only that
 // resolved real agent is ever sent to the engine. AUTO stays out of CHAT_ASSISTANTS

@@ -60,6 +60,11 @@ conversations, documents, the index — persists on your machine.
   placeholders or composing from scratch onto a styled blank — then writes and
   indexes the `.docx` so you can review and redline it right away, with anything it
   can't know left as bracketed placeholders.
+- **Build a firm template library.** A dedicated Templates section holds the reusable
+  drafting bases shared across every matter: upload a `.docx`, describe the template
+  you need to the Template Builder and it composes one, or save a finished matter
+  document as a template — with every client-specific detail scrubbed into
+  `[insert ...]` placeholders before it enters the library.
 - **Pick an assistant — or let Auto choose.** Switch between focused assistants —
   *Q&A*, *Redline*, *Research*, *Draft* — or leave it on *Auto* and doc.haus routes
   each message to the right agent as the conversation moves between asking, drafting,

@@ -47,8 +47,16 @@ export default tool({
     if (existsSync(target)) return `A document named ${name} already exists in this matter. Pick a different name.`
     if (!args.template && !args.content) return 'Pass either "template" (with "fills") or "content".'
 
-    const source = path.join(templatesDir, args.template ? path.basename(args.template) : "_base.docx")
-    if (!existsSync(source)) return `Unknown template: ${args.template}. Call list-templates for the available ones.`
+    // Template mode pulls the base bytes from the global library over HTTP (ingest
+    // is the single writer over WORKSPACE_ROOT); from-scratch mode uses the repo's
+    // styled blank seed (_base.docx), which is never user-visible.
+    const templateRes = args.template
+      ? await fetch(`${ingestUrl}/templates/content?name=${encodeURIComponent(args.template)}`)
+      : undefined
+    if (templateRes && !templateRes.ok) return `Unknown template: ${args.template}. Call list-templates for the available ones.`
+    const sourceBytes = templateRes
+      ? new Uint8Array(await templateRes.arrayBuffer())
+      : await Bun.file(path.join(templatesDir, "_base.docx")).bytes()
 
     // Creating a document in the matter is gated on the matter owner's approval,
     // like every other tool that changes matter files. Asked before any Docxodus
@@ -60,7 +68,7 @@ export default tool({
     })
 
     const dx = await docxodus()
-    const session = dx.openDocxSession(await Bun.file(source).bytes(), {})
+    const session = dx.openDocxSession(sourceBytes, {})
 
     if (args.content) {
       // The seed's single empty paragraph is the insertion anchor; the whole
