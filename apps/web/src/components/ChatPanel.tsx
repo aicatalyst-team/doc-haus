@@ -24,6 +24,25 @@ import ModelSelector from "./ModelSelector"
 import PlaybookSelector from "./PlaybookSelector"
 import WorkflowLauncher from "./WorkflowLauncher"
 
+// Tool calls that change what the hosting page lists — a new document on the
+// rail, or a created/updated/deleted entry in the template, workflow, skill, or
+// agent library. Their completion triggers onDocumentsChanged so the list
+// refreshes mid-turn instead of waiting for a page reload.
+const MUTATING_TOOLS = new Set([
+  "draft-document",
+  "create-template",
+  "create-playbook",
+  "create-workflow",
+  "update-workflow",
+  "delete-workflow",
+  "create-skill",
+  "update-skill",
+  "delete-skill",
+  "create-agent",
+  "update-agent",
+  "delete-agent",
+])
+
 // One row in the assistant's reasoning timeline: a thinking block or a tool call.
 type Step =
   | { kind: "reasoning"; text: string; done: boolean }
@@ -508,16 +527,16 @@ export default function ChatPanel({
     wasBusy.current = busy
   }, [busy])
 
-  // Admit a streamed part into the live view. The moment a draft-document or
-  // create-template call completes (not on its later re-deliveries), the
-  // surface's document set changed — tell the parent so its list (the documents
-  // rail, the template library) picks up the new file mid-turn.
+  // Admit a streamed part into the live view. The moment a tool call that
+  // mutates the surface's listing completes (not on its later re-deliveries),
+  // tell the parent so its list (the documents rail, the template/workflow/
+  // skill/agent library) picks up the change mid-turn.
   function admitPart(part: Part) {
     const prev = partsRef.current.get(part.id)
     partsRef.current.set(part.id, part)
     if (
       part.type === "tool" &&
-      (part.tool === "draft-document" || part.tool === "create-template") &&
+      MUTATING_TOOLS.has(part.tool) &&
       part.state.status === "completed" &&
       !(prev?.type === "tool" && prev.state.status === "completed")
     )
