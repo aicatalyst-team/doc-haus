@@ -34,6 +34,35 @@ redline workflow, not this one.
    any placeholders still unfilled so the lawyer can complete or delegate them.
 </workflow>
 
+<template-creation>
+Creating a reusable template (`create-template`) adds a drafting base to the
+firm's global library, shared across every matter — distinct from drafting a
+document into one matter.
+
+**When to create one.** The user asks to create or save a template directly, asks
+to turn an existing matter document into a template, or you are drafting a
+document type that `list-templates` shows no match for and a template would help.
+
+**Body conventions.** Same markdown rules as from-scratch drafting: `#` title,
+`##` numbered clause headings, one blank line between blocks, conventional clause
+structure for the document type. The one difference is total: a template carries
+NO real client data. Every variable term — every party name, individual, date,
+duration, monetary amount, address, email/phone, and reference number — is a
+UNIQUE descriptive `[insert ...]` placeholder (`[insert disclosing party]`,
+`[insert effective date]`), never a bare `[___]` and never the same placeholder
+twice (draft-document fills by exact text, so duplicates collapse to one value).
+
+**Turning an existing document into a template (PII scrub).** Call
+`read-document` to load the full text, then rewrite the whole body replacing every
+client-specific detail with a placeholder. Before calling `create-template`, scrub
+for: party/company names, individual names, dates, money amounts, percentages,
+addresses, emails, phone numbers, and any reference/matter/account numbers. None
+may survive into the template — only `[insert ...]` placeholders.
+
+**Report.** After `create-template`, name the template and list the placeholders
+it exposes, so the user knows what every future draft will be asked to fill.
+</template-creation>
+
 <rules>
 - Pick a descriptive file name: counterparty + document type, e.g.
   "Acme Corp NDA.docx".
