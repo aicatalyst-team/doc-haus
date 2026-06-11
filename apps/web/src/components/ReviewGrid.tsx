@@ -51,7 +51,7 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
   const [grid, setGrid] = useState<Grid>({ columns: [], cells: {} })
   const gridRef = useRef<Grid>(grid)
   const [running, setRunning] = useState(0) // cells currently extracting
-  const [detail, setDetail] = useState<{ docName: string; question: string; cell: GridCellData }>()
+  const [detail, setDetail] = useState<{ docName: string; columnId: string; question: string; cell: GridCellData }>()
 
   useEffect(() => {
     getGrid(matterId).then((g) => commit(g))
@@ -130,7 +130,9 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
       while (next < targets.length) {
         const t = targets[next++]
         const data = await extract(t.docName, t.column.question)
-        commitCell(cellKey(t.docName, t.column.id), data)
+        const key = cellKey(t.docName, t.column.id)
+        // Recomputing an answer keeps the reviewer's comment on the cell.
+        commitCell(key, { ...data, comment: gridRef.current.cells[key]?.comment })
         setRunning((n) => n - 1)
       }
     }
@@ -157,6 +159,20 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
       ...grid.columns.map((c) => grid.cells[cellKey(doc.name, c.id)]?.answer ?? ""),
     ])
     const sheet = utils.aoa_to_sheet([header, ...rows])
+    // Citation and reviewer comment travel as a native Excel note on the answer
+    // cell, so the export carries everything the grid shows without extra columns.
+    documents.forEach((doc, r) =>
+      grid.columns.forEach((col, c) => {
+        const cell = grid.cells[cellKey(doc.name, col.id)]
+        const note = [
+          cell?.citation && `Source: ${cell.citation.documentName} § ${cell.citation.section}`,
+          cell?.comment && `Comment: ${cell.comment}`,
+        ]
+          .filter((line): line is string => Boolean(line))
+          .join("\n")
+        if (note) sheet[utils.encode_cell({ r: r + 1, c: c + 1 })].c = Object.assign([{ a: "doc.haus", t: note }], { hidden: true })
+      }),
+    )
     const book = utils.book_new()
     utils.book_append_sheet(book, sheet, "Tabular review")
     const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "matter"
@@ -232,11 +248,12 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
                           </button>
                         ) : (
                           <div className="review-cell-body">
-                            <button className="review-answer" onClick={() => setDetail({ docName: doc.name, question: col.question, cell })}>
+                            <button className="review-answer" onClick={() => setDetail({ docName: doc.name, columnId: col.id, question: col.question, cell })}>
                               {cell.answer}
                               {cell.citation && <span className="review-cite"> [{cell.citation.documentName} § {cell.citation.section}]</span>}
                             </button>
                             <div className="review-cell-actions">
+                              {cell.comment && <span className="review-note" title={cell.comment}>note</span>}
                               {stale && <span className="review-stale" title="Question changed since this answer">stale</span>}
                               <button className="icon-btn" title={cell.status === "reviewed" ? "Unlock" : "Mark reviewed"} onClick={() => toggleReviewed(key)}>
                                 {cell.status === "reviewed" ? "Locked" : "Lock"}
@@ -274,6 +291,15 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
                   <div className="excerpt">{detail.cell.citation.excerpt}</div>
                 </div>
               )}
+              <textarea
+                className="review-comment"
+                placeholder="Add a comment..."
+                defaultValue={detail.cell.comment ?? ""}
+                onBlur={(e) => {
+                  const key = cellKey(detail.docName, detail.columnId)
+                  commitCell(key, { ...gridRef.current.cells[key], comment: e.target.value.trim() || undefined })
+                }}
+              />
             </div>
           </div>
         </div>

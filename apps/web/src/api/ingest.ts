@@ -54,6 +54,8 @@ export type GridCellData = {
   }
   status: "filled" | "reviewed"
   questionHash: string
+  // Free-text reviewer note on the cell; survives recomputes.
+  comment?: string
 }
 export type Grid = { columns: GridColumn[]; cells: Record<string, GridCellData> }
 
