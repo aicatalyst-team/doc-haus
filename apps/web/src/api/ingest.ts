@@ -57,6 +57,18 @@ export type GridCellData = {
 }
 export type Grid = { columns: GridColumn[]; cells: Record<string, GridCellData> }
 
+export type WorkflowStep = { agent: string; instructions: string }
+
+export type CustomWorkflow = {
+  name: string
+  label: string
+  description: string
+  scope: "matter" | "document"
+  prompt: string
+  steps: WorkflowStep[]
+  created_at: number
+}
+
 export async function listMatters(): Promise<Matter[]> {
   const res = await fetch(`${INGEST_URL}/matters`)
   return res.json()
@@ -262,4 +274,19 @@ export async function fetchTemplateBytes(name: string): Promise<Uint8Array> {
   const res = await fetch(`${INGEST_URL}/templates/content?name=${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`Could not load ${name} (${res.status})`)
   return new Uint8Array(await res.arrayBuffer())
+}
+
+// The firm's custom workflow library, owned by the ingest service. The response
+// carries the library directory alongside the list — the workflow builder chat
+// scopes its engine sessions to that directory (there is no matter to scope to),
+// so the page needs it from the same call.
+export async function listWorkflows(): Promise<{ dir: string; workflows: CustomWorkflow[] }> {
+  const res = await fetch(`${INGEST_URL}/workflows`)
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+  return res.json()
+}
+
+export async function deleteWorkflow(name: string): Promise<void> {
+  const res = await fetch(`${INGEST_URL}/workflows/${encodeURIComponent(name)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
 }

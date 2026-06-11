@@ -8,7 +8,7 @@ export type AssistantMeta = { name: string; label: string; description: string }
 // `scope` decides which conversation a workflow runs in: "matter" routines span
 // every document and open as their own new chat; "document" routines act on the
 // thread you are already in and run in the current chat.
-export type WorkflowMeta = AssistantMeta & { prompt: string; scope: "matter" | "document" }
+export type WorkflowMeta = AssistantMeta & { prompt: string; scope: "matter" | "document"; custom?: boolean }
 
 // Conversational assistants offered in the chat picker. Every name here MUST be a
 // real agent id in dochaus/agent/*.md — these are sent to the engine verbatim.
@@ -43,6 +43,15 @@ export const TEMPLATE_BUILDER: AssistantMeta = {
   name: "template-builder",
   label: "Template Builder",
   description: "Builds and maintains the firm's reusable template library.",
+}
+
+// The Workflows page's pinned assistant. Kept out of CHAT_ASSISTANTS on purpose:
+// it runs in the workflow library directory rather than a matter, so the matter
+// chat picker and Auto routing never offer it.
+export const WORKFLOW_BUILDER: AssistantMeta = {
+  name: "workflow-builder",
+  label: "Workflow Builder",
+  description: "Builds and maintains the firm's custom multi-agent review workflows.",
 }
 
 // "Auto" is a pseudo-assistant, not a real agent: when it is selected each message

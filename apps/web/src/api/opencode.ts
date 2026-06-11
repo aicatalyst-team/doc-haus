@@ -179,6 +179,10 @@ export async function listAgents(client: Client) {
   return res.data ?? []
 }
 
+export async function disposeInstance(client: Client) {
+  await client.instance.dispose()
+}
+
 export async function createSession(client: Client, title: string) {
   const res = await client.session.create({ body: { title } })
   if (!res.data) throw new Error("Failed to create session")

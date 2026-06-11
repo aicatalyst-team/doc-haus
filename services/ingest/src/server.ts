@@ -14,10 +14,11 @@ import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions, listPlaybooks, WORKSPACE_ROOT } from "./matter"
 import { listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
+import { listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow, WORKFLOWS_DIR } from "./workflow"
 import { docxodus } from "./docxodus"
 import { listGcpProjects, listAwsProfiles, probeVertex } from "./host"
 import { readGrid, writeGrid, type Grid } from "./grid"
-import { existsSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 const app = new Hono()
@@ -75,6 +76,38 @@ app.post("/playbooks", async (c) => {
     `---\nname: ${skill}\ndescription: "${description}"\n---\n\n${content}`,
   )
   return c.json({ name: skill, description })
+})
+
+app.get("/workflows", (c) => {
+  mkdirSync(WORKFLOWS_DIR, { recursive: true })
+  return c.json({ dir: WORKFLOWS_DIR, workflows: listWorkflows() })
+})
+
+app.post("/workflows", async (c) => {
+  const input = await c.req.json<{ label: string; description: string; scope: "matter" | "document"; prompt: string; steps: { agent: string; instructions?: string }[] }>()
+  try {
+    return c.json(createWorkflow(input), 201)
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+app.put("/workflows/:name", async (c) => {
+  const input = await c.req.json<{ label: string; description: string; scope: "matter" | "document"; prompt: string; steps: { agent: string; instructions?: string }[] }>()
+  try {
+    return c.json(updateWorkflow(c.req.param("name"), input))
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
+})
+
+app.delete("/workflows/:name", (c) => {
+  try {
+    deleteWorkflow(c.req.param("name"))
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: e.message }, e.status ?? 400)
+  }
 })
 
 app.post("/matters", async (c) => {

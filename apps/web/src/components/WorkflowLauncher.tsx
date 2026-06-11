@@ -1,17 +1,20 @@
 import { useState } from "react"
-import { WORKFLOWS } from "../agents"
+import type { WorkflowMeta } from "../agents"
 
 // "Workflows" control by the composer. Opens a modal of the multi-step routines
 // available for this matter; picking one launches it into the artifact panel.
 export default function WorkflowLauncher({
+  workflows,
   available,
   onLaunch,
 }: {
+  workflows: WorkflowMeta[]
   available: Set<string>
   onLaunch: (name: string) => void
 }) {
-  const options = WORKFLOWS.filter((w) => available.has(w.name))
+  const options = workflows.filter((w) => available.has(w.name))
   const [open, setOpen] = useState(false)
+
   if (options.length === 0) return null
 
   return (

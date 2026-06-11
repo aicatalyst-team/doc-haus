@@ -17,7 +17,7 @@ import {
   type PermissionReply,
   type PermissionRequest,
 } from "../api/opencode"
-import { CHAT_ASSISTANTS, isAuto, TEMPLATE_BUILDER, WORKFLOWS, type AssistantMeta } from "../agents"
+import { CHAT_ASSISTANTS, isAuto, TEMPLATE_BUILDER, type AssistantMeta, type WorkflowMeta } from "../agents"
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
 import ModelSelector from "./ModelSelector"
@@ -330,6 +330,7 @@ export default function ChatPanel({
   emptyHint = "Ask a question about this matter's documents. Every answer cites the source section.",
   starters = STARTERS,
   composerPlaceholder = "e.g. What termination rights does each party have?",
+  workflows = [],
   playbooks,
   playbook,
   onPlaybookChange,
@@ -362,6 +363,9 @@ export default function ChatPanel({
   emptyHint?: string
   starters?: string[]
   composerPlaceholder?: string
+  // The full launchable workflow list (built-in + custom). Passed to WorkflowLauncher.
+  // Surfaces that don't offer workflows omit it; the launcher's own options guard hides it.
+  workflows?: WorkflowMeta[]
   // The firm playbooks available to bind to this matter, plus the currently-bound
   // one and its setter — surfaced as a composer control alongside the assistant
   // and workflow pickers. All optional so a fixed surface (the template library,
@@ -710,7 +714,7 @@ export default function ChatPanel({
   // timeline and the combined report streams as the assistant turn.
   async function runWorkflow(name: string) {
     if (busy) return
-    const wf = WORKFLOWS.find((w) => w.name === name)
+    const wf = workflows.find((w) => w.name === name)
     if (!wf) return
     setBusy(true)
     partsRef.current.clear()
@@ -894,7 +898,7 @@ export default function ChatPanel({
                 inputRef.current?.focus()
               }}
             />
-            <WorkflowLauncher available={available} onLaunch={runWorkflow} />
+            <WorkflowLauncher available={available} onLaunch={runWorkflow} workflows={workflows} />
             {onPlaybookChange && (
               <PlaybookSelector playbooks={playbooks ?? []} value={playbook} onChange={onPlaybookChange} />
             )}

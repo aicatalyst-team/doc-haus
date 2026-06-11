@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
-import { getMatter, listPlaybooks, renameMatter, type MatterDetail as Detail, type Playbook } from "../api/ingest"
-import { listAgents, matterClient } from "../api/opencode"
-import { AUTO } from "../agents"
+import { getMatter, listPlaybooks, listWorkflows, renameMatter, type CustomWorkflow, type MatterDetail as Detail, type Playbook } from "../api/ingest"
+import { disposeInstance, listAgents, matterClient } from "../api/opencode"
+import { AUTO, WORKFLOWS } from "../agents"
 import DocumentUpload from "../components/DocumentUpload"
 import DocumentViewer from "../components/DocumentViewer"
 import ChatPanel from "../components/ChatPanel"
 import ReviewGrid from "../components/ReviewGrid"
 
-type Agent = { name: string; description?: string; mode?: string }
+type Agent = { name: string; description?: string; mode?: string; hidden?: boolean }
 
 // One matter, three surfaces, switched by the `view` query param from the
 // sidebar: chat | review | documents. The content is a single canvas whose width
@@ -22,6 +22,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   const session = params.get("session") ?? undefined
   const [matter, setMatter] = useState<Detail>()
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
+  const [custom, setCustom] = useState<CustomWorkflow[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [agent, setAgent] = useState(AUTO)
   const [viewing, setViewing] = useState<string>()
@@ -62,10 +63,27 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
     // call would silently drop the composer controls for the whole mount. Retry
     // until it answers rather than leaving them missing.
     async function load() {
+      // Fetch custom workflows here so the self-heal check below has the registry.
+      const wfRes = await listWorkflows().catch(() => ({ workflows: [] as CustomWorkflow[] }))
+      if (cancelled) return
+      setCustom(wfRes.workflows)
+      const customNames = new Set(wfRes.workflows.map((w) => w.name))
+      // A warm instance only rescans the agent dir after dispose; edits to an
+      // existing workflow's .md don't change names, so they're picked up on the
+      // instance's natural next rebuild. Only missing names need a dispose.
+      let healed = false
       while (!cancelled) {
         const list = await listAgents(matterClient(dir)).catch(() => undefined)
         if (cancelled) return
         if (list) {
+          const agentNames = new Set((list as Agent[]).map((a) => a.name))
+          // If a workflow's agent is missing from the live instance, the instance
+          // predates the workflow — dispose once so it rescans on next wake.
+          if (!healed && [...customNames].some((n) => !agentNames.has(n))) {
+            healed = true
+            await disposeInstance(matterClient(dir))
+            continue
+          }
           setAgents(list as Agent[])
           // A new chat opens on Auto (a pseudo-assistant always offered, so no
           // availability check); an existing session restores the agent it last
@@ -95,6 +113,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   if (!matter) return <p className="muted">Loading matter...</p>
 
   const available = new Set(agents.map((a) => a.name))
+  const workflows = [...WORKFLOWS, ...custom]
 
   async function commitRename() {
     setRenaming(false)
@@ -153,6 +172,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
               initialPrompt={params.get("prompt") ?? undefined}
               agent={agent}
               available={available}
+              workflows={workflows}
               playbooks={playbooks}
               playbook={matter.playbook}
               onPlaybookChange={changePlaybook}
