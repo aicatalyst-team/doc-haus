@@ -9,13 +9,20 @@ import {
   setRedlineStatus,
   pendingRedlineCounts,
 } from "./db"
-import { ingestDocument } from "./ingest"
+import { ingestDocument, extractDocumentText } from "./ingest"
 import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir } from "./matter"
+import { seedTemplates, listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
+import { docxodus } from "./docxodus"
 import { readGrid, writeGrid, type Grid } from "./grid"
-import { existsSync, rmSync } from "node:fs"
+import { existsSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
+
+// Seed the global template library from the repo's nda.docx on first boot. The
+// directory's existence is the marker, so restarts never re-seed or resurrect a
+// deleted template.
+seedTemplates()
 
 const app = new Hono()
 
@@ -111,6 +118,61 @@ app.get("/matters/:id/documents/content", async (c) => {
   return new Response(Bun.file(file).stream(), {
     headers: {
       "Content-Type": mime,
+      "Content-Disposition": `inline; filename="${path.basename(file)}"`,
+    },
+  })
+})
+
+// The plain text of a matter document, mammoth-extracted (the same text indexing
+// uses). The drafter's read-document tool reads it to convert an existing document
+// into a template by replacing every client-specific detail with a placeholder.
+app.get("/matters/:id/documents/text", async (c) => {
+  const file = path.join(matterDir(c.req.param("id")), path.basename(c.req.query("name") ?? ""))
+  if (!existsSync(file)) return c.notFound()
+  return c.json({ text: await extractDocumentText(file, Buffer.from(await Bun.file(file).bytes())) })
+})
+
+// The global template library. Templates are firm-managed drafting bases shared
+// across every matter, stored in WORKSPACE_ROOT/.templates and owned by ingest.
+// The library directory ships alongside the list so the web app can scope its
+// templates chat to it (the engine sessions run in TEMPLATES_DIR, not a matter).
+app.get("/templates", async (c) => c.json({ dir: TEMPLATES_DIR, templates: await listTemplates() }))
+
+app.post("/templates", async (c) => {
+  const body = await c.req.parseBody()
+  const file = body["file"] as File
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const name = path.basename(file.name)
+  writeFileSync(templatePath(name), buffer)
+  const description = typeof body["description"] === "string" ? body["description"] : ""
+  setTemplateDescription(name, description)
+  const dx = await docxodus()
+  const session = dx.openDocxSession(new Uint8Array(buffer), {})
+  const placeholders = session.findPlaceholders().map((p) => ({ text: p.match.text, kind: p.kind, hint: p.hint }))
+  session.close()
+  return c.json({ name, description, placeholders })
+})
+
+app.patch("/templates", async (c) => {
+  const { description } = await c.req.json<{ description: string }>()
+  return c.json(setTemplateDescription(c.req.query("name") ?? "", description))
+})
+
+app.delete("/templates", (c) => {
+  const name = c.req.query("name") ?? ""
+  rmSync(templatePath(name), { force: true })
+  removeTemplateDescription(name)
+  return c.json({ ok: true })
+})
+
+// Serve a template's .docx bytes so the dochaus draft-document tool can fill it,
+// mirroring the matter document content route.
+app.get("/templates/content", async (c) => {
+  const file = templatePath(c.req.query("name") ?? "")
+  if (!existsSync(file)) return c.notFound()
+  return new Response(Bun.file(file).stream(), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Disposition": `inline; filename="${path.basename(file)}"`,
     },
   })

@@ -87,7 +87,7 @@ export async function ingestDocument(matterDir: string, fileName: string, buffer
 // Pull plain text from a source document for indexing. DOCX goes through mammoth;
 // PDF through unpdf's pdf.js build (merged into one string). Both feed the same
 // sectionize/chunk/embed path, so the rest of ingestion is format-agnostic.
-async function extractDocumentText(fileName: string, buffer: Buffer) {
+export async function extractDocumentText(fileName: string, buffer: Buffer) {
   if (fileName.toLowerCase().endsWith(".pdf")) {
     const { extractText, getDocumentProxy } = await import("unpdf")
     const { text } = await extractText(await getDocumentProxy(new Uint8Array(buffer)), { mergePages: true })
