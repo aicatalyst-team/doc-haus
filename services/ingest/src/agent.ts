@@ -223,17 +223,16 @@ export function createAgent(input: { label: string; description: string; instruc
 export function updateAgent(name: string, input: { label: string; description: string; instructions: string }): CustomAgent {
   validate(input)
   const registry = readRegistry()
-  const idx = registry.findIndex((r) => r.name === name)
-  if (idx === -1) throw new AgentError(`agent "${name}" not found`, 404)
+  const existing = registry.find((r) => r.name === name)
+  if (!existing) throw new AgentError(`agent "${name}" not found`, 404)
   const record: CustomAgent = {
-    ...registry[idx],
+    ...existing,
     label: input.label,
     description: input.description,
     instructions: input.instructions,
   }
   writeFileSync(agentPath(name), renderCustomAgentMarkdown(record))
-  registry[idx] = record
-  writeRegistry(registry)
+  writeRegistry(registry.map((r) => (r.name === name ? record : r)))
   return record
 }
 

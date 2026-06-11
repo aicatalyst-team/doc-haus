@@ -100,7 +100,7 @@ test("createAgent writes .md and registry; appears in listAgents once", () => {
   expect(existsSync(path.join(dochaus, "agent", "ip-specialist.md"))).toBe(true)
   const listed = ag.listAgents().filter((a) => a.name === "ip-specialist")
   expect(listed.length).toBe(1)
-  expect(listed[0].builtin).toBe(false)
+  expect(listed[0]!.builtin).toBe(false)
 })
 
 test("updateAgent rewrites .md and registry, name immutable", () => {

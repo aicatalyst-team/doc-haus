@@ -72,9 +72,9 @@ export async function listAwsProfiles() {
       .catch(() => "")
   const [config, credentials] = await Promise.all([read("config"), read("credentials")])
   const names = [
-    ...[...config.matchAll(/^\[profile ([^\]]+)\]/gm)].map((m) => m[1].trim()),
+    ...[...config.matchAll(/^\[profile ([^\]]+)\]/gm)].map((m) => m[1]!.trim()),
     ...(/^\[default\]/m.test(config) ? ["default"] : []),
-    ...[...credentials.matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1].trim()),
+    ...[...credentials.matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1]!.trim()),
   ]
   return [...new Set(names)].sort()
 }

@@ -28,8 +28,8 @@ function sectionize(text: string): Section[] {
         current.charEnd = offset
         sections.push(current)
       }
-      const label = clause ? clause[1] : trimmed
-      current = { label, text: line + "\n", charStart: offset }
+      const label = clause?.[1] ?? trimmed
+      current = { label, text: line + "\n", charStart: offset, charEnd: 0 }
     } else {
       current.text += line + "\n"
     }

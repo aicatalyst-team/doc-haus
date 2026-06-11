@@ -177,12 +177,11 @@ export function updateWorkflow(
 ): Workflow {
   validate(input)
   const registry = readRegistry()
-  const idx = registry.findIndex((r) => r.name === name)
-  if (idx === -1) throw new WorkflowError(`workflow "${name}" not found`, 404)
-  const record: Workflow = { ...registry[idx], label: input.label, description: input.description, scope: input.scope, prompt: input.prompt, steps: input.steps }
+  const existing = registry.find((r) => r.name === name)
+  if (!existing) throw new WorkflowError(`workflow "${name}" not found`, 404)
+  const record: Workflow = { ...existing, label: input.label, description: input.description, scope: input.scope, prompt: input.prompt, steps: input.steps }
   writeFileSync(agentPath(name), renderAgentMarkdown(record))
-  registry[idx] = record
-  writeRegistry(registry)
+  writeRegistry(registry.map((r) => (r.name === name ? record : r)))
   return record
 }
 
