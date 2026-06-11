@@ -10,6 +10,7 @@ import {
   type Client,
 } from "../api/opencode"
 import { defaultProvider, pickForProvider, providerOf } from "../models"
+import { isGated, loadVerified } from "../providers"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 
@@ -56,7 +57,12 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const connectedProviders = all.filter((p) => connected.has(p.id))
+  // Host-credential providers (Vertex/Bedrock) report connected on project presence
+  // alone, never on a real sign-in — so onboarding offers them only once they've
+  // passed the probe in full Settings, the same gate Settings applies. An unverified
+  // host provider drops out here entirely, falling through to the connect step.
+  const verified = useMemo(() => loadVerified(), [])
+  const connectedProviders = all.filter((p) => connected.has(p.id) && (!isGated(p.id) || verified.has(p.id)))
 
   // Every model across connected providers as "providerID/modelID" strings, for
   // both pickers — same shape the engine expects for model + small_model.
@@ -100,10 +106,11 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
 
   const providerModels = models.filter((m) => m.providerId === provider)
 
-  // Providers connectable with a typed API key: the whole catalog minus ones
-  // already ready, since any provider is keyable through auth.set.
+  // Providers connectable with a typed API key: the catalog minus ones already
+  // ready and minus host-credential clouds (Vertex/Bedrock), which take a server
+  // sign-in plus a probe in full Settings rather than a key typed here.
   const keyProviders = all
-    .filter((p) => !connected.has(p.id))
+    .filter((p) => !connected.has(p.id) && !isGated(p.id))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const showConnect = forceConnect || models.length === 0

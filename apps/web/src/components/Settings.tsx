@@ -15,25 +15,10 @@ import {
   type Client,
 } from "../api/opencode"
 import { defaultProvider, pickForProvider, providerOf } from "../models"
+import { isGated, loadVerified, saveVerified } from "../providers"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 type Methods = Record<string, { type: "oauth" | "api"; label: string }[]>
-
-// The host-credential providers that passed a live credential probe, remembered
-// across reloads. localStorage (not engine config) because it is a per-browser UI
-// gate over the engine's auth, not an engine setting — the engine has no notion of
-// "verified", it reports Vertex/Bedrock connected on project presence alone.
-const VERIFIED_KEY = "dochaus.verifiedProviders"
-function loadVerified(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(VERIFIED_KEY) ?? "[]") as string[])
-  } catch {
-    return new Set()
-  }
-}
-function saveVerified(ids: Set<string>) {
-  localStorage.setItem(VERIFIED_KEY, JSON.stringify([...ids]))
-}
 
 // Engine-wide settings: connect model providers, add a local endpoint, and pick
 // the default model. These act on the engine's global config + auth store (not a
@@ -109,12 +94,11 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
 
   // Vertex/Bedrock need a passing credential probe before they count as ready;
   // every other (API-key/OAuth) provider is ready the moment it's connected.
-  const gated = (id: string) => CLOUD_SETUPS.some((c) => c.id === id)
-  const readyProviders = connectedProviders.filter((p) => !gated(p.id) || verified.has(p.id))
+  const readyProviders = connectedProviders.filter((p) => !isGated(p.id) || verified.has(p.id))
 
   // Host-credential providers in the catalog that haven't passed a probe yet —
   // shown under "Needs setup" with their project/region fields and an Enable button.
-  const needsSetup = all.filter((p) => gated(p.id) && !verified.has(p.id))
+  const needsSetup = all.filter((p) => isGated(p.id) && !verified.has(p.id))
 
   // Probe a host provider's credentials with one real call; on success mark it
   // verified (persisted) so it joins the picker, on failure surface the engine's
@@ -283,7 +267,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                   <span className="settings-conn-meta muted">
                     {statusLabel(p, methods)} · {Object.keys(p.models).length} models
                   </span>
-                  {gated(p.id) && (
+                  {isGated(p.id) && (
                     <button className="settings-switch" onClick={() => unverify(p.id)}>
                       Reconfigure
                     </button>
