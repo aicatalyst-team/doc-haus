@@ -887,8 +887,12 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  color: var(--accent);
   font-size: 11px;
+}
+
+.review-note.has-comments {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .review-comments {

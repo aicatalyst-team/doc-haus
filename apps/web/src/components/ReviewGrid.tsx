@@ -282,20 +282,25 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
                               {cell.citation && <span className="review-cite"> [{cell.citation.documentName} § {cell.citation.section}]</span>}
                             </button>
                             <div className="review-cell-actions">
-                              {cell.comments && cell.comments.length > 0 && (
-                                <span className="review-note" title={cell.comments.map((c) => c.text).join("\n")}>
-                                  <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
-                                    <path
-                                      d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.5L5 14.5v-3H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5Z"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="1.4"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
-                                  {cell.comments.length}
-                                </span>
-                              )}
+                              <button
+                                className={`icon-btn review-note${cell.comments?.length ? " has-comments" : ""}`}
+                                title={cell.comments?.map((c) => c.text).join("\n") || "Add a comment"}
+                                onClick={() => {
+                                  setDraft("")
+                                  setDetail({ docName: doc.name, columnId: col.id, question: col.question })
+                                }}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                                  <path
+                                    d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.5L5 14.5v-3H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.4"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                                {cell.comments?.length ?? 0}
+                              </button>
                               {stale && <span className="review-stale" title="Question changed since this answer">stale</span>}
                               <button className="icon-btn" title={cell.status === "reviewed" ? "Unlock" : "Mark reviewed"} onClick={() => toggleReviewed(key)}>
                                 {cell.status === "reviewed" ? "Locked" : "Lock"}
