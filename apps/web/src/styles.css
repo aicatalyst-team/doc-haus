@@ -1039,6 +1039,19 @@ input[type="checkbox"]:checked::before {
   scrollbar-color: var(--border-strong) transparent;
 }
 
+/* Wider picker variant: options read as a two-column table — name on the
+   left, description on the right. */
+.picker-panel.picker-wide {
+  max-width: 720px;
+}
+
+.picker-wide .assistant-option {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  column-gap: 20px;
+  align-items: baseline;
+}
+
 .assistant-option {
   position: relative;
   display: flex;
@@ -3758,6 +3771,11 @@ button.linklike:hover:not(:disabled) {
 
   .row {
     flex-wrap: wrap;
+  }
+
+  .picker-wide .assistant-option {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
   }
 
   .page-head {

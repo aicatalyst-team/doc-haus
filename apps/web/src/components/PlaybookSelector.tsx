@@ -35,7 +35,7 @@ export default function PlaybookSelector({
       </button>
       {open && (
         <div className="viewer-overlay" onClick={() => setOpen(false)}>
-          <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="picker-panel picker-wide" onClick={(e) => e.stopPropagation()}>
             <div className="viewer-bar">
               <span className="viewer-title">Playbook</span>
               <button className="modal-close" aria-label="Close" onClick={() => setOpen(false)}>
