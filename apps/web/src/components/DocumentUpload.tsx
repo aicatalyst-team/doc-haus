@@ -141,7 +141,7 @@ export default function DocumentUpload({
           if (files.length) onFiles(files)
         }}
       >
-        {busy ? "Working..." : "Drop .docx or .pdf contracts here, or click to choose files."}
+        {busy ? "Working..." : "Drop .docx or .pdf documents here (scans OK), or click to choose files."}
       </div>
       <input
         ref={input}

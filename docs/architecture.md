@@ -6,10 +6,13 @@ clean. Three processes at runtime:
 1. **`opencode serve`** — the unmodified OpenCode engine. Scopes every session and tool
    to a matter via the `x-opencode-directory` header.
 2. **`services/ingest/`** — standalone Bun + Hono service. Creates matters and turns
-   uploaded DOCX into embeddings: `mammoth` extract → sectionize → local MiniLM
+   uploaded documents into embeddings: extract → sectionize → local MiniLM
    (`@xenova/transformers`, all-MiniLM-L6-v2, 384-dim) → per-matter
-   `<matter>/.dochaus/legal.db` (`bun:sqlite`). Exists because OpenCode has no upload
-   endpoint and plugins cannot add HTTP routes.
+   `<matter>/.dochaus/legal.db` (`bun:sqlite`). DOCX extracts via `mammoth`; PDF via
+   [markitdown](https://github.com/microsoft/markitdown) (a PATH install or `uvx`,
+   whichever the host has) with `unpdf` as the no-Python floor; flat/scanned PDFs
+   with no text layer fall through to OCR (`pdftoppm` + `tesseract`, when on PATH).
+   Exists because OpenCode has no upload endpoint and plugins cannot add HTTP routes.
 3. **`apps/web/`** — React + Vite frontend on the OpenCode SDK + the ingest API.
 
 The legal config layer lives in **`dochaus/`** and is loaded by pointing the server at

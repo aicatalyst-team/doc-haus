@@ -45,8 +45,10 @@ Try asking: *What is the cap on the firm's liability?* — you get the answer ci
 the exact clause, quoted from the document. More things to try in
 [demo/README.md](demo/README.md).
 
-To work on your own documents: create a matter, upload a `.docx`, and ask. Everything —
-conversations, documents, the index — persists on your machine.
+To work on your own documents: create a matter, upload a `.docx` or `.pdf` (including
+flat scans — OCR runs automatically when [Poppler](https://poppler.freedesktop.org) and
+[Tesseract](https://github.com/tesseract-ocr/tesseract) are installed), and ask.
+Everything — conversations, documents, the index — persists on your machine.
 
 ### Or with Docker
 
