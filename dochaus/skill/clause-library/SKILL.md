@@ -11,7 +11,7 @@ disclaimers, liquidated damages, data transfers) explicitly.
 Each clause family has one reference file containing the balanced position,
 the common one-sided variants seen from each side, and a fallback ladder
 ordered from the preferred position down to the last acceptable rung. Fenced
-```example blocks are illustrative market language for comparison only — they
+`example` blocks are illustrative market language for comparison only — they
 are not firm-approved text; approved replacement text lives in the matter's
 playbook. The families align one-to-one with the contract-risk-checklist
 areas; use that skill to find problems, this one to judge severity and propose
