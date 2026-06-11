@@ -192,65 +192,6 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
           {notice && <p className="settings-notice">{notice}</p>}
 
           <section className="settings-section">
-            <h3>Models</h3>
-            <p className="settings-hint muted">
-              Pick a provider, then a default and a fast model from it — both stay on the one provider, so the Auto
-              router (which runs the fast model) can never call across clouds.
-            </p>
-            <div className="row settings-row">
-              <span className="muted">Provider</span>
-              <select value={provider} onChange={(e) => changeProvider(e.target.value)} disabled={models.length === 0}>
-                <option value="">{models.length ? "Select a provider" : "Connect a provider first"}</option>
-                {readyProviders.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="row settings-row">
-              <span className="muted">Default</span>
-              <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!provider}>
-                <option value="">Select a model</option>
-                {providerModels.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="row settings-row">
-              <span className="muted">Fast</span>
-              <select value={smallModel} onChange={(e) => setSmallModelValue(e.target.value)} disabled={!provider}>
-                <option value="">Same as default</option>
-                {providerModels.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="row settings-row">
-              <button
-                className="primary"
-                disabled={!model}
-                onClick={async () => {
-                  // Save both slots together so the persisted config is always
-                  // same-provider — no window where default and fast disagree.
-                  await setDefaultModel(model)
-                  await setSmallModel(smallModel || model)
-                  // On first run, picking a model is the whole point of the modal —
-                  // close once it's saved so the user lands straight in the app.
-                  if (firstRun) return onClose()
-                  setNotice(`Models saved.`)
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </section>
-
-          <section className="settings-section">
             <h3>Ready to use</h3>
             <p className="settings-hint muted">
               Model providers the engine already has credentials for — picked up from the server's sign-in (a gcloud or
@@ -302,9 +243,10 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
           </section>
 
           <section className="settings-section">
-            <h3>Connect a provider</h3>
+            <h3>Add a provider — API key</h3>
             <p className="settings-hint muted">
-              Add a hosted provider with an API key (OpenAI, Anthropic, Groq...). The key is stored on the engine.
+              A hosted provider you connect with an API key (OpenAI, Anthropic, Groq...). The key is stored on the
+              engine. Vertex and Bedrock instead sign in on the server — see Needs setup below.
             </p>
             <div className="row settings-row">
               <select value={pick} onChange={(e) => setPick(e.target.value)}>
@@ -389,6 +331,65 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
               await load()
             }}
           />
+
+          <section className="settings-section">
+            <h3>Choose models</h3>
+            <p className="settings-hint muted">
+              Once a provider is ready above, pick a default and a fast model from it — both stay on the one provider, so
+              the Auto router (which runs the fast model) can never call across clouds.
+            </p>
+            <div className="row settings-row">
+              <span className="muted">Provider</span>
+              <select value={provider} onChange={(e) => changeProvider(e.target.value)} disabled={models.length === 0}>
+                <option value="">{models.length ? "Select a provider" : "Add a provider first"}</option>
+                {readyProviders.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="row settings-row">
+              <span className="muted">Default</span>
+              <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!provider}>
+                <option value="">Select a model</option>
+                {providerModels.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="row settings-row">
+              <span className="muted">Fast</span>
+              <select value={smallModel} onChange={(e) => setSmallModelValue(e.target.value)} disabled={!provider}>
+                <option value="">Same as default</option>
+                {providerModels.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="row settings-row">
+              <button
+                className="primary"
+                disabled={!model}
+                onClick={async () => {
+                  // Save both slots together so the persisted config is always
+                  // same-provider — no window where default and fast disagree.
+                  await setDefaultModel(model)
+                  await setSmallModel(smallModel || model)
+                  // On first run, picking a model is the whole point of the modal —
+                  // close once it's saved so the user lands straight in the app.
+                  if (firstRun) return onClose()
+                  setNotice(`Models saved.`)
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
