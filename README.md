@@ -114,6 +114,11 @@ doc.haus is not affiliated with or endorsed by the OpenCode team.
 Open to working with firms on implementations, customizations, and integrations — reach
 out on [LinkedIn](https://www.linkedin.com/in/nickpwatson/).
 
+## Credits
+
+- [Docxodus](https://github.com/JSv4/Docxodus) — DOCX parsing and manipulation
+- [OpenCode](https://github.com/anomalyco/opencode) — agent shell this is built on
+
 ## Disclaimer
 
 doc.haus is software, not a law firm. Its output is **not legal advice** and, like all
