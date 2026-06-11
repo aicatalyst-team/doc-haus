@@ -1,3 +1,7 @@
+import { probeModel } from "./models"
+import { getProviderOptions, probeProvider, type Client } from "./api/opencode"
+import { probeVertexHost } from "./api/ingest"
+
 // Host-credential providers (Google Vertex, Vertex Anthropic, Amazon Bedrock) are
 // reported "connected" by the engine on project/region presence alone — it never
 // checks the gcloud ADC / AWS sign-in actually resolves (see provider.ts:494,
@@ -23,4 +27,43 @@ export function loadVerified(): Set<string> {
 }
 export function saveVerified(ids: Set<string>) {
   localStorage.setItem(VERIFIED_KEY, JSON.stringify([...ids]))
+}
+
+// A verified flag is per-browser but the credentials it vouches for live on the
+// engine's host — point the same browser at a different engine (a fresh Docker
+// container, another machine) and it carries flags that engine never earned, so
+// onboarding would announce "Detected Google Vertex" with zero credentials
+// behind it. Re-prove every cached flag with the same live probe that minted it
+// (Settings' enable(): host ADC probe for Vertex with a saved project, engine
+// prompt probe otherwise) and persist the survivors, so a stale flag dies here
+// instead of at the user's first real prompt.
+export async function revalidateVerified(
+  client: Client,
+  providers: { id: string; models: Record<string, unknown> }[],
+  connected: Set<string>,
+): Promise<Set<string>> {
+  const cached = loadVerified()
+  const passed = await Promise.all(
+    [...cached].map(async (id) => {
+      const provider = providers.find((p) => p.id === id)
+      if (!provider || !connected.has(id)) return null
+      const modelID = probeModel(id, Object.keys(provider.models))
+      if (!modelID) return null
+      const vertex = id === "google-vertex" || id === "google-vertex-anthropic"
+      const options = vertex ? await getProviderOptions(id) : {}
+      const result =
+        vertex && options.project
+          ? await probeVertexHost({
+              project: options.project,
+              location: options.location || "global",
+              publisher: id === "google-vertex" ? "google" : "anthropic",
+              model: modelID,
+            })
+          : await probeProvider(client, id, modelID)
+      return result.ok ? id : null
+    }),
+  )
+  const next = new Set(passed.filter((id): id is string => id !== null))
+  if (next.size !== cached.size) saveVerified(next)
+  return next
 }

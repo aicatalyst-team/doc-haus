@@ -18,7 +18,7 @@ import {
 } from "../api/ingest"
 import { defaultProvider, pickForProvider, providerOf } from "../models"
 import { loadPrefs, savePrefs } from "../prefs"
-import { isGated, loadVerified } from "../providers"
+import { isGated, revalidateVerified } from "../providers"
 import JurisdictionSelect from "./JurisdictionSelect"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
@@ -83,6 +83,10 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
     const [providers, cfg] = await Promise.all([listProviders(client), getConfig()])
     setAll(providers.all)
     setConnected(new Set(providers.connected))
+    // Re-prove cached host-credential verifications against this engine before
+    // trusting them — a browser that verified Vertex against one engine may now
+    // be pointed at another (Docker) with no credentials at all.
+    setVerified(await revalidateVerified(client, providers.all, new Set(providers.connected)))
     // Seed from any model already saved so re-opening shows the live config.
     setPrimary((p) => p || cfg.model || "")
     setFast((f) => f || cfg.small_model || "")
@@ -102,9 +106,10 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
 
   // Host-credential providers (Vertex/Bedrock) report connected on project presence
   // alone, never on a real sign-in — so onboarding offers them only once they've
-  // passed the probe in full Settings, the same gate Settings applies. An unverified
-  // host provider drops out here entirely, falling through to the connect step.
-  const verified = useMemo(() => loadVerified(), [])
+  // passed a live credential probe: verified in full Settings AND re-proven against
+  // this engine during load() (see revalidateVerified). An unverified host provider
+  // drops out here entirely, falling through to the connect step.
+  const [verified, setVerified] = useState<Set<string>>(new Set())
   const connectedProviders = all.filter((p) => connected.has(p.id) && (!isGated(p.id) || verified.has(p.id)))
 
   // Every model across connected providers as "providerID/modelID" strings, for
@@ -121,7 +126,7 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
           })),
         )
         .sort((a, b) => a.label.localeCompare(b.label)),
-    [all, connected],
+    [all, connected, verified],
   )
 
   // Once models become available, seed the provider — the one a saved model
