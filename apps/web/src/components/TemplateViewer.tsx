@@ -19,6 +19,10 @@ export default function TemplateViewer({
   const { isReady, error: wasmError, convertToHtml } = useDocxodus("/wasm/")
   const [html, setHtml] = useState<string>()
   const [error, setError] = useState<string>()
+  // Optional-clause markers are keep-or-omit decisions, not fills — list them
+  // separately under their short names.
+  const fills = placeholders.filter((p) => !p.text.startsWith("[optional:"))
+  const optional = placeholders.filter((p) => p.text.startsWith("[optional:"))
 
   useEffect(() => {
     if (!isReady) return
@@ -57,17 +61,31 @@ export default function TemplateViewer({
           <aside className="changes-panel">
             <div className="changes-head">
               <span>
-                {placeholders.length} placeholder{placeholders.length === 1 ? "" : "s"}
+                {fills.length} placeholder{fills.length === 1 ? "" : "s"}
               </span>
             </div>
-            {placeholders.length === 0 ? (
+            {fills.length === 0 ? (
               <p className="muted">This template exposes no placeholders.</p>
             ) : (
               <ul className="template-placeholders">
-                {placeholders.map((p) => (
+                {fills.map((p) => (
                   <li key={p.text}>{p.text}</li>
                 ))}
               </ul>
+            )}
+            {optional.length > 0 && (
+              <>
+                <div className="changes-head">
+                  <span>
+                    {optional.length} optional clause{optional.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <ul className="template-placeholders">
+                  {optional.map((p) => (
+                    <li key={p.text}>{p.text.slice("[optional:".length, -1).trim()}</li>
+                  ))}
+                </ul>
+              </>
             )}
           </aside>
         </div>

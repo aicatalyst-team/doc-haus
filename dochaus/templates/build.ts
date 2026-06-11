@@ -127,7 +127,11 @@ Each Party acknowledges that any breach of this Agreement may cause irreparable 
 
 This Agreement shall be governed by and construed in accordance with the laws of [insert governing jurisdiction], without regard to its conflict of laws principles.
 
-## 9. Entire Agreement
+## 9. Non-Solicitation [optional: non-solicitation]
+
+During the term of this Agreement and for [insert non-solicit period in months] months thereafter, neither Party shall directly or indirectly solicit for employment any employee of the other Party with whom it had contact in connection with the Purpose, provided that general solicitations not directed at such employees shall not breach this Section.
+
+## 10. Entire Agreement
 
 This Agreement constitutes the entire agreement between the Parties with respect to its subject matter and supersedes all prior agreements and understandings, whether written or oral. This Agreement may only be amended in a writing signed by both Parties.
 

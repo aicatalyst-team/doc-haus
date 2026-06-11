@@ -21,25 +21,30 @@ const ingestUrl = process.env.INGEST_URL ?? "http://127.0.0.1:4500"
 
 export default tool({
   description:
-    'Create a new Word (.docx) document in this matter. Two modes: pass "template" (a name from list-templates) plus "fills" to draft from a template, or pass "content" (full document body as markdown — headings, paragraphs, lists, one blank line between blocks) to draft from scratch. Returns any placeholders still unfilled so they can be completed with the editing tools.',
+    'Create a new Word (.docx) document in this matter. Two modes: pass "template" (a name from list-templates) plus "fills" — and "omit" for any optional clauses to leave out — to draft from a template, or pass "content" (full document body as markdown — headings, paragraphs, lists, one blank line between blocks) to draft from scratch. Returns any placeholders still unfilled so they can be completed with the editing tools.',
   args: {
     name: tool.schema
       .string()
       .describe('File name for the new document, e.g. "Acme NDA.docx" (".docx" is appended if missing)'),
-    template: tool.schema.string().optional().describe("Template file name from list-templates, e.g. \"nda.docx\""),
+    template: tool.schema.string().optional().describe('Template file name from list-templates, e.g. "nda.docx"'),
     fills: tool.schema
       .array(
         tool.schema.object({
-          placeholder: tool.schema.string().describe('Exact placeholder text from list-templates, e.g. "[insert state]"'),
+          placeholder: tool.schema
+            .string()
+            .describe('Exact placeholder text from list-templates, e.g. "[insert state]"'),
           value: tool.schema.string().describe("Replacement text (replaces the whole bracketed placeholder)"),
         }),
       )
       .optional()
       .describe("For template mode: the placeholder values to fill in"),
-    content: tool.schema
-      .string()
+    omit: tool.schema
+      .array(tool.schema.string())
       .optional()
-      .describe("For from-scratch mode: the complete document body as markdown"),
+      .describe(
+        'For template mode: optional clause names to leave OUT of the draft, exactly as listed by list-templates (e.g. "non-solicitation"). Each named clause is removed whole; every other optional clause is kept with its marker stripped.',
+      ),
+    content: tool.schema.string().optional().describe("For from-scratch mode: the complete document body as markdown"),
   },
   async execute(args, ctx) {
     const name = path.basename(args.name.endsWith(".docx") ? args.name : `${args.name}.docx`)
@@ -53,7 +58,8 @@ export default tool({
     const templateRes = args.template
       ? await fetch(`${ingestUrl}/templates/content?name=${encodeURIComponent(args.template)}`)
       : undefined
-    if (templateRes && !templateRes.ok) return `Unknown template: ${args.template}. Call list-templates for the available ones.`
+    if (templateRes && !templateRes.ok)
+      return `Unknown template: ${args.template}. Call list-templates for the available ones.`
     const sourceBytes = templateRes
       ? new Uint8Array(await templateRes.arrayBuffer())
       : await Bun.file(path.join(templatesDir, "_base.docx")).bytes()
@@ -82,10 +88,30 @@ export default tool({
       session.deleteBlock(seed)
     }
 
+    // Omitted optional clauses go first: a clause is its `[optional: name]`-marked
+    // heading plus everything under it (deleteSection), or just the marked block
+    // when the marker sits on a plain paragraph.
+    const missingOmits: string[] = []
+    for (const clause of args.omit ?? []) {
+      const anchor = session.findByText(`[optional: ${clause}]`, { ignoreWhitespace: true })
+      if (!anchor) {
+        missingOmits.push(clause)
+        continue
+      }
+      if (anchor.kind === "h") session.deleteSection(anchor.id)
+      if (anchor.kind !== "h") session.deleteBlock(anchor.id)
+    }
+
     if (args.fills?.length) {
       const fills = Object.fromEntries(args.fills.map((f) => [f.placeholder, f.value]))
       session.fillPlaceholders((p) => fills[p.match.text] ?? null)
     }
+
+    // Kept optional clauses lose their marker so it never reaches the draft.
+    session.fillPlaceholders((p) => (p.match.text.startsWith("[optional:") ? "" : null), {
+      kinds: dx.PlaceholderKinds.AlternativeClause,
+      coalesceWhitespaceAroundEmptyFill: true,
+    })
 
     const remaining = session.findPlaceholders().map((p) => p.match.text)
     const bytes = session.save()
@@ -106,8 +132,13 @@ export default tool({
         remaining.length
           ? `Placeholders still unfilled: ${remaining.join(", ")}. Fill them with the editing tools or leave them for the lawyer.`
           : "No placeholders remain.",
-      ].join(" "),
-      metadata: { document: target, template: args.template, remainingPlaceholders: remaining },
+        missingOmits.length
+          ? `Optional clauses not found (left as-is): ${missingOmits.join(", ")}. Check the names against list-templates.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+      metadata: { document: target, template: args.template, remainingPlaceholders: remaining, omitted: args.omit },
     }
   },
 })

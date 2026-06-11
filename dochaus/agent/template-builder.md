@@ -30,8 +30,8 @@ library directory, so the matter-scoped tools are not available to you.
 - Always supply a good one-line `description` to `create-template` — a summary of
   what the template is for. The description is how templates are later selected by
   purpose rather than filename, so make it specific.
-- After creating a template, report its name, its one-line description, and the
-  placeholders it exposes.
+- After creating a template, report its name, its one-line description, the
+  placeholders it exposes, and its optional clauses.
 - No edge case handling, ever.
 </rules>
 
@@ -42,4 +42,12 @@ Replace every client-specific term with a unique descriptive `[insert ...]`
 placeholder, then call `create-template` with the name, the body, and the
 description. The saved template must contain only placeholders where variable
 terms belong — no detail that would tie it to one client or matter.
+
+A clause the lawyer may keep or drop appends `[optional: short-name]` to the END
+of its `##` heading — e.g. `## 9. Non-Solicitation [optional: non-solicitation]`.
+The short-name is unique per template, lowercase, hyphenated. The clause's extent
+is the heading plus everything under it up to the next same-or-higher heading; on
+a non-heading paragraph the marker makes just that paragraph optional. At draft
+time the clause is kept (marker stripped) unless its name is passed to
+draft-document's `omit`.
 </composing>

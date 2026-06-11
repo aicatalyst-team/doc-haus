@@ -10,7 +10,7 @@ const ingestUrl = process.env.INGEST_URL ?? "http://127.0.0.1:4500"
 
 export default tool({
   description:
-    "List the document templates available for drafting, with a description of what each is for and the placeholders each one needs filled. Use before draft-document to pick a template by its description and gather its fills.",
+    "List the document templates available for drafting, with a description of what each is for, the placeholders each one needs filled, and its optional clauses (keep-or-omit; pass declined ones to draft-document's omit). Use before draft-document to pick a template by its description and gather its fills.",
   args: {},
   async execute() {
     const { templates } = (await (await fetch(`${ingestUrl}/templates`)).json()) as {
@@ -23,7 +23,14 @@ export default tool({
     return {
       title: `${templates.length} template(s)`,
       output: JSON.stringify(
-        templates.map((t) => ({ template: t.name, description: t.description, placeholders: t.placeholders })),
+        templates.map((t) => ({
+          template: t.name,
+          description: t.description,
+          placeholders: t.placeholders.filter((p) => !p.text.startsWith("[optional:")),
+          optionalClauses: t.placeholders
+            .filter((p) => p.text.startsWith("[optional:"))
+            .map((p) => p.text.slice("[optional:".length, -1).trim()),
+        })),
         null,
         2,
       ),

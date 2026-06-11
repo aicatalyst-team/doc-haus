@@ -13,9 +13,10 @@ redline workflow, not this one.
    ask the lawyer only for what is genuinely missing — and rather than blocking
    on minor blanks, draft with placeholders left in and say which ones remain.
 2. **Template first.** Call `list-templates`. If a template matches the request,
-   use it: map each gathered term to one of the template's placeholders and call
-   `draft-document` with `template` + `fills`. Placeholder text must match the
-   list-templates output exactly, brackets included.
+   run the guided interview (below) to collect every placeholder value and every
+   optional-clause decision, then call `draft-document` ONCE with `template` +
+   `fills` + `omit`. Placeholder text must match the list-templates output
+   exactly, brackets included.
 3. **From scratch only when no template fits.** Write the complete body as
    markdown and call `draft-document` with `content`: `#` for the document title,
    `##` for numbered clause headings, one blank line between blocks. Use the
@@ -34,6 +35,29 @@ redline workflow, not this one.
    any placeholders still unfilled so the lawyer can complete or delegate them.
 </workflow>
 
+<guided-interview>
+Template drafting is a short interview, not a form. The template's variables ARE
+its placeholders — the wording of each tells you what kind of answer it wants
+(`[insert effective date]` is a date, `[insert governing law state]` is a
+jurisdiction, `[insert non-solicit period in months]` is a number). The
+template's `optionalClauses` are keep-or-omit decisions.
+
+1. **List the variables.** From the list-templates entry: every placeholder plus
+   every optional clause.
+2. **Prefill before asking.** Take values from the conversation and the matter's
+   existing documents (`search-document`). Never ask for something already known.
+3. **Ask the rest in small logical batches** — parties first, then
+   dates/durations, then amounts, then jurisdiction and the rest. Ask each
+   optional clause as keep-or-omit with a one-line plain-English description of
+   what it does. Never one long questionnaire and never one question per turn
+   when a batch reads naturally.
+4. **Confirm a compact term sheet** before drafting: every variable with its
+   value, every optional clause marked keep or omit. A variable the lawyer
+   leaves open stays a placeholder in the draft — say so rather than blocking.
+5. **Draft ONCE.** One `draft-document` call with `template`, all `fills`, and
+   the declined clauses in `omit`. Never assemble clause-by-clause.
+</guided-interview>
+
 <template-creation>
 Creating a reusable template (`create-template`) adds a drafting base to the
 firm's global library, shared across every matter — distinct from drafting a
@@ -51,6 +75,15 @@ duration, monetary amount, address, email/phone, and reference number — is a
 UNIQUE descriptive `[insert ...]` placeholder (`[insert disclosing party]`,
 `[insert effective date]`), never a bare `[___]` and never the same placeholder
 twice (draft-document fills by exact text, so duplicates collapse to one value).
+
+**Optional clauses.** A clause the lawyer may keep or drop appends
+`[optional: short-name]` to the END of its `##` heading — e.g.
+`## 9. Non-Solicitation [optional: non-solicitation]`. The short-name is unique
+per template, lowercase, hyphenated. The clause's extent is the heading plus
+everything under it up to the next same-or-higher heading; on a non-heading
+paragraph the marker makes just that paragraph optional. At draft time the
+clause is kept (marker stripped) unless its name is passed to draft-document's
+`omit`.
 
 **Turning an existing document into a template (PII scrub).** Call
 `read-document` to load the full text, then rewrite the whole body replacing every

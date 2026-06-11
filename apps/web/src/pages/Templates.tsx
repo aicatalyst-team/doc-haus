@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   deleteTemplate,
+  listMatters,
   listTemplates,
   updateTemplateDescription,
   uploadTemplate,
+  type Matter,
   type Template,
 } from "../api/ingest"
 import { useToast } from "../components/Toast"
@@ -30,6 +32,10 @@ export default function Templates() {
   const [confirmName, setConfirmName] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [viewing, setViewing] = useState<Template>()
+  // "Use" flow: the template being assembled, and the matters to pick from.
+  const [using, setUsing] = useState<Template>()
+  const [matters, setMatters] = useState<Matter[]>([])
+  const navigate = useNavigate()
   const input = useRef<HTMLInputElement>(null)
   // The session id the composer just minted, so the remount that follows the first
   // send keeps the cursor seated (same pattern as MatterDetail).
@@ -89,6 +95,14 @@ export default function Templates() {
     }
   }
 
+  // Picking a matter lands in its chat with the drafter pinned and the assembly
+  // prompt prefilled — the lawyer reviews and sends; nothing auto-runs.
+  function useTemplate(t: Template, m: Matter) {
+    setUsing(undefined)
+    const prompt = `Draft a new document from the template "${t.name}". Gather what you can from this matter's documents and our conversation first, then interview me for the remaining terms and any optional clauses before assembling it.`
+    navigate(`/matter/${m.id}?view=chat&agent=drafter&prompt=${encodeURIComponent(prompt)}`)
+  }
+
   const visible = [...templates].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
@@ -129,72 +143,88 @@ export default function Templates() {
           <p className="muted">No templates yet. Add one to begin.</p>
         ) : (
           <ul className="matter-list">
-            {visible.map((t) => (
-              <li key={t.name}>
-                <span style={{ flex: 1 }}>{t.name}</span>
-                {editing === t.name ? (
-                  <input
-                    className="template-desc-input"
-                    autoFocus
-                    defaultValue={t.description}
-                    placeholder="Add description"
-                    onClick={(e) => e.stopPropagation()}
-                    onBlur={(e) => saveDescription(t, e.target.value.trim())}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") e.currentTarget.blur()
-                      if (e.key === "Escape") setEditing(null)
-                    }}
-                  />
-                ) : (
-                  <span
-                    className="muted template-desc"
-                    title="Click to edit description"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditing(t.name)
-                    }}
-                  >
-                    {t.description || "Add description"}
+            {visible.map((t) => {
+              const optional = t.placeholders.filter((p) => p.text.startsWith("[optional:")).length
+              const fills = t.placeholders.length - optional
+              return (
+                <li key={t.name}>
+                  <span style={{ flex: 1 }}>{t.name}</span>
+                  {editing === t.name ? (
+                    <input
+                      className="template-desc-input"
+                      autoFocus
+                      defaultValue={t.description}
+                      placeholder="Add description"
+                      onClick={(e) => e.stopPropagation()}
+                      onBlur={(e) => saveDescription(t, e.target.value.trim())}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur()
+                        if (e.key === "Escape") setEditing(null)
+                      }}
+                    />
+                  ) : (
+                    <span
+                      className="muted template-desc"
+                      title="Click to edit description"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditing(t.name)
+                      }}
+                    >
+                      {t.description || "Add description"}
+                    </span>
+                  )}
+                  <span className="muted template-count">
+                    {fills} placeholder{fills === 1 ? "" : "s"}
+                    {optional > 0 && `, ${optional} optional clause${optional === 1 ? "" : "s"}`}
                   </span>
-                )}
-                <span className="muted template-count">
-                  {t.placeholders.length} placeholder{t.placeholders.length === 1 ? "" : "s"}
-                </span>
-                <button
-                  className="icon-btn"
-                  title="View template"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setViewing(t)
-                  }}
-                >
-                  View
-                </button>
-                {confirmName === t.name ? (
-                  <button
-                    className="icon-btn danger"
-                    title="Confirm delete"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete(t)
-                    }}
-                  >
-                    Confirm
-                  </button>
-                ) : (
                   <button
                     className="icon-btn"
-                    title="Delete template"
+                    title="Draft a document from this template into a matter"
                     onClick={(e) => {
                       e.stopPropagation()
-                      setConfirmName(t.name)
+                      setUsing(t)
+                      listMatters().then(setMatters)
                     }}
                   >
-                    Delete
+                    Use
                   </button>
-                )}
-              </li>
-            ))}
+                  <button
+                    className="icon-btn"
+                    title="View template"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setViewing(t)
+                    }}
+                  >
+                    View
+                  </button>
+                  {confirmName === t.name ? (
+                    <button
+                      className="icon-btn danger"
+                      title="Confirm delete"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDelete(t)
+                      }}
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    <button
+                      className="icon-btn"
+                      title="Delete template"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmName(t.name)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
@@ -227,11 +257,32 @@ export default function Templates() {
       )}
 
       {viewing && (
-        <TemplateViewer
-          name={viewing.name}
-          placeholders={viewing.placeholders}
-          onClose={() => setViewing(undefined)}
-        />
+        <TemplateViewer name={viewing.name} placeholders={viewing.placeholders} onClose={() => setViewing(undefined)} />
+      )}
+
+      {using && (
+        <div className="viewer-overlay" onClick={() => setUsing(undefined)}>
+          <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="viewer-bar">
+              <span className="viewer-title">Use "{using.name}" in a matter</span>
+              <button onClick={() => setUsing(undefined)}>Close</button>
+            </div>
+            <div className="picker-body">
+              {matters.length === 0 ? (
+                <p className="muted">No matters yet. Create one from the sidebar first.</p>
+              ) : (
+                matters.map((m) => (
+                  <button key={m.id} className="assistant-option" onClick={() => useTemplate(using, m)}>
+                    <span className="assistant-name">
+                      {m.reference ? `${m.reference} — ` : ""}
+                      {m.title}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
