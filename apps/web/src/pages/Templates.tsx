@@ -167,8 +167,8 @@ export default function Templates() {
               return (
                 <li key={t.name} className="list-row">
                   <div className="list-row-main">
-                    <div className="template-info">
-                      <span className="template-name">{t.name}</span>
+                    <span className="list-row-title">{t.name}</span>
+                    <span className="list-row-meta">
                       {editing === t.name ? (
                         <input
                           className="template-desc-input"
@@ -184,7 +184,7 @@ export default function Templates() {
                         />
                       ) : (
                         <span
-                          className="muted template-desc"
+                          className="list-row-desc template-desc"
                           title="Click to edit description"
                           onClick={(e) => {
                             e.stopPropagation()
@@ -194,10 +194,10 @@ export default function Templates() {
                           {t.description || "Add description"}
                         </span>
                       )}
-                    </div>
-                    <span className="muted template-count">
-                      {fills} placeholder{fills === 1 ? "" : "s"}
-                      {optional > 0 && `, ${optional} optional clause${optional === 1 ? "" : "s"}`}
+                      <span className="list-row-date">
+                        {fills} placeholder{fills === 1 ? "" : "s"}
+                        {optional > 0 && `, ${optional} optional clause${optional === 1 ? "" : "s"}`}
+                      </span>
                     </span>
                   </div>
                   <div className="list-row-actions">

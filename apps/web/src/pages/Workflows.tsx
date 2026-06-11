@@ -84,34 +84,17 @@ export default function Workflows() {
         ) : (
           <ul className="matter-list">
             {WORKFLOWS.map((wf) => (
-              <li key={wf.name}>
-                <div className="template-info">
-                  <span className="template-name">{wf.label}</span>
-                  <span className="muted template-desc">{wf.description}</span>
+              <li key={wf.name} className="list-row">
+                <div className="list-row-main">
+                  <span className="list-row-title">
+                    {wf.label}
+                    <span className="badge badge-quiet">Built-in</span>
+                  </span>
+                  <span className="list-row-meta">
+                    <span className="list-row-desc">{wf.description}</span>
+                  </span>
                 </div>
-                <span className="badge badge-quiet">Built-in</span>
-                <button
-                  className="icon-btn"
-                  title="Launch this workflow in a matter"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setUsing(wf)
-                    listMatters().then(setMatters)
-                  }}
-                >
-                  Use
-                </button>
-              </li>
-            ))}
-            {sortedCustom.map((wf) => {
-              const stepSummary = wf.steps.map((s) => s.agent).join(" → ")
-              return (
-                <li key={wf.name}>
-                  <div className="template-info">
-                    <span className="template-name">{wf.label}</span>
-                    <span className="muted template-desc">{wf.description}</span>
-                  </div>
-                  {stepSummary && <span className="muted template-count">{stepSummary}</span>}
+                <div className="list-row-actions">
                   <button
                     className="icon-btn"
                     title="Launch this workflow in a matter"
@@ -123,29 +106,56 @@ export default function Workflows() {
                   >
                     Use
                   </button>
-                  {confirmName === wf.name ? (
-                    <button
-                      className="icon-btn danger"
-                      title="Confirm delete"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDelete(wf)
-                      }}
-                    >
-                      Confirm
-                    </button>
-                  ) : (
+                </div>
+              </li>
+            ))}
+            {sortedCustom.map((wf) => {
+              const stepSummary = wf.steps.map((s) => s.agent).join(" → ")
+              return (
+                <li key={wf.name} className="list-row">
+                  <div className="list-row-main">
+                    <span className="list-row-title">{wf.label}</span>
+                    <span className="list-row-meta">
+                      <span className="list-row-desc">{wf.description}</span>
+                      {stepSummary && <span className="list-row-date">{stepSummary}</span>}
+                    </span>
+                  </div>
+                  <div className="list-row-actions">
                     <button
                       className="icon-btn"
-                      title="Delete workflow"
+                      title="Launch this workflow in a matter"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setConfirmName(wf.name)
+                        setUsing(wf)
+                        listMatters().then(setMatters)
                       }}
                     >
-                      Delete
+                      Use
                     </button>
-                  )}
+                    {confirmName === wf.name ? (
+                      <button
+                        className="icon-btn danger"
+                        title="Confirm delete"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(wf)
+                        }}
+                      >
+                        Confirm
+                      </button>
+                    ) : (
+                      <button
+                        className="icon-btn"
+                        title="Delete workflow"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConfirmName(wf.name)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </li>
               )
             })}

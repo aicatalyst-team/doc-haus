@@ -734,6 +734,11 @@ input[type="checkbox"]:checked::before {
   color: var(--accent);
 }
 
+.list-row-title .badge {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 .list-row-meta {
   display: flex;
   align-items: center;
@@ -742,8 +747,21 @@ input[type="checkbox"]:checked::before {
   color: var(--muted);
 }
 
+/* One-line description inside the meta row — truncates instead of wrapping. */
+.list-row-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-row-meta .template-desc-input {
+  flex: 1;
+}
+
 .list-row-date {
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .list-row-actions {

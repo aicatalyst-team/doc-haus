@@ -105,11 +105,13 @@ export default function Agents() {
             {visible.map((a) => (
               <li key={a.name} className="list-row">
                 <div className="list-row-main">
-                  <div className="template-info">
-                    <span className="template-name">{a.label}</span>
-                    <span className="muted template-desc">{a.description}</span>
-                  </div>
-                  {a.builtin && <span className="badge badge-quiet">Built-in</span>}
+                  <span className="list-row-title">
+                    {a.label}
+                    {a.builtin && <span className="badge badge-quiet">Built-in</span>}
+                  </span>
+                  <span className="list-row-meta">
+                    <span className="list-row-desc">{a.description}</span>
+                  </span>
                 </div>
                 <div className="list-row-actions">
                   <button

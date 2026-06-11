@@ -150,11 +150,13 @@ export default function Skills() {
             {visible.map((s) => (
               <li key={s.name} className="list-row">
                 <div className="list-row-main">
-                  <div className="template-info">
-                    <span className="template-name">{s.name}</span>
-                    <span className="muted template-desc">{s.description || "No description yet"}</span>
-                  </div>
-                  {s.builtin && <span className="badge badge-quiet">Built-in</span>}
+                  <span className="list-row-title">
+                    {s.name}
+                    {s.builtin && <span className="badge badge-quiet">Built-in</span>}
+                  </span>
+                  <span className="list-row-meta">
+                    <span className="list-row-desc">{s.description || "No description yet"}</span>
+                  </span>
                 </div>
                 <div className="list-row-actions">
                   <button
