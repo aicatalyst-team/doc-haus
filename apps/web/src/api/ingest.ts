@@ -4,7 +4,16 @@ import { INGEST_URL } from "../config"
 // under WORKSPACE_ROOT and turns uploaded DOCX into the per-matter embedding DB.
 // OpenCode has no upload endpoint, so all document I/O goes through here.
 
-export type Matter = { id: string; title: string; reference?: string; dir: string; created_at: number }
+export type Matter = {
+  id: string
+  title: string
+  reference?: string
+  jurisdiction?: string
+  dir: string
+  created_at: number
+}
+// A jurisdiction pack the matter can be steered by (dochaus/jurisdiction/<code>).
+export type Jurisdiction = { code: string; name: string; citationStyle: string }
 export type Document = { id: number; name: string; doc_path: string; created_at: number; pending?: number }
 // A pending redline proposal: one tracked change awaiting accept/reject.
 export type Redline = {
@@ -49,20 +58,30 @@ export async function listMatters(): Promise<Matter[]> {
   return res.json()
 }
 
-export async function createMatter(title: string, reference?: string): Promise<Matter> {
+export async function listJurisdictions(): Promise<Jurisdiction[]> {
+  const res = await fetch(`${INGEST_URL}/jurisdictions`)
+  return res.json()
+}
+
+export async function createMatter(title: string, reference?: string, jurisdiction?: string): Promise<Matter> {
   const res = await fetch(`${INGEST_URL}/matters`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, reference }),
+    body: JSON.stringify({ title, reference, jurisdiction }),
   })
   return res.json()
 }
 
-export async function renameMatter(id: string, title: string, reference?: string): Promise<Matter> {
+export async function renameMatter(
+  id: string,
+  title: string,
+  reference?: string,
+  jurisdiction?: string,
+): Promise<Matter> {
   const res = await fetch(`${INGEST_URL}/matters/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, reference }),
+    body: JSON.stringify({ title, reference, jurisdiction }),
   })
   return res.json()
 }

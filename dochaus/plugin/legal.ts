@@ -2,8 +2,18 @@ import type { Plugin } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
 import { findQuote, liveText } from "../lib/extract"
 import { formatCitations, type DocumentCitation } from "../lib/citations"
+import { loadJurisdiction, readMatterJurisdiction } from "../lib/jurisdiction"
 
-// doc.haus legal plugin — citation verification (issue #6).
+// doc.haus legal plugin — citation verification (issue #6) and per-matter
+// jurisdiction steering (issue #18).
+//
+// Jurisdiction steering: the plugin instance is scoped to the active matter's
+// directory (the engine instantiates one per matter via x-opencode-directory),
+// so it reads that matter's jurisdiction from matter.json and, when the matter
+// carries one, appends the matching jurisdiction pack's prompt fragment to the
+// system prompt for every turn. This is what makes a matter's reasoning,
+// citation style, and authority hierarchy jurisdiction-aware without forking a
+// per-jurisdiction agent — a pack is config-only (dochaus/jurisdiction/<code>/).
 //
 // After any tool returns citations (search-document's retrieval hits, the cite
 // tool's anchored quotations), every citation's span is re-checked against the
@@ -18,7 +28,18 @@ import { formatCitations, type DocumentCitation } from "../lib/citations"
 // the model is told to have the document re-ingested. A lawyer must never be
 // handed a quote whose text no longer exists in the document.
 
-export const LegalPlugin: Plugin = async () => ({
+export const LegalPlugin: Plugin = async (input) => ({
+  "experimental.chat.system.transform": async (_, output) => {
+    const code = readMatterJurisdiction(input.directory)
+    if (!code) return
+    const pack = await loadJurisdiction(code)
+    if (!pack) return
+    output.system.push(
+      `<jurisdiction code="${pack.code}" name="${pack.name}" citation="${pack.citationStyle}">\n` +
+        pack.prompt.trim() +
+        `\n</jurisdiction>`,
+    )
+  },
   "tool.execute.after": async (input, output) => {
     const citations = output.metadata?.citations as DocumentCitation[] | undefined
     if (!citations?.length) return

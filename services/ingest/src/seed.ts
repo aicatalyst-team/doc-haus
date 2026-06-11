@@ -282,7 +282,10 @@ if (existing) {
   process.exit(0)
 }
 
-const matter = createMatter(MATTER_TITLE, "A&C/2026-0042")
+// The demo letter is an England & Wales engagement (SRA-regulated firm, UK GDPR,
+// E&W governing-law clause), so seed it with the EW jurisdiction pack — the first
+// run then shows jurisdiction-aware reasoning without any setup.
+const matter = createMatter(MATTER_TITLE, "A&C/2026-0042", "EW")
 const result = await ingestDocument(matter.dir, DOC_NAME, Buffer.from(buffer))
 console.log(`Seeded matter "${matter.title}" (${matter.id})`)
 console.log(`Ingested ${DOC_NAME}: ${result.sections} sections, ${result.chunks} chunks`)

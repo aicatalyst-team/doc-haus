@@ -26,20 +26,31 @@ test("matterDir accepts the generated slug+uuid shape and stays under the root",
 })
 
 test("create, list, get, rename, delete round-trip", () => {
-  const created = matter.createMatter("Acme / Merger 2026", "2026-0042")
+  const created = matter.createMatter("Acme / Merger 2026", "2026-0042", "EW")
   expect(created.id).toMatch(/^acme-merger-2026-[a-z0-9]{6}$/)
   expect(created.reference).toBe("2026-0042")
+  expect(created.jurisdiction).toBe("EW")
   expect(existsSync(path.join(root, created.id, "matter.json"))).toBe(true)
 
   expect(matter.listMatters().map((m) => m.id)).toContain(created.id)
   expect(matter.getMatter(created.id).title).toBe("Acme / Merger 2026")
+  expect(matter.getMatter(created.id).jurisdiction).toBe("EW")
 
-  const renamed = matter.renameMatter(created.id, "Acme Acquisition", "2026-0099")
+  // Jurisdiction moves on its own through the rename endpoint while title/ref hold.
+  const renamed = matter.renameMatter(created.id, "Acme Acquisition", "2026-0099", "US-NY")
   expect(renamed.id).toBe(created.id) // id is stable across rename
   expect(renamed.title).toBe("Acme Acquisition")
   expect(matter.getMatter(created.id).reference).toBe("2026-0099")
+  expect(matter.getMatter(created.id).jurisdiction).toBe("US-NY")
 
   matter.deleteMatter(created.id)
   expect(existsSync(path.join(root, created.id))).toBe(false)
   expect(matter.listMatters().map((m) => m.id)).not.toContain(created.id)
+})
+
+test("listJurisdictions surfaces the bundled EW pack from the dochaus config layer", () => {
+  const ew = matter.listJurisdictions().find((j) => j.code === "EW")
+  expect(ew).toBeDefined()
+  expect(ew!.name).toBe("England & Wales")
+  expect(ew!.citationStyle).toBe("OSCOLA")
 })

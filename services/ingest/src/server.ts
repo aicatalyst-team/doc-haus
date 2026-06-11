@@ -12,7 +12,7 @@ import {
 import { ingestDocument, extractDocumentText } from "./ingest"
 import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
-import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir } from "./matter"
+import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions } from "./matter"
 import { seedTemplates, listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
 import { docxodus } from "./docxodus"
 import { readGrid, writeGrid, type Grid } from "./grid"
@@ -38,14 +38,26 @@ app.use(
 
 app.get("/matters", (c) => c.json(listMatters()))
 
+// The jurisdiction packs a matter can be assigned, read from the dochaus config
+// layer. The web app populates its matter-creation dropdown from this (issue #18).
+app.get("/jurisdictions", (c) => c.json(listJurisdictions()))
+
 app.post("/matters", async (c) => {
-  const { title, reference } = await c.req.json<{ title: string; reference?: string }>()
-  return c.json(createMatter(title, reference))
+  const { title, reference, jurisdiction } = await c.req.json<{
+    title: string
+    reference?: string
+    jurisdiction?: string
+  }>()
+  return c.json(createMatter(title, reference, jurisdiction))
 })
 
 app.patch("/matters/:id", async (c) => {
-  const { title, reference } = await c.req.json<{ title: string; reference?: string }>()
-  return c.json(renameMatter(c.req.param("id"), title, reference))
+  const { title, reference, jurisdiction } = await c.req.json<{
+    title: string
+    reference?: string
+    jurisdiction?: string
+  }>()
+  return c.json(renameMatter(c.req.param("id"), title, reference, jurisdiction))
 })
 
 app.delete("/matters/:id", (c) => {
