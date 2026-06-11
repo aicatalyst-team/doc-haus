@@ -15,6 +15,7 @@ import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions } from "./matter"
 import { seedTemplates, listTemplates, templatePath, setTemplateDescription, removeTemplateDescription, TEMPLATES_DIR } from "./template"
 import { docxodus } from "./docxodus"
+import { listGcpProjects, listAwsProfiles } from "./host"
 import { readGrid, writeGrid, type Grid } from "./grid"
 import { existsSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
@@ -35,6 +36,13 @@ app.use(
   "*",
   cors({ origin: (origin) => (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ? origin : null) }),
 )
+
+// What the host's cloud sign-ins can see, for the provider-setup comboboxes in
+// the web settings (GCP projects via gcloud ADC, AWS profiles via ~/.aws).
+// Empty lists when the host has no such sign-in (e.g. gcloud not installed).
+app.get("/host/gcp-projects", async (c) => c.json({ projects: await listGcpProjects().catch(() => []) }))
+
+app.get("/host/aws-profiles", async (c) => c.json({ profiles: await listAwsProfiles() }))
 
 app.get("/matters", (c) => c.json(listMatters()))
 

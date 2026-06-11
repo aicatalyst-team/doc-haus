@@ -14,7 +14,8 @@ import {
   settingsClient,
   type Client,
 } from "../api/opencode"
-import { defaultProvider, pickForProvider, providerOf } from "../models"
+import { defaultProvider, pickForProvider, probeModel, providerOf } from "../models"
+import { listAwsProfiles, listGcpProjects } from "../api/ingest"
 import { isGated, loadVerified, saveVerified } from "../providers"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
@@ -100,23 +101,41 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
   // shown under "Needs setup" with their project/region fields and an Enable button.
   const needsSetup = all.filter((p) => isGated(p.id) && !verified.has(p.id))
 
-  // Probe a host provider's credentials with one real call; on success mark it
-  // verified (persisted) so it joins the picker, on failure surface the engine's
-  // credential error and keep it gated.
-  async function enable(p: Provider) {
-    const modelID = Object.keys(p.models)[0]
-    if (!modelID) return setProbeErr((e) => ({ ...e, [p.id]: "Provider has no models to test." }))
-    setProbing(p.id)
-    setProbeErr((e) => ({ ...e, [p.id]: "" }))
-    const result = await probeProvider(client, p.id, modelID)
+  // Save the card's project/region to every provider it covers, then probe each
+  // one's credentials with one real call; each that passes is marked verified
+  // (persisted) and joins the picker, each that fails keeps its own error and
+  // stays gated — so one Vertex card can verify Gemini while Claude (a separate
+  // provider id on the same project) still needs model access enabled. The probe
+  // model must be the curated one — the first id in the merged Vertex catalog is
+  // a Claude-on-Vertex model that hits a different endpoint and 400s even when
+  // the Gemini setup is correct.
+  async function enable(targets: Provider[], options?: Record<string, string>) {
+    setProbing(targets[0].id)
+    setProbeErr((e) => ({ ...e, ...Object.fromEntries(targets.map((p) => [p.id, ""])) }))
+    // Sequential: setProviderOptions does a read-merge-write of the whole
+    // provider map, so concurrent saves would drop each other's entry.
+    if (options && Object.keys(options).length) for (const p of targets) await setProviderOptions(p.id, options)
+    const results = await Promise.all(
+      targets.map(async (p) => {
+        const modelID = probeModel(p.id, Object.keys(p.models))
+        if (!modelID) return { p, ok: false as const, error: "Provider has no models to test." }
+        const result = await probeProvider(client, p.id, modelID)
+        if (!result.ok) return { p, ok: false as const, error: result.error }
+        return { p, ok: true as const, error: "" }
+      }),
+    )
     setProbing("")
-    if (!result.ok) return setProbeErr((e) => ({ ...e, [p.id]: result.error }))
+    setProbeErr((e) => ({ ...e, ...Object.fromEntries(results.map((r) => [r.p.id, r.error])) }))
+    const passed = results.filter((r) => r.ok)
+    if (!passed.length) return
     setVerified((prev) => {
-      const next = new Set(prev).add(p.id)
+      const next = new Set(prev)
+      passed.forEach((r) => next.add(r.p.id))
       saveVerified(next)
       return next
     })
-    setNotice(`${p.name} verified.`)
+    setNotice(`${passed.map((r) => r.p.name).join(", ")} verified.`)
+    await load()
   }
 
   // Drop a host provider back to "Needs setup" so its project/region can be changed
@@ -242,11 +261,36 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
             </div>
           </section>
 
+          {needsSetup.length > 0 && (
+            <section className="settings-section">
+              <h3>Needs setup</h3>
+              <p className="settings-hint muted">
+                Vertex and Bedrock sign in from the server (gcloud ADC / AWS), not an API key. Set the project or region,
+                sign in on the server, then Enable to verify — until a live check passes they stay out of the model
+                picker so you can't pick a provider that will fail on the first call.
+              </p>
+              {CLOUD_SETUPS.map((spec) => {
+                const pending = needsSetup.filter((p) => spec.ids.includes(p.id))
+                if (!pending.length) return null
+                return (
+                  <NeedsSetupCard
+                    key={spec.ids[0]}
+                    spec={spec}
+                    providers={pending}
+                    probing={pending.some((p) => probing === p.id)}
+                    errors={probeErr}
+                    onEnable={(options) => enable(pending, options)}
+                  />
+                )
+              })}
+            </section>
+          )}
+
           <section className="settings-section">
             <h3>Add a provider — API key</h3>
             <p className="settings-hint muted">
               A hosted provider you connect with an API key (OpenAI, Anthropic, Groq...). The key is stored on the
-              engine. Vertex and Bedrock instead sign in on the server — see Needs setup below.
+              engine. Vertex and Bedrock instead sign in on the server — see Needs setup above.
             </p>
             <div className="row settings-row">
               <select value={pick} onChange={(e) => setPick(e.target.value)}>
@@ -281,48 +325,6 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
               </button>
             </div>
           </section>
-
-          {needsSetup.length > 0 && (
-            <section className="settings-section">
-              <h3>Needs setup</h3>
-              <p className="settings-hint muted">
-                Vertex and Bedrock sign in from the server (gcloud ADC / AWS), not an API key. Set the project or region,
-                sign in on the server, then Enable to verify — until a live check passes they stay out of the model
-                picker so you can't pick a provider that will fail on the first call.
-              </p>
-              {needsSetup.map((p) => {
-                const spec = CLOUD_SETUPS.find((c) => c.id === p.id)
-                return (
-                  <div key={p.id} className="settings-needs">
-                    <div className="row settings-row">
-                      <span className="settings-conn-name">{p.name}</span>
-                      <span className="settings-conn-meta muted">
-                        {p.id === "google-vertex"
-                          ? "Server sign-in: gcloud auth application-default login"
-                          : "Server sign-in: configure AWS credentials (profile or role)"}
-                      </span>
-                    </div>
-                    {spec && (
-                      <CloudSetup
-                        spec={spec}
-                        onSave={async (options) => {
-                          await setProviderOptions(p.id, options)
-                          setNotice(`Saved ${p.name} project/region.`)
-                          await load()
-                        }}
-                      />
-                    )}
-                    <div className="row settings-row">
-                      <button className="primary" disabled={probing === p.id} onClick={() => enable(p)}>
-                        {probing === p.id ? "Verifying..." : "Enable"}
-                      </button>
-                      {probeErr[p.id] && <span className="settings-conn-meta muted">{probeErr[p.id]}</span>}
-                    </div>
-                  </div>
-                )
-              })}
-            </section>
-          )}
 
           <LocalEndpoint
             onAdd={async (input) => {
@@ -406,71 +408,198 @@ function statusLabel(provider: Provider, methods: Methods) {
   return "Host credentials"
 }
 
-// The host-credential providers that still need a project/region to call. Each
-// field maps to a provider.options key the engine reads (see provider.ts):
-// google-vertex -> { project, location }, amazon-bedrock -> { region, profile }.
-type CloudField = { key: string; label: string; placeholder: string; required: boolean; fallback?: string }
-type CloudSpec = { id: string; name: string; fields: CloudField[] }
+// The host-credential setups that still need a project/region to call. One card
+// can cover several provider ids that share the same credentials and settings —
+// Gemini (google-vertex) and Claude (google-vertex-anthropic) are separate
+// provider ids but the same GCP project and gcloud sign-in, so they get one
+// card. Each field maps to a provider.options key the engine reads (see
+// provider.ts): vertex -> { project, location }, bedrock -> { region, profile }.
+// A field is either a select over a fixed list (locations/regions, defaulting
+// via fallback), or an input whose suggestions come from what the host's
+// sign-in can actually see (GCP projects, AWS profiles) — still typeable, since
+// the host may have no sign-in to enumerate yet.
+type CloudField = {
+  key: string
+  label: string
+  placeholder: string
+  required: boolean
+  fallback?: string
+  options?: string[]
+  suggest?: "gcp-projects" | "aws-profiles"
+}
+type CloudSpec = { ids: string[]; name: string; signin: string; fields: CloudField[] }
+
+const VERTEX_LOCATIONS = [
+  "global",
+  "us-central1",
+  "us-east1",
+  "us-east4",
+  "us-east5",
+  "us-west1",
+  "us-west4",
+  "northamerica-northeast1",
+  "southamerica-east1",
+  "europe-west1",
+  "europe-west2",
+  "europe-west3",
+  "europe-west4",
+  "europe-west9",
+  "europe-north1",
+  "asia-east1",
+  "asia-northeast1",
+  "asia-northeast3",
+  "asia-south1",
+  "asia-southeast1",
+  "australia-southeast1",
+  "me-central1",
+]
+
+const BEDROCK_REGIONS = [
+  "us-east-1",
+  "us-east-2",
+  "us-west-2",
+  "ca-central-1",
+  "sa-east-1",
+  "eu-central-1",
+  "eu-central-2",
+  "eu-west-1",
+  "eu-west-2",
+  "eu-west-3",
+  "eu-north-1",
+  "ap-northeast-1",
+  "ap-northeast-2",
+  "ap-south-1",
+  "ap-southeast-1",
+  "ap-southeast-2",
+]
+
 const CLOUD_SETUPS: CloudSpec[] = [
   {
-    id: "google-vertex",
-    name: "Google Vertex",
+    ids: ["google-vertex", "google-vertex-anthropic"],
+    name: "Google Vertex AI",
+    signin: "gcloud auth application-default login",
     fields: [
-      { key: "project", label: "GCP project id", placeholder: "my-gcp-project", required: true },
-      { key: "location", label: "Location", placeholder: "global", required: false, fallback: "global" },
+      { key: "project", label: "GCP project id", placeholder: "my-gcp-project", required: true, suggest: "gcp-projects" },
+      { key: "location", label: "Location", placeholder: "global", required: false, fallback: "global", options: VERTEX_LOCATIONS },
     ],
   },
   {
-    id: "amazon-bedrock",
+    ids: ["amazon-bedrock"],
     name: "Amazon Bedrock",
+    signin: "aws configure (profile or role)",
     fields: [
-      { key: "region", label: "AWS region", placeholder: "us-east-1", required: true, fallback: "us-east-1" },
-      { key: "profile", label: "AWS profile (optional)", placeholder: "default", required: false },
+      { key: "region", label: "AWS region", placeholder: "us-east-1", required: true, fallback: "us-east-1", options: BEDROCK_REGIONS },
+      { key: "profile", label: "AWS profile", placeholder: "default", required: false, suggest: "aws-profiles" },
     ],
   },
 ]
 
-function CloudSetup({ spec, onSave }: { spec: CloudSpec; onSave: (options: Record<string, string>) => Promise<void> }) {
+// One card per cloud setup: the sign-in it expects on the server, labeled
+// project/region fields shared by every provider the card covers, and a single
+// Enable that saves the fields and runs the live probe in one go. The old split
+// (Save here, Enable elsewhere) let you probe values you had typed but never
+// saved. Per-provider results render under the button, so a card covering
+// Gemini + Claude can pass one and keep the other pending with its error.
+function NeedsSetupCard({
+  spec,
+  providers,
+  probing,
+  errors,
+  onEnable,
+}: {
+  spec: CloudSpec
+  providers: Provider[]
+  probing: boolean
+  errors: Record<string, string>
+  onEnable: (options: Record<string, string>) => void
+}) {
   const [values, setValues] = useState<Record<string, string>>({})
-  // Prefill from whatever the engine already has saved so the fields show the
-  // live config rather than resetting to blank each time Settings opens.
+  // What the host's sign-in can see for suggest fields (GCP projects, AWS
+  // profiles), keyed by field. Empty means nothing to suggest — type instead.
+  const [suggestions, setSuggestions] = useState<Record<string, string[]>>({})
+  // Prefill from whatever the engine already has saved (falling back to the
+  // field default) so the fields show the live config rather than resetting to
+  // blank each time Settings opens. The card's providers share their settings,
+  // so the first id is the source.
   useEffect(() => {
-    getProviderOptions(spec.id).then((opts) =>
-      setValues(Object.fromEntries(spec.fields.map((f) => [f.key, opts[f.key] ?? ""]))),
+    getProviderOptions(spec.ids[0]).then((opts) =>
+      setValues(Object.fromEntries(spec.fields.map((f) => [f.key, opts[f.key] ?? f.fallback ?? ""]))),
     )
+    spec.fields
+      .filter((f) => f.suggest)
+      .forEach((f) =>
+        (f.suggest === "gcp-projects" ? listGcpProjects() : listAwsProfiles()).then((items) =>
+          setSuggestions((s) => ({ ...s, [f.key]: items })),
+        ),
+      )
   }, [spec])
-  const ready = spec.fields.filter((f) => f.required).every((f) => values[f.key]?.trim())
+  const ready = spec.fields.every((f) => !f.required || values[f.key]?.trim() || f.fallback)
+  const failed = providers.filter((p) => errors[p.id])
   return (
-    <div className="settings-grid" style={{ marginTop: 12 }}>
-      <label className="settings-label">{spec.name}</label>
-      <span className="muted" style={{ fontSize: 12 }}>
-        Reads from this host's {spec.id === "google-vertex" ? "gcloud ADC" : "AWS credentials"}.
-      </span>
-      {spec.fields.map((f) => (
-        <input
-          key={f.key}
-          placeholder={f.placeholder}
-          value={values[f.key] ?? ""}
-          onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-        />
+    <div className="settings-needs">
+      <div className="row settings-row">
+        <span className="settings-conn-name">{spec.name}</span>
+        <span className="settings-conn-meta muted">Server sign-in: {spec.signin}</span>
+      </div>
+      {providers.length > 1 && (
+        <span className="muted" style={{ fontSize: 12 }}>
+          One check covers {providers.map((p) => p.name).join(" and ")}.
+        </span>
+      )}
+      {spec.fields.map((f) => {
+        const set = (value: string) => setValues((v) => ({ ...v, [f.key]: value }))
+        const listID = `${spec.ids[0]}-${f.key}`
+        return (
+          <div key={f.key} className="row settings-row settings-field">
+            <label className="settings-label settings-field-label">{f.label}</label>
+            {f.options ? (
+              <select value={values[f.key] ?? f.fallback ?? ""} onChange={(e) => set(e.target.value)}>
+                {f.options.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                placeholder={f.placeholder}
+                value={values[f.key] ?? ""}
+                list={suggestions[f.key]?.length ? listID : undefined}
+                onChange={(e) => set(e.target.value)}
+              />
+            )}
+            {(suggestions[f.key]?.length ?? 0) > 0 && (
+              <datalist id={listID}>
+                {suggestions[f.key]?.map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
+            )}
+          </div>
+        )
+      })}
+      <div className="row settings-row settings-field">
+        <button
+          className="primary"
+          disabled={probing || !ready}
+          onClick={() =>
+            onEnable(
+              // Drop blanks so an unset optional field falls back to the engine
+              // default (location -> global, region -> us-east-1) rather than ""
+              Object.fromEntries(
+                spec.fields.map((f) => [f.key, (values[f.key]?.trim() || f.fallback) ?? ""]).filter(([, v]) => v),
+              ),
+            )
+          }
+        >
+          {probing ? "Verifying..." : "Enable"}
+        </button>
+      </div>
+      {failed.map((p) => (
+        <span key={p.id} className="settings-error">
+          {providers.length > 1 ? `${p.name}: ${errors[p.id]}` : errors[p.id]}
+        </span>
       ))}
-      <button
-        className="primary settings-add"
-        disabled={!ready}
-        onClick={() =>
-          onSave(
-            // Drop blanks so an unset optional field falls back to the engine
-            // default (location -> global, region -> us-east-1) rather than ""
-            Object.fromEntries(
-              spec.fields
-                .map((f) => [f.key, (values[f.key]?.trim() || f.fallback) ?? ""])
-                .filter(([, v]) => v),
-            ),
-          )
-        }
-      >
-        Save
-      </button>
     </div>
   )
 }

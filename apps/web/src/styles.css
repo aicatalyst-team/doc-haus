@@ -1679,6 +1679,23 @@ button.linklike:hover {
   margin-bottom: 12px;
 }
 
+/* Field rows inside a needs-setup card: fixed-width labels so the inputs line
+   up, modest top gap so the rows read as one form under the provider name. */
+.settings-field {
+  margin-top: 8px;
+}
+
+.settings-field-label {
+  flex: 0 0 120px;
+}
+
+.settings-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
 .settings-conn-name {
   font-weight: 600;
 }

@@ -58,6 +58,21 @@ export async function listMatters(): Promise<Matter[]> {
   return res.json()
 }
 
+// GCP projects / AWS profiles visible to the host the engine runs on, for the
+// provider-setup comboboxes in Settings. Empty when the host has no such
+// sign-in (or the ingest service is down — the fields then take plain typing).
+export async function listGcpProjects(): Promise<string[]> {
+  const res = await fetch(`${INGEST_URL}/host/gcp-projects`).catch(() => null)
+  if (!res?.ok) return []
+  return ((await res.json()) as { projects: string[] }).projects
+}
+
+export async function listAwsProfiles(): Promise<string[]> {
+  const res = await fetch(`${INGEST_URL}/host/aws-profiles`).catch(() => null)
+  if (!res?.ok) return []
+  return ((await res.json()) as { profiles: string[] }).profiles
+}
+
 export async function listJurisdictions(): Promise<Jurisdiction[]> {
   const res = await fetch(`${INGEST_URL}/jurisdictions`)
   return res.json()

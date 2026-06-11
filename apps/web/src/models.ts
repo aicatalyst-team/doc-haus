@@ -23,6 +23,11 @@ export const MODEL_PREFS: Record<string, { primary: RegExp[]; fast: RegExp[] }> 
     primary: [/^gemini-3\.5-flash$/i, /gemini-3\.5-flash/i],
     fast: [/^gemini-3\.5-flash$/i, /gemini-3\.5-flash/i],
   },
+  // Anthropic on Vertex — Opus primary, Haiku fast.
+  "google-vertex-anthropic": {
+    primary: [/claude-opus/i, /claude-sonnet/i],
+    fast: [/claude-haiku/i],
+  },
   // Azure OpenAI — GPT-5.5 primary, its mini variant for fast.
   azure: {
     primary: [/^gpt-5\.5$/i, /gpt-5\.5(?!.*mini)(?!.*nano)/i],
@@ -69,4 +74,17 @@ export function pickForProvider(models: ModelOption[], providerId: string) {
 // then its in-provider pair. Used to seed onboarding before any provider is chosen.
 export function pickDefaults(models: ModelOption[]) {
   return pickForProvider(models, defaultProvider(models))
+}
+
+// The model a credential probe should call: the curated fast model when one
+// resolves (cheapest real call), else the curated primary, else the first id.
+// Never blindly the first catalog id — the merged models.dev Vertex catalog
+// leads with Claude-on-Vertex ids, which call a different endpoint (rawPredict)
+// and fail with RESOURCE_PROJECT_INVALID even when the Gemini setup is fine.
+export function probeModel(providerId: string, modelIds: string[]) {
+  const prefs = MODEL_PREFS[providerId]
+  if (!prefs) return modelIds[0]
+  return (
+    [...prefs.fast, ...prefs.primary].map((re) => modelIds.find((id) => re.test(id))).find(Boolean) ?? modelIds[0]
+  )
 }
