@@ -75,8 +75,10 @@ export default function Workflows() {
           <ul className="matter-list">
             {WORKFLOWS.map((wf) => (
               <li key={wf.name}>
-                <span style={{ flex: 1 }}>{wf.label}</span>
-                <span className="muted template-desc">{wf.description}</span>
+                <div className="template-info">
+                  <span className="template-name">{wf.label}</span>
+                  <span className="muted template-desc">{wf.description}</span>
+                </div>
                 <span className="muted template-count">Built-in</span>
                 <button
                   className="icon-btn"
@@ -95,8 +97,10 @@ export default function Workflows() {
               const stepSummary = wf.steps.map((s) => s.agent).join(" → ")
               return (
                 <li key={wf.name}>
-                  <span style={{ flex: 1 }}>{wf.label}</span>
-                  <span className="muted template-desc">{wf.description}</span>
+                  <div className="template-info">
+                    <span className="template-name">{wf.label}</span>
+                    <span className="muted template-desc">{wf.description}</span>
+                  </div>
                   {stepSummary && <span className="muted template-count">{stepSummary}</span>}
                   <button
                     className="icon-btn"
