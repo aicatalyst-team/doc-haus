@@ -699,7 +699,7 @@ input[type="checkbox"]:checked::before {
   align-items: center;
   gap: 12px;
   margin: 0 -10px;
-  padding: 10px 10px;
+  padding: 13px 10px;
   border-radius: var(--radius-md);
   border-bottom: 1px solid var(--border-soft);
   transition: background var(--duration-fast) var(--ease-out);
@@ -718,7 +718,7 @@ input[type="checkbox"]:checked::before {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   color: var(--text);
 }
 
@@ -753,6 +753,12 @@ input[type="checkbox"]:checked::before {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A count or step summary following the description reads as a separate fact. */
+.list-row-desc + .list-row-date::before {
+  content: "·";
+  margin-right: 8px;
 }
 
 .list-row-meta .template-desc-input {
