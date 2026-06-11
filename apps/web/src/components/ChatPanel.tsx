@@ -457,6 +457,9 @@ export default function ChatPanel({
   // partsRef scoped to the current turn.
   const seenRef = useRef<Set<string>>(new Set())
   const logRef = useRef<HTMLDivElement>(null)
+  // Whether the log should stay pinned to the bottom as new content streams in.
+  // Scrolling up beyond a small threshold releases the pin; a new send restores it.
+  const stickRef = useRef(true)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // Mirrors `busy` for the long-lived event subscription, whose resync closure is
   // created once and would otherwise capture a stale value.
@@ -508,7 +511,7 @@ export default function ChatPanel({
   }, [client, sessionID])
 
   useEffect(() => {
-    logRef.current?.scrollTo(0, logRef.current.scrollHeight)
+    if (stickRef.current) logRef.current?.scrollTo(0, logRef.current.scrollHeight)
   })
 
   // A fresh chat (no session yet) seats the cursor in the composer on mount so
@@ -724,8 +727,10 @@ export default function ChatPanel({
     const text = input.trim()
     if (!text || busy) return
     const prior = turns
+    stickRef.current = true
     setTurns((prev) => [...prev, { role: "user", text, citations: [], redlines: [], drafts: [], steps: [] }])
     setInput("")
+    if (inputRef.current) inputRef.current.style.height = "auto"
     setBusy(true)
     partsRef.current.clear()
     rolesRef.current.clear()
@@ -754,6 +759,7 @@ export default function ChatPanel({
     if (busy) return
     const wf = workflows.find((w) => w.name === name)
     if (!wf) return
+    stickRef.current = true
     setBusy(true)
     partsRef.current.clear()
     rolesRef.current.clear()
@@ -808,11 +814,18 @@ export default function ChatPanel({
   const live = readTurn(partsRef.current, rolesRef.current, matterName, sessionRef.current)
 
   return (
-    <div className="card">
+    <div className="card chat-card">
       <div className="row" style={{ marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>{title}</h2>
       </div>
-      <div className="chat-log" ref={logRef}>
+      <div
+        className="chat-log"
+        ref={logRef}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+        }}
+      >
         {loading && turns.length === 0 && <ChatSkeleton />}
         {!loading && turns.length === 0 && !busy && (
           <div className="chat-empty">
@@ -820,7 +833,11 @@ export default function ChatPanel({
             <div className="starters">
               {starters.map((s) => (
                 <button key={s} className="starter" onClick={() => setInput(s)}>
-                  {s}
+                  <span className="starter-text">{s}</span>
+                  <svg className="starter-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
                 </button>
               ))}
             </div>
@@ -879,7 +896,7 @@ export default function ChatPanel({
                 <div className="msg-error">
                   No answer was produced for this question.{" "}
                   <button
-                    style={{ background: "none", border: 0, padding: 0, color: "inherit", textDecoration: "underline", cursor: "pointer", font: "inherit" }}
+                    className="linklike"
                     onClick={() => {
                       const prev = turns[i - 1]
                       if (prev) resendFrom(prev, i - 1, prev.text)
@@ -896,13 +913,19 @@ export default function ChatPanel({
           ),
         )}
         {busy && (
-          <div className="msg assistant">
+          <div className={`msg assistant${live.text ? " streaming" : ""}`}>
             <div className="msg-agent">{agentLabel(isAuto(agent) && resolvedAgent ? resolvedAgent : agent)}</div>
             <StepsPanel steps={live.steps} busy answered={Boolean(live.text)} />
             {live.text ? (
               <Markdown>{live.text}</Markdown>
             ) : (
-              live.steps.length === 0 && <span className="muted">Thinking...</span>
+              live.steps.length === 0 && (
+                <span className="working" aria-label="Working">
+                  <span className="working-dot" />
+                  <span className="working-dot" />
+                  <span className="working-dot" />
+                </span>
+              )
             )}
             <CitationView citations={live.citations} />
             {live.text && <RedlineView redlines={live.redlines} onView={onViewDocument} />}
@@ -946,16 +969,38 @@ export default function ChatPanel({
       <div className="composer">
         <textarea
           ref={inputRef}
+          rows={1}
           placeholder={composerPlaceholder}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value)
+            const el = e.currentTarget
+            el.style.height = "auto"
+            el.style.height = Math.min(el.scrollHeight, 200) + "px"
+          }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSend()
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault()
+              onSend()
+              return
+            }
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault()
+              onSend()
+            }
           }}
         />
-        <button className="primary" onClick={onSend} disabled={busy || !input.trim()}>
-          Send
-        </button>
+        <div className="composer-footer">
+          <span className="composer-hint" aria-hidden>
+            Enter to send<span className="composer-hint-sep">·</span>Shift+Enter for a new line
+          </span>
+          <button className="send-btn" onClick={onSend} disabled={busy || !input.trim()} aria-label="Send message">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19V5" />
+              <path d="m5 12 7-7 7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
       <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
         Not legal advice. AI can make mistakes.
@@ -1154,6 +1199,10 @@ function DraftView({ drafts, onView }: { drafts: string[]; onView: (name: string
     <div className="drafts">
       {drafts.map((name, i) => (
         <div className="draft-card" key={i}>
+          <svg className="draft-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+          </svg>
           <span className="draft-doc">{name}</span>
           <button className="linklike" onClick={() => onView(name)}>
             Open document

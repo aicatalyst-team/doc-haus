@@ -25,6 +25,7 @@ export default function DocumentUpload({
 }) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [confirmId, setConfirmId] = useState<number | null>(null)
   const toast = useToast()
 
@@ -78,7 +79,7 @@ export default function DocumentUpload({
         )}
       </div>
       {documents.length === 0 ? (
-        <p className="muted">No documents indexed yet.</p>
+        <div className="empty-inline">No documents indexed yet.</div>
       ) : (
         <ul className="matter-list">
           {documents.map((d) => (
@@ -125,12 +126,17 @@ export default function DocumentUpload({
         </ul>
       )}
       <div
-        className="dropzone"
+        className={`dropzone${dragging ? " dragover" : ""}`}
         style={{ marginTop: 12 }}
         onClick={() => input.current?.click()}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragging(true)
+        }}
+        onDragLeave={() => setDragging(false)}
         onDrop={(e) => {
           e.preventDefault()
+          setDragging(false)
           const files = Array.from(e.dataTransfer.files)
           if (files.length) onFiles(files)
         }}

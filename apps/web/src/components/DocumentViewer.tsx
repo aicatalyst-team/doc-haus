@@ -135,7 +135,10 @@ export default function DocumentViewer({
       <div className="viewer-overlay" onClick={onClose}>
         <div className="viewer-panel" onClick={(e) => e.stopPropagation()}>
           <div className="viewer-bar">
-            <span className="viewer-title">{name}</span>
+            <span className="viewer-title">
+              <span className="viewer-doctype">PDF</span>
+              <span className="viewer-title-name">{name}</span>
+            </span>
             <div className="viewer-bar-actions">
               <button
                 onClick={convert}
@@ -161,9 +164,12 @@ export default function DocumentViewer({
     <div className="viewer-overlay" onClick={onClose}>
       <div className="viewer-panel" onClick={(e) => e.stopPropagation()}>
         <div className="viewer-bar">
-          <span className="viewer-title">{name}</span>
+          <span className="viewer-title">
+            <span className="viewer-doctype">DOCX</span>
+            <span className="viewer-title-name">{name}</span>
+          </span>
           <div className="viewer-bar-actions">
-            <button onClick={download} disabled={!html} title="Download as a Word file with tracked changes">
+            <button className="primary" onClick={download} disabled={!html} title="Download as a Word file with tracked changes">
               {redlines.length ? "Download redline" : "Download"}
             </button>
             {onSaveTemplate && (
@@ -179,15 +185,17 @@ export default function DocumentViewer({
             {wasmError && <p className="muted">Viewer failed to load: {wasmError.message}</p>}
             {error && <p className="muted">{error}</p>}
             {!wasmError && !error && !html && (
-              <p className="muted">{isReady ? `Rendering ${name}...` : "Loading viewer..."}</p>
+              <div className="docx-render docx-skeleton" aria-label="Rendering document">
+                {Array.from({ length: 14 }, (_, i) => <div key={i} className="sk-line" />)}
+              </div>
             )}
             {html && <div className="docx-render" dangerouslySetInnerHTML={{ __html: html }} />}
           </div>
           {redlines.length > 0 && (
             <aside className="changes-panel">
               <div className="changes-head">
-                <span>
-                  {redlines.length} pending change{redlines.length === 1 ? "" : "s"}
+                <span className="changes-count">
+                  <strong>{redlines.length}</strong> pending change{redlines.length === 1 ? "" : "s"}
                 </span>
                 <div className="changes-actions">
                   <button

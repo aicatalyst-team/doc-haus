@@ -107,6 +107,13 @@ export default function Templates() {
 
   return (
     <>
+      <header className="page-head">
+        <div>
+          <h1>Templates</h1>
+          <p className="page-sub">Drafting bases shared across every matter.</p>
+        </div>
+      </header>
+
       <div className="card">
         <h2>Add template</h2>
         <div
@@ -136,94 +143,109 @@ export default function Templates() {
       </div>
 
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: 12 }}>Templates</h2>
         {loading ? (
-          <p className="muted">Loading templates...</p>
+          <div className="skeleton-list">
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+          </div>
         ) : templates.length === 0 ? (
-          <p className="muted">No templates yet. Add one to begin.</p>
+          <div className="empty-state">
+            <svg className="empty-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M8 13h8M8 17h5" />
+            </svg>
+            <h3>No templates yet</h3>
+            <p>Upload a DOCX to use as a drafting base.</p>
+          </div>
         ) : (
           <ul className="matter-list">
             {visible.map((t) => {
               const optional = t.placeholders.filter((p) => p.text.startsWith("[optional:")).length
               const fills = t.placeholders.length - optional
               return (
-                <li key={t.name}>
-                  <div className="template-info">
-                    <span className="template-name">{t.name}</span>
-                    {editing === t.name ? (
-                      <input
-                        className="template-desc-input"
-                        autoFocus
-                        defaultValue={t.description}
-                        placeholder="Add description"
-                        onClick={(e) => e.stopPropagation()}
-                        onBlur={(e) => saveDescription(t, e.target.value.trim())}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") e.currentTarget.blur()
-                          if (e.key === "Escape") setEditing(null)
-                        }}
-                      />
-                    ) : (
-                      <span
-                        className="muted template-desc"
-                        title="Click to edit description"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditing(t.name)
-                        }}
-                      >
-                        {t.description || "Add description"}
-                      </span>
-                    )}
+                <li key={t.name} className="list-row">
+                  <div className="list-row-main">
+                    <div className="template-info">
+                      <span className="template-name">{t.name}</span>
+                      {editing === t.name ? (
+                        <input
+                          className="template-desc-input"
+                          autoFocus
+                          defaultValue={t.description}
+                          placeholder="Add description"
+                          onClick={(e) => e.stopPropagation()}
+                          onBlur={(e) => saveDescription(t, e.target.value.trim())}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.currentTarget.blur()
+                            if (e.key === "Escape") setEditing(null)
+                          }}
+                        />
+                      ) : (
+                        <span
+                          className="muted template-desc"
+                          title="Click to edit description"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditing(t.name)
+                          }}
+                        >
+                          {t.description || "Add description"}
+                        </span>
+                      )}
+                    </div>
+                    <span className="muted template-count">
+                      {fills} placeholder{fills === 1 ? "" : "s"}
+                      {optional > 0 && `, ${optional} optional clause${optional === 1 ? "" : "s"}`}
+                    </span>
                   </div>
-                  <span className="muted template-count">
-                    {fills} placeholder{fills === 1 ? "" : "s"}
-                    {optional > 0 && `, ${optional} optional clause${optional === 1 ? "" : "s"}`}
-                  </span>
-                  <button
-                    className="icon-btn"
-                    title="Draft a document from this template into a matter"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setUsing(t)
-                      listMatters().then(setMatters)
-                    }}
-                  >
-                    Use
-                  </button>
-                  <button
-                    className="icon-btn"
-                    title="View template"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setViewing(t)
-                    }}
-                  >
-                    View
-                  </button>
-                  {confirmName === t.name ? (
-                    <button
-                      className="icon-btn danger"
-                      title="Confirm delete"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDelete(t)
-                      }}
-                    >
-                      Confirm
-                    </button>
-                  ) : (
+                  <div className="list-row-actions">
                     <button
                       className="icon-btn"
-                      title="Delete template"
+                      title="Draft a document from this template into a matter"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setConfirmName(t.name)
+                        setUsing(t)
+                        listMatters().then(setMatters)
                       }}
                     >
-                      Delete
+                      Use
                     </button>
-                  )}
+                    <button
+                      className="icon-btn"
+                      title="View template"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setViewing(t)
+                      }}
+                    >
+                      View
+                    </button>
+                    {confirmName === t.name ? (
+                      <button
+                        className="icon-btn danger"
+                        title="Confirm delete"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(t)
+                        }}
+                      >
+                        Confirm
+                      </button>
+                    ) : (
+                      <button
+                        className="icon-btn"
+                        title="Delete template"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConfirmName(t.name)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </li>
               )
             })}

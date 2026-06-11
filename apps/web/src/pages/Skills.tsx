@@ -92,6 +92,13 @@ export default function Skills() {
 
   return (
     <>
+      <header className="page-head">
+        <div>
+          <h1>Skills</h1>
+          <p className="page-sub">Reference playbooks the assistants can load.</p>
+        </div>
+      </header>
+
       <div className="card">
         <h2>Import skill</h2>
         <div
@@ -123,64 +130,79 @@ export default function Skills() {
       </div>
 
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: 12 }}>Skills</h2>
         {loading ? (
-          <p className="muted">Loading skills...</p>
+          <div className="skeleton-list">
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+          </div>
         ) : visible.length === 0 ? (
-          <p className="muted">No skills yet. Import one above, or describe one to the skill builder.</p>
+          <div className="empty-state">
+            <svg className="empty-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+            <h3>No skills yet</h3>
+            <p>Import one above, or describe one to the skill builder.</p>
+          </div>
         ) : (
           <ul className="matter-list">
             {visible.map((s) => (
-              <li key={s.name}>
-                <div className="template-info">
-                  <span className="template-name">{s.name}</span>
-                  <span className="muted template-desc">{s.description || "No description yet"}</span>
+              <li key={s.name} className="list-row">
+                <div className="list-row-main">
+                  <div className="template-info">
+                    <span className="template-name">{s.name}</span>
+                    <span className="muted template-desc">{s.description || "No description yet"}</span>
+                  </div>
+                  {s.builtin && <span className="badge badge-quiet">Built-in</span>}
                 </div>
-                {s.builtin && <span className="muted template-count">Built-in</span>}
-                <button
-                  className={s.enabled ? "settings-switch on" : "settings-switch"}
-                  title={s.enabled ? "Disable skill — agents stop loading it" : "Enable skill"}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onToggle(s)
-                  }}
-                >
-                  {s.enabled ? "On" : "Off"}
-                </button>
-                <button
-                  className="icon-btn"
-                  title="View skill"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setViewing(s)
-                  }}
-                >
-                  View
-                </button>
-                {!s.builtin &&
-                  (confirmName === s.name ? (
-                    <button
-                      className="icon-btn danger"
-                      title="Confirm delete"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDelete(s)
-                      }}
-                    >
-                      Confirm
-                    </button>
-                  ) : (
-                    <button
-                      className="icon-btn"
-                      title="Delete skill"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setConfirmName(s.name)
-                      }}
-                    >
-                      Delete
-                    </button>
-                  ))}
+                <div className="list-row-actions">
+                  <button
+                    role="switch"
+                    aria-checked={s.enabled}
+                    aria-label={s.name}
+                    className={s.enabled ? "switch on" : "switch"}
+                    title={s.enabled ? "Disable skill — agents stop loading it" : "Enable skill"}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggle(s)
+                    }}
+                  />
+                  <button
+                    className="icon-btn"
+                    title="View skill"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setViewing(s)
+                    }}
+                  >
+                    View
+                  </button>
+                  {!s.builtin &&
+                    (confirmName === s.name ? (
+                      <button
+                        className="icon-btn danger"
+                        title="Confirm delete"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(s)
+                        }}
+                      >
+                        Confirm
+                      </button>
+                    ) : (
+                      <button
+                        className="icon-btn"
+                        title="Delete skill"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConfirmName(s.name)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    ))}
+                </div>
               </li>
             ))}
           </ul>

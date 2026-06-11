@@ -67,10 +67,20 @@ export default function Workflows() {
 
   return (
     <>
+      <header className="page-head">
+        <div>
+          <h1>Workflows</h1>
+          <p className="page-sub">Repeatable multi-agent review routines.</p>
+        </div>
+      </header>
+
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: 12 }}>Workflows</h2>
         {loading ? (
-          <p className="muted">Loading workflows...</p>
+          <div className="skeleton-list">
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+          </div>
         ) : (
           <ul className="matter-list">
             {WORKFLOWS.map((wf) => (
@@ -79,7 +89,7 @@ export default function Workflows() {
                   <span className="template-name">{wf.label}</span>
                   <span className="muted template-desc">{wf.description}</span>
                 </div>
-                <span className="muted template-count">Built-in</span>
+                <span className="badge badge-quiet">Built-in</span>
                 <button
                   className="icon-btn"
                   title="Launch this workflow in a matter"

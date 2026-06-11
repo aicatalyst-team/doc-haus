@@ -260,7 +260,9 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
       <div className="picker-panel settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="viewer-bar">
           <span className="viewer-title">Settings</span>
-          <button onClick={onClose}>Close</button>
+          <button className="modal-close" aria-label="Close" onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
         </div>
         <div className="settings-body">
           <nav className="settings-nav">
@@ -368,22 +370,30 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                           {statusLabel(p, methods)} · {Object.keys(p.models).length} models
                         </span>
                         {isGated(p.id) && (
-                          <button className="settings-switch" onClick={() => unverify(p.id)}>
+                          <button className="btn-sm ghost" onClick={() => unverify(p.id)}>
                             Reconfigure
                           </button>
                         )}
-                        <button className="settings-switch on" onClick={() => toggle(p.id, p.name, false)}>
-                          On
-                        </button>
+                        <button
+                          role="switch"
+                          aria-checked={true}
+                          aria-label={`Disable ${p.name}`}
+                          className="switch on"
+                          onClick={() => toggle(p.id, p.name, false)}
+                        />
                       </div>
                     ))}
                     {extraReady.map((id) => (
                       <div key={id} className="settings-conn">
                         <span className="settings-conn-name">{nameMemo[id] ?? id}</span>
                         <span className="settings-conn-meta muted">ready</span>
-                        <button className="settings-switch on" onClick={() => toggle(id, nameMemo[id] ?? id, false)}>
-                          On
-                        </button>
+                        <button
+                          role="switch"
+                          aria-checked={true}
+                          aria-label={`Disable ${nameMemo[id] ?? id}`}
+                          className="switch on"
+                          onClick={() => toggle(id, nameMemo[id] ?? id, false)}
+                        />
                       </div>
                     ))}
                     {disabled.map((id) => (
@@ -391,11 +401,12 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                         <span className="settings-conn-name">{nameByID.get(id) ?? nameMemo[id] ?? id}</span>
                         <span className="settings-conn-meta muted">disabled</span>
                         <button
-                          className="settings-switch"
+                          role="switch"
+                          aria-checked={false}
+                          aria-label={`Enable ${nameByID.get(id) ?? nameMemo[id] ?? id}`}
+                          className="switch"
                           onClick={() => toggle(id, nameByID.get(id) ?? nameMemo[id] ?? id, true)}
-                        >
-                          Off
-                        </button>
+                        />
                       </div>
                     ))}
                   </div>
@@ -570,7 +581,7 @@ function DraftingTab({ onNotice }: { onNotice: (text: string) => void }) {
       />
       <div className="row settings-row">
         <button
-          className="primary"
+          className={`primary${saving ? " btn-loading" : ""}`}
           disabled={saving}
           onClick={async () => {
             setSaving(true)
@@ -579,7 +590,7 @@ function DraftingTab({ onNotice }: { onNotice: (text: string) => void }) {
             onNotice("Drafting preferences saved. They apply from the assistant's next reply.")
           }}
         >
-          {saving ? "Saving..." : "Save"}
+          Save
         </button>
       </div>
     </section>
@@ -666,9 +677,14 @@ function ToggleRow({
         <span className="settings-conn-name">{title}</span>
         <span className="muted">{description}</span>
       </div>
-      <button className={`settings-switch${on ? " on" : ""}`} onClick={() => onChange(!on)}>
-        {on ? "Auto-approve" : "Ask first"}
-      </button>
+      <span className="switch-state muted">{on ? "Auto-approve" : "Ask first"}</span>
+      <button
+        role="switch"
+        aria-checked={on}
+        aria-label={title}
+        className={`switch${on ? " on" : ""}`}
+        onClick={() => onChange(!on)}
+      />
     </div>
   )
 }
@@ -913,7 +929,7 @@ function NeedsSetupCard({
       })}
       <div className="row settings-row settings-field">
         <button
-          className="primary"
+          className={`primary${probing ? " btn-loading" : ""}`}
           disabled={probing || !ready}
           onClick={() =>
             onEnable(
@@ -925,7 +941,7 @@ function NeedsSetupCard({
             )
           }
         >
-          {probing ? "Verifying..." : "Enable"}
+          Enable
         </button>
       </div>
       {error && <span className="settings-error">{error}</span>}

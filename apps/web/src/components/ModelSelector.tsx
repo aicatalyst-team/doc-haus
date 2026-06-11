@@ -44,7 +44,9 @@ export default function ModelSelector({
           <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
             <div className="viewer-bar">
               <span className="viewer-title">Choose an assistant</span>
-              <button onClick={() => setOpen(false)}>Close</button>
+              <button className="modal-close" aria-label="Close" onClick={() => setOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
             </div>
             <div className="picker-body">
               {assistants.map((a) => (

@@ -103,24 +103,51 @@ export default function Sidebar({
         </Link>
       </div>
 
+      <div className="sidebar-label">Workspace</div>
       <nav className="sidebar-nav">
-        <NavLink to="/" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} title="Matters">
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          title="Matters"
+          aria-label="Matters"
+        >
           <IconMatters />
           {!collapsed && <span>Matters</span>}
         </NavLink>
-        <NavLink to="/templates" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} title="Templates">
+        <NavLink
+          to="/templates"
+          className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          title="Templates"
+          aria-label="Templates"
+        >
           <IconTemplates />
           {!collapsed && <span>Templates</span>}
         </NavLink>
-        <NavLink to="/workflows" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} title="Workflows">
+        <NavLink
+          to="/workflows"
+          className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          title="Workflows"
+          aria-label="Workflows"
+        >
           <IconWorkflows />
           {!collapsed && <span>Workflows</span>}
         </NavLink>
-        <NavLink to="/skills" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} title="Skills">
+        <NavLink
+          to="/skills"
+          className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          title="Skills"
+          aria-label="Skills"
+        >
           <IconSkills />
           {!collapsed && <span>Skills</span>}
         </NavLink>
-        <NavLink to="/agents" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} title="Agents">
+        <NavLink
+          to="/agents"
+          className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          title="Agents"
+          aria-label="Agents"
+        >
           <IconAgents />
           {!collapsed && <span>Agents</span>}
         </NavLink>
@@ -147,7 +174,18 @@ export default function Sidebar({
         <div className="sidebar-convos">
           <div className="sidebar-section-head">
             <span>Conversations</span>
-            <Link to={`/matter/${matterId}?view=chat`} className="icon-btn" title="New chat">
+            <Link to={`/matter/${matterId}?view=chat`} className="sidebar-new" title="New chat">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
               New
             </Link>
           </div>

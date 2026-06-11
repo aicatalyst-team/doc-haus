@@ -99,6 +99,23 @@ export default function Matters() {
 
   return (
     <>
+      <header className="page-head">
+        <div>
+          <h1>Matters</h1>
+          <p className="page-sub">Every engagement, its documents, and its conversations.</p>
+        </div>
+        <div className="page-head-actions">
+          {matters.length > 0 && (
+            <input
+              placeholder="Filter by title or ID"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{ width: 220 }}
+            />
+          )}
+        </div>
+      </header>
+
       <div className="card">
         <h2>New matter</h2>
         <div className="row">
@@ -128,63 +145,68 @@ export default function Matters() {
       </div>
 
       <div className="card">
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>Matters</h2>
-          {matters.length > 0 && (
-            <input
-              placeholder="Filter by title or ID"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              style={{ width: 220 }}
-            />
-          )}
-        </div>
         {loading ? (
-          <p className="muted">Loading matters...</p>
+          <div className="skeleton-list">
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+          </div>
         ) : matters.length === 0 ? (
-          <p className="muted">No matters yet. Create one to begin.</p>
+          <div className="empty-state">
+            <svg className="empty-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </svg>
+            <h3>No matters yet</h3>
+            <p>A matter holds an engagement&apos;s documents, reviews, and conversations.</p>
+          </div>
         ) : visible.length === 0 ? (
           <p className="muted">No matters match "{filter}".</p>
         ) : (
           <ul className="matter-list">
             {visible.map((m) => (
-              <li key={m.id}>
-                {m.reference && <span className="matter-ref">{m.reference}</span>}
-                <Link to={`/matter/${m.id}`} style={{ flex: 1 }}>
-                  {m.title}
-                </Link>
-                {m.jurisdictions?.map((code) => (
-                  <span key={code} className="matter-ref">
-                    {code}
+              <li key={m.id} className="list-row">
+                <Link to={`/matter/${m.id}`} className="list-row-main">
+                  <span className="list-row-title">
+                    {m.reference && <span className="matter-ref">{m.reference}</span>}
+                    {m.title}
                   </span>
-                ))}
-                <span className="muted">{new Date(m.created_at).toLocaleDateString()}</span>
-                <button className="icon-btn" title="Edit matter" onClick={() => openEdit(m)}>
-                  Edit
-                </button>
-                {confirmId === m.id ? (
-                  <button
-                    className="icon-btn danger"
-                    title="Confirm delete"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete(m)
-                    }}
-                  >
-                    Confirm
+                  <span className="list-row-meta">
+                    {m.jurisdictions?.map((code) => (
+                      <span key={code} className="matter-ref">
+                        {code}
+                      </span>
+                    ))}
+                    <span className="list-row-date">Opened {new Date(m.created_at).toLocaleDateString()}</span>
+                  </span>
+                </Link>
+                <div className="list-row-actions">
+                  <button className="icon-btn" title="Edit matter" onClick={() => openEdit(m)}>
+                    Edit
                   </button>
-                ) : (
-                  <button
-                    className="icon-btn"
-                    title="Delete matter"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setConfirmId(m.id)
-                    }}
-                  >
-                    Delete
-                  </button>
-                )}
+                  {confirmId === m.id ? (
+                    <button
+                      className="icon-btn danger"
+                      title="Confirm delete"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDelete(m)
+                      }}
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    <button
+                      className="icon-btn"
+                      title="Delete matter"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmId(m.id)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

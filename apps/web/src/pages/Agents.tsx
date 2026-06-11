@@ -71,67 +71,93 @@ export default function Agents() {
 
   return (
     <>
+      <header className="page-head">
+        <div>
+          <h1>Agents</h1>
+          <p className="page-sub">
+            Specialist reviewers that analyze a matter's documents for one concern. Compose them into pipelines from
+            the Workflows page.
+          </p>
+        </div>
+      </header>
+
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: 12 }}>Agents</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Specialist reviewers that analyze a matter's documents for one concern. Compose them into pipelines from the
-          Workflows page.
-        </p>
         {loading ? (
-          <p className="muted">Loading agents...</p>
+          <div className="skeleton-list">
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+            <div className="skeleton-row" />
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="empty-state">
+            <svg className="empty-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="5" y="8" width="14" height="11" rx="2" />
+              <path d="M12 8V5" />
+              <circle cx="12" cy="4" r="1" />
+              <path d="M9 13h.01M15 13h.01" />
+              <path d="M5 12H3M21 12h-2" />
+            </svg>
+            <h3>No agents yet</h3>
+            <p>Describe a specialist reviewer to the agent builder to add one.</p>
+          </div>
         ) : (
           <ul className="matter-list">
             {visible.map((a) => (
-              <li key={a.name}>
-                <div className="template-info">
-                  <span className="template-name">{a.label}</span>
-                  <span className="muted template-desc">{a.description}</span>
+              <li key={a.name} className="list-row">
+                <div className="list-row-main">
+                  <div className="template-info">
+                    <span className="template-name">{a.label}</span>
+                    <span className="muted template-desc">{a.description}</span>
+                  </div>
+                  {a.builtin && <span className="badge badge-quiet">Built-in</span>}
                 </div>
-                {a.builtin && <span className="muted template-count">Built-in</span>}
-                <button
-                  className={a.enabled ? "settings-switch on" : "settings-switch"}
-                  title={a.enabled ? "Disable agent — it leaves the workflow roster" : "Enable agent"}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onToggle(a)
-                  }}
-                >
-                  {a.enabled ? "On" : "Off"}
-                </button>
-                <button
-                  className="icon-btn"
-                  title="View agent instructions"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setViewing(a)
-                  }}
-                >
-                  View
-                </button>
-                {!a.builtin &&
-                  (confirmName === a.name ? (
-                    <button
-                      className="icon-btn danger"
-                      title="Confirm delete"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDelete(a)
-                      }}
-                    >
-                      Confirm
-                    </button>
-                  ) : (
-                    <button
-                      className="icon-btn"
-                      title="Delete agent"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setConfirmName(a.name)
-                      }}
-                    >
-                      Delete
-                    </button>
-                  ))}
+                <div className="list-row-actions">
+                  <button
+                    role="switch"
+                    aria-checked={a.enabled}
+                    aria-label={a.name}
+                    className={a.enabled ? "switch on" : "switch"}
+                    title={a.enabled ? "Disable agent — it leaves the workflow roster" : "Enable agent"}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggle(a)
+                    }}
+                  />
+                  <button
+                    className="icon-btn"
+                    title="View agent instructions"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setViewing(a)
+                    }}
+                  >
+                    View
+                  </button>
+                  {!a.builtin &&
+                    (confirmName === a.name ? (
+                      <button
+                        className="icon-btn danger"
+                        title="Confirm delete"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(a)
+                        }}
+                      >
+                        Confirm
+                      </button>
+                    ) : (
+                      <button
+                        className="icon-btn"
+                        title="Delete agent"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConfirmName(a.name)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    ))}
+                </div>
               </li>
             ))}
           </ul>

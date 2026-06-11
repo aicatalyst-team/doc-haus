@@ -75,7 +75,7 @@ export default function JurisdictionSelect({
     <div className="jx-select" ref={ref}>
       <button type="button" className="assistant-trigger jx-trigger" onClick={toggleOpen} title="Jurisdiction — steers reasoning and citation style">
         <span className="assistant-trigger-label">{label}</span>
-        <span className="assistant-caret">{open ? "▴" : "▾"}</span>
+        <svg className={`assistant-caret${open ? " open" : ""}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open &&
         createPortal(

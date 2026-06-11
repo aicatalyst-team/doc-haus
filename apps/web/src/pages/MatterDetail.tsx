@@ -110,7 +110,13 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matter, params.get("agent")])
 
-  if (!matter) return <p className="muted">Loading matter...</p>
+  if (!matter)
+    return (
+      <div className="skeleton-list">
+        <div className="skeleton-line w-40" />
+        <div className="skeleton-row" />
+      </div>
+    )
 
   const available = new Set(agents.map((a) => a.name))
   const workflows = [...WORKFLOWS, ...custom]
@@ -132,34 +138,46 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
 
   return (
     <>
-      <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
-        {renaming ? (
-          <input
-            className="matter-title-input"
-            autoFocus
-            value={draftTitle}
-            onChange={(e) => setDraftTitle(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename()
-              if (e.key === "Escape") setRenaming(false)
-            }}
-          />
-        ) : (
-          <h2
-            className="matter-title"
-            style={{ margin: 0 }}
-            title="Click to rename"
-            onClick={() => {
-              setDraftTitle(matter.title)
-              setRenaming(true)
-            }}
-          >
-            {matter.reference && <span className="matter-ref">{matter.reference}</span>}
-            {matter.title}
-          </h2>
-        )}
-      </div>
+      <header className="page-head">
+        <div>
+          <h1>
+            {renaming ? (
+              <input
+                className="matter-title-input"
+                autoFocus
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename()
+                  if (e.key === "Escape") setRenaming(false)
+                }}
+              />
+            ) : (
+              <span
+                className="matter-title"
+                title="Click to rename"
+                onClick={() => {
+                  setDraftTitle(matter.title)
+                  setRenaming(true)
+                }}
+              >
+                {matter.reference && <span className="matter-ref">{matter.reference}</span>}
+                {matter.title}
+              </span>
+            )}
+          </h1>
+          {(matter.jurisdictions?.length ?? 0) > 0 && (
+            <p className="page-sub">
+              {matter.jurisdictions?.map((code) => (
+                <span key={code} className="matter-ref">
+                  {code}
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
+      </header>
 
       {view === "chat" && (
         <div className={`matter-body${docsOpen ? "" : " docs-collapsed"}`}>

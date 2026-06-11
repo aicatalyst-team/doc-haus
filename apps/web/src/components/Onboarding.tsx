@@ -166,9 +166,13 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
   return (
     <div className="viewer-overlay" onClick={onClose}>
       <div className="picker-panel settings-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="viewer-bar">
+        <div className="viewer-bar onboard-bar">
           <span className="viewer-title">Welcome to doc.haus</span>
-          <button onClick={onClose}>Skip</button>
+          <span className="onboard-steps" aria-hidden="true">
+            <i className={step === "setup" ? "on" : ""} />
+            <i className={step === "details" ? "on" : ""} />
+          </span>
+          <button className="ghost" onClick={onClose}>Skip</button>
         </div>
         <div className="picker-body">
           {notice && <p className="settings-notice">{notice}</p>}

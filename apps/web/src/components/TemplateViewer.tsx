@@ -44,7 +44,10 @@ export default function TemplateViewer({
     <div className="viewer-overlay" onClick={onClose}>
       <div className="viewer-panel" onClick={(e) => e.stopPropagation()}>
         <div className="viewer-bar">
-          <span className="viewer-title">{name}</span>
+          <span className="viewer-title">
+            <span className="viewer-doctype">DOCX</span>
+            <span className="viewer-title-name">{name}</span>
+          </span>
           <div className="viewer-bar-actions">
             <button onClick={onClose}>Close</button>
           </div>
@@ -54,7 +57,9 @@ export default function TemplateViewer({
             {wasmError && <p className="muted">Viewer failed to load: {wasmError.message}</p>}
             {error && <p className="muted">{error}</p>}
             {!wasmError && !error && !html && (
-              <p className="muted">{isReady ? `Rendering ${name}...` : "Loading viewer..."}</p>
+              <div className="docx-render docx-skeleton" aria-label="Rendering document">
+                {Array.from({ length: 14 }, (_, i) => <div key={i} className="sk-line" />)}
+              </div>
             )}
             {html && <div className="docx-render" dangerouslySetInnerHTML={{ __html: html }} />}
           </div>

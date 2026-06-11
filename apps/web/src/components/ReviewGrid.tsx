@@ -211,14 +211,19 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
   }
 
   if (documents.length === 0)
-    return <p className="muted">Add documents to this matter to build a review grid.</p>
+    return <div className="empty-inline">Add documents to this matter to build a review grid.</div>
 
   return (
     <div className="card review">
       <div className="row review-toolbar">
-        <h2 style={{ margin: 0 }}>Tabular review</h2>
+        <div>
+          <h2>Tabular review</h2>
+          <span className="review-summary">
+            {documents.length} document{documents.length === 1 ? "" : "s"} · {grid.columns.length} question{grid.columns.length === 1 ? "" : "s"}
+          </span>
+        </div>
         <div className="row" style={{ gap: 8 }}>
-          {running > 0 && <span className="muted">Extracting {running}...</span>}
+          {running > 0 && <span className="review-running">Extracting {running}</span>}
           <button onClick={addColumn}>Add column</button>
           <button onClick={fillEmpty} disabled={grid.columns.length === 0 || running > 0}>
             Fill empty
@@ -230,7 +235,7 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
       </div>
 
       {grid.columns.length === 0 ? (
-        <p className="muted">Add a column — a question asked of every document, e.g. "What is the governing law?"</p>
+        <div className="empty-inline">Add a column — a question asked of every document, e.g. "What is the governing law?"</div>
       ) : (
         <div className="review-scroll">
           <table className="review-table">
@@ -302,7 +307,7 @@ export default function ReviewGrid({ matterId, title, directory, documents }: { 
                                 {cell.comments?.length ?? 0}
                               </button>
                               {stale && <span className="review-stale" title="Question changed since this answer">stale</span>}
-                              <button className="icon-btn" title={cell.status === "reviewed" ? "Unlock" : "Mark reviewed"} onClick={() => toggleReviewed(key)}>
+                              <button className={`icon-btn review-lock${cell.status === "reviewed" ? " locked" : ""}`} title={cell.status === "reviewed" ? "Unlock" : "Mark reviewed"} onClick={() => toggleReviewed(key)}>
                                 {cell.status === "reviewed" ? "Locked" : "Lock"}
                               </button>
                               {cell.status !== "reviewed" && (
