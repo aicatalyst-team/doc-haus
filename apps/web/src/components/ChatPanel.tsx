@@ -971,11 +971,22 @@ function StepsPanel({ steps, busy, answered }: { steps: Step[]; busy: boolean; a
 // tool calls stream live beneath "Consulted the Reviewer" rather than the step
 // sitting opaque while the child works. Recurses to any depth.
 function StepList({ steps, busy }: { steps: Step[]; busy: boolean }) {
+  // When the list is still running but its last step has settled (tool finished,
+  // thinking block closed), the next step hasn't arrived yet — show a pending
+  // row at the bottom so the timeline never looks stalled between steps.
+  const lastStep = steps[steps.length - 1]
+  const settled = lastStep && (lastStep.kind === "tool" ? lastStep.status !== "running" : lastStep.done)
   return (
     <ol className="step-list">
       {steps.map((s, i) => (
         <StepRow key={i} step={s} busy={busy} last={i === steps.length - 1} />
       ))}
+      {busy && settled && (
+        <li className="step step-pending">
+          <span className="dot running" />
+          <span className="sk-line" />
+        </li>
+      )}
     </ol>
   )
 }

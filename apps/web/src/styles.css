@@ -1106,6 +1106,16 @@ textarea {
   }
 }
 
+/* Pending row at the bottom of a running timeline: the previous step settled
+   but the next hasn't arrived, so a spinner + shimmer line keep the panel
+   visibly alive instead of looking stalled. */
+.step-pending .sk-line {
+  display: block;
+  width: 96px;
+  height: 8px;
+  margin-top: 6px;
+}
+
 .thinking {
   color: var(--muted);
   font-size: 13px;
