@@ -500,6 +500,119 @@ textarea {
   line-height: 1.45;
 }
 
+/* Jurisdiction multi-select: a trigger (reusing the assistant-trigger pill) that
+   opens a searchable checklist popover, since a matter can be governed by several
+   packs and a native multi-select is unusable at ~30 options. */
+.jx-select {
+  position: relative;
+}
+
+.jx-trigger {
+  min-width: 180px;
+  justify-content: space-between;
+}
+
+.jx-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jx-popover.jx-right {
+  left: auto;
+  right: 0;
+}
+
+.jx-search {
+  margin: 8px;
+  width: calc(100% - 16px);
+}
+
+.jx-list {
+  overflow: auto;
+  max-height: 320px;
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jx-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.jx-option:hover {
+  background: var(--accent-soft);
+}
+
+.jx-option.selected {
+  background: var(--accent-soft);
+}
+
+.jx-option input {
+  flex-shrink: 0;
+  width: auto;
+}
+
+.jx-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.jx-empty {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+/* Edit-matter modal: rename, matter ID, and jurisdictions for one matter. Body
+   keeps overflow visible so the jurisdiction popover overlays rather than being
+   clipped by a scroll container. */
+.matter-edit {
+  max-width: 420px;
+}
+
+.matter-edit-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.matter-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.matter-edit-field > span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.matter-edit-foot {
+  justify-content: flex-end;
+  gap: 8px;
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+
 /* Matter workspace: chat is the single primary surface and runs full-width. When
    a workflow is launched, an artifact panel opens beside it on the right; the
    chat yields the narrower-but-still-primary column rather than splitting evenly. */

@@ -26,22 +26,22 @@ test("matterDir accepts the generated slug+uuid shape and stays under the root",
 })
 
 test("create, list, get, rename, delete round-trip", () => {
-  const created = matter.createMatter("Acme / Merger 2026", "2026-0042", "EW")
+  const created = matter.createMatter("Acme / Merger 2026", "2026-0042", ["EW"])
   expect(created.id).toMatch(/^acme-merger-2026-[a-z0-9]{6}$/)
   expect(created.reference).toBe("2026-0042")
-  expect(created.jurisdiction).toBe("EW")
+  expect(created.jurisdictions).toEqual(["EW"])
   expect(existsSync(path.join(root, created.id, "matter.json"))).toBe(true)
 
   expect(matter.listMatters().map((m) => m.id)).toContain(created.id)
   expect(matter.getMatter(created.id).title).toBe("Acme / Merger 2026")
-  expect(matter.getMatter(created.id).jurisdiction).toBe("EW")
+  expect(matter.getMatter(created.id).jurisdictions).toEqual(["EW"])
 
-  // Jurisdiction moves on its own through the rename endpoint while title/ref hold.
-  const renamed = matter.renameMatter(created.id, "Acme Acquisition", "2026-0099", "US-NY")
+  // Jurisdictions move on their own through the rename endpoint while title/ref hold.
+  const renamed = matter.renameMatter(created.id, "Acme Acquisition", "2026-0099", ["US-NY", "EW"])
   expect(renamed.id).toBe(created.id) // id is stable across rename
   expect(renamed.title).toBe("Acme Acquisition")
   expect(matter.getMatter(created.id).reference).toBe("2026-0099")
-  expect(matter.getMatter(created.id).jurisdiction).toBe("US-NY")
+  expect(matter.getMatter(created.id).jurisdictions).toEqual(["US-NY", "EW"])
 
   matter.deleteMatter(created.id)
   expect(existsSync(path.join(root, created.id))).toBe(false)

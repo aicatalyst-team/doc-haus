@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { createMatter, deleteMatter, listMatters, listJurisdictions, type Matter, type Jurisdiction } from "../api/ingest"
+import {
+  createMatter,
+  deleteMatter,
+  listMatters,
+  listJurisdictions,
+  renameMatter,
+  type Matter,
+  type Jurisdiction,
+} from "../api/ingest"
+import JurisdictionSelect from "../components/JurisdictionSelect"
 import { useToast } from "../components/Toast"
 
 export default function Matters() {
@@ -9,10 +18,14 @@ export default function Matters() {
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState("")
   const [reference, setReference] = useState("")
-  const [jurisdiction, setJurisdiction] = useState("")
   const [filter, setFilter] = useState("")
   const [busy, setBusy] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  // The matter being edited in the modal, plus its draft fields. null when closed.
+  const [editing, setEditing] = useState<Matter | null>(null)
+  const [draftTitle, setDraftTitle] = useState("")
+  const [draftReference, setDraftReference] = useState("")
+  const [draftJurisdictions, setDraftJurisdictions] = useState<string[]>([])
   const toast = useToast()
 
   useEffect(() => {
@@ -32,11 +45,10 @@ export default function Matters() {
   async function onCreate() {
     if (!title.trim()) return
     setBusy(true)
-    const matter = await createMatter(title.trim(), reference.trim() || undefined, jurisdiction || undefined)
+    const matter = await createMatter(title.trim(), reference.trim() || undefined)
     setMatters((prev) => [...prev, matter])
     setTitle("")
     setReference("")
-    setJurisdiction("")
     setBusy(false)
     toast("success", `Created matter "${matter.title}".`)
   }
@@ -46,6 +58,28 @@ export default function Matters() {
     await deleteMatter(m.id)
     setMatters((prev) => prev.filter((x) => x.id !== m.id))
     toast("success", `Deleted matter "${m.title}".`)
+  }
+
+  function openEdit(m: Matter) {
+    setEditing(m)
+    setDraftTitle(m.title)
+    setDraftReference(m.reference ?? "")
+    setDraftJurisdictions(m.jurisdictions ?? [])
+  }
+
+  async function onSaveEdit() {
+    if (!editing || !draftTitle.trim()) return
+    setBusy(true)
+    const updated = await renameMatter(
+      editing.id,
+      draftTitle.trim(),
+      draftReference.trim() || undefined,
+      draftJurisdictions.length ? draftJurisdictions : undefined,
+    )
+    setMatters((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+    setEditing(null)
+    setBusy(false)
+    toast("success", `Updated matter "${updated.title}".`)
   }
 
   const term = filter.trim().toLowerCase()
@@ -72,21 +106,6 @@ export default function Matters() {
             onKeyDown={(e) => e.key === "Enter" && onCreate()}
             style={{ width: 160 }}
           />
-          {jurisdictions.length > 0 && (
-            <select
-              value={jurisdiction}
-              onChange={(e) => setJurisdiction(e.target.value)}
-              title="Jurisdiction"
-              style={{ width: 180 }}
-            >
-              <option value="">No jurisdiction</option>
-              {jurisdictions.map((j) => (
-                <option key={j.code} value={j.code}>
-                  {j.name}
-                </option>
-              ))}
-            </select>
-          )}
           <button className="primary" onClick={onCreate} disabled={busy || !title.trim()}>
             Create matter
           </button>
@@ -119,8 +138,15 @@ export default function Matters() {
                 <Link to={`/matter/${m.id}`} style={{ flex: 1 }}>
                   {m.title}
                 </Link>
-                {m.jurisdiction && <span className="matter-ref">{m.jurisdiction}</span>}
+                {m.jurisdictions?.map((code) => (
+                  <span key={code} className="matter-ref">
+                    {code}
+                  </span>
+                ))}
                 <span className="muted">{new Date(m.created_at).toLocaleDateString()}</span>
+                <button className="icon-btn" title="Edit matter" onClick={() => openEdit(m)}>
+                  Edit
+                </button>
                 {confirmId === m.id ? (
                   <button
                     className="icon-btn danger"
@@ -149,6 +175,50 @@ export default function Matters() {
           </ul>
         )}
       </div>
+
+      {editing && (
+        <div className="viewer-overlay" onClick={() => setEditing(null)}>
+          <div className="picker-panel matter-edit" onClick={(e) => e.stopPropagation()}>
+            <div className="viewer-bar">
+              <span className="viewer-title">Edit matter</span>
+              <button onClick={() => setEditing(null)}>Close</button>
+            </div>
+            <div className="matter-edit-body">
+              <label className="matter-edit-field">
+                <span>Title</span>
+                <input
+                  autoFocus
+                  value={draftTitle}
+                  onChange={(e) => setDraftTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && onSaveEdit()}
+                />
+              </label>
+              <label className="matter-edit-field">
+                <span>Matter ID</span>
+                <input
+                  value={draftReference}
+                  onChange={(e) => setDraftReference(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && onSaveEdit()}
+                />
+              </label>
+              <div className="matter-edit-field">
+                <span>Jurisdictions</span>
+                <JurisdictionSelect
+                  jurisdictions={jurisdictions}
+                  selected={draftJurisdictions}
+                  onChange={setDraftJurisdictions}
+                />
+              </div>
+            </div>
+            <div className="viewer-bar matter-edit-foot">
+              <button onClick={() => setEditing(null)}>Cancel</button>
+              <button className="primary" onClick={onSaveEdit} disabled={busy || !draftTitle.trim()}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -8,7 +8,7 @@ export type Matter = {
   id: string
   title: string
   reference?: string
-  jurisdiction?: string
+  jurisdictions?: string[]
   dir: string
   created_at: number
 }
@@ -97,11 +97,11 @@ export async function listJurisdictions(): Promise<Jurisdiction[]> {
   return res.json()
 }
 
-export async function createMatter(title: string, reference?: string, jurisdiction?: string): Promise<Matter> {
+export async function createMatter(title: string, reference?: string, jurisdictions?: string[]): Promise<Matter> {
   const res = await fetch(`${INGEST_URL}/matters`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, reference, jurisdiction }),
+    body: JSON.stringify({ title, reference, jurisdictions }),
   })
   return res.json()
 }
@@ -110,12 +110,12 @@ export async function renameMatter(
   id: string,
   title: string,
   reference?: string,
-  jurisdiction?: string,
+  jurisdictions?: string[],
 ): Promise<Matter> {
   const res = await fetch(`${INGEST_URL}/matters/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, reference, jurisdiction }),
+    body: JSON.stringify({ title, reference, jurisdictions }),
   })
   return res.json()
 }

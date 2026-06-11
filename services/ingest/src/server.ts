@@ -63,21 +63,21 @@ app.get("/matters", (c) => c.json(listMatters()))
 app.get("/jurisdictions", (c) => c.json(listJurisdictions()))
 
 app.post("/matters", async (c) => {
-  const { title, reference, jurisdiction } = await c.req.json<{
+  const { title, reference, jurisdictions } = await c.req.json<{
     title: string
     reference?: string
-    jurisdiction?: string
+    jurisdictions?: string[]
   }>()
-  return c.json(createMatter(title, reference, jurisdiction))
+  return c.json(createMatter(title, reference, jurisdictions))
 })
 
 app.patch("/matters/:id", async (c) => {
-  const { title, reference, jurisdiction } = await c.req.json<{
+  const { title, reference, jurisdictions } = await c.req.json<{
     title: string
     reference?: string
-    jurisdiction?: string
+    jurisdictions?: string[]
   }>()
-  return c.json(renameMatter(c.req.param("id"), title, reference, jurisdiction))
+  return c.json(renameMatter(c.req.param("id"), title, reference, jurisdictions))
 })
 
 app.delete("/matters/:id", (c) => {

@@ -10,13 +10,14 @@ export const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? path.join(process.cw
 
 // reference is the firm's own client-matter number (e.g. "2026-0042"), shown in
 // the UI. It is display metadata only — the directory id stays the auto slug+uuid.
-// jurisdiction is a pack code (e.g. "EW") the engine reads from matter.json to
-// steer reasoning and citation style; see dochaus/jurisdiction/ (issue #18).
+// jurisdictions are pack codes (e.g. ["EW", "US-NY"]) the engine reads from
+// matter.json to steer reasoning and citation style; a matter can span several
+// (cross-border deal), so it is a list — see dochaus/jurisdiction/ (issue #18).
 export type Matter = {
   id: string
   title: string
   reference?: string
-  jurisdiction?: string
+  jurisdictions?: string[]
   dir: string
   created_at: number
 }
@@ -44,21 +45,21 @@ export function listMatters(): Matter[] {
     .sort((a, b) => a.created_at - b.created_at)
 }
 
-export function createMatter(title: string, reference?: string, jurisdiction?: string): Matter {
+export function createMatter(title: string, reference?: string, jurisdictions?: string[]): Matter {
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
   const id = `${slug}-${crypto.randomUUID().slice(0, 6)}`
   const dir = matterDir(id)
   mkdirSync(dir, { recursive: true })
-  const matter: Matter = { id, title, reference, jurisdiction, dir, created_at: Date.now() }
+  const matter: Matter = { id, title, reference, jurisdictions, dir, created_at: Date.now() }
   writeFileSync(matterFile(dir), JSON.stringify(matter, null, 2))
   return matter
 }
 
 // Rename keeps the directory id stable (it backs every session and document
-// path); only the display title/reference/jurisdiction in matter.json change.
-export function renameMatter(id: string, title: string, reference?: string, jurisdiction?: string): Matter {
+// path); only the display title/reference/jurisdictions in matter.json change.
+export function renameMatter(id: string, title: string, reference?: string, jurisdictions?: string[]): Matter {
   const dir = matterDir(id)
-  const matter = { ...getMatter(id), title, reference, jurisdiction }
+  const matter = { ...getMatter(id), title, reference, jurisdictions }
   writeFileSync(matterFile(dir), JSON.stringify(matter, null, 2))
   return matter
 }

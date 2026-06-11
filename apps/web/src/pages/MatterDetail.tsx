@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
-import { getMatter, renameMatter, listJurisdictions, type MatterDetail as Detail, type Jurisdiction } from "../api/ingest"
+import { getMatter, renameMatter, type MatterDetail as Detail } from "../api/ingest"
 import { listAgents, matterClient } from "../api/opencode"
 import { AUTO } from "../agents"
 import DocumentUpload from "../components/DocumentUpload"
@@ -21,7 +21,6 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   const view = params.get("view") ?? "chat"
   const session = params.get("session") ?? undefined
   const [matter, setMatter] = useState<Detail>()
-  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [agent, setAgent] = useState(AUTO)
   const [viewing, setViewing] = useState<string>()
@@ -47,20 +46,6 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   }
 
   useEffect(refresh, [id])
-
-  useEffect(() => {
-    listJurisdictions().then(setJurisdictions)
-  }, [])
-
-  // Change the matter's jurisdiction in place. Reuses the rename endpoint (it
-  // patches matter.json), passing the current title/reference so only the
-  // jurisdiction moves. The engine reads matter.json each turn, so the next
-  // message already reasons under the new jurisdiction.
-  async function changeJurisdiction(code: string) {
-    if (!matter) return
-    await renameMatter(matter.id, matter.title, matter.reference, code || undefined)
-    setMatter((m) => m && { ...m, jurisdiction: code || undefined })
-  }
 
   useEffect(() => {
     if (!matter) return
@@ -110,7 +95,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
     setRenaming(false)
     const next = draftTitle.trim()
     if (!matter || !next || next === matter.title) return
-    const updated = await renameMatter(matter.id, next, matter.reference, matter.jurisdiction)
+    const updated = await renameMatter(matter.id, next, matter.reference, matter.jurisdictions)
     setMatter((m) => m && { ...m, title: updated.title })
     onSessionsChanged()
   }
@@ -143,21 +128,6 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
             {matter.reference && <span className="matter-ref">{matter.reference}</span>}
             {matter.title}
           </h2>
-        )}
-        {jurisdictions.length > 0 && (
-          <select
-            value={matter.jurisdiction ?? ""}
-            onChange={(e) => changeJurisdiction(e.target.value)}
-            title="Jurisdiction — steers reasoning and citation style"
-            style={{ marginLeft: "auto" }}
-          >
-            <option value="">No jurisdiction</option>
-            {jurisdictions.map((j) => (
-              <option key={j.code} value={j.code}>
-                {j.name}
-              </option>
-            ))}
-          </select>
         )}
       </div>
 

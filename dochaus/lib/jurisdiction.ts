@@ -41,10 +41,11 @@ export async function loadJurisdiction(code: string): Promise<JurisdictionPack |
   return { ...profile, prompt: existsSync(promptPath) ? await Bun.file(promptPath).text() : "" }
 }
 
-// The jurisdiction code a matter carries, read from its matter.json. The ingest
-// service owns that file; the engine only reads it to steer reasoning.
-export function readMatterJurisdiction(directory: string) {
+// The jurisdiction codes a matter carries, read from its matter.json. A matter
+// can span several (a cross-border deal), so this is a list. The ingest service
+// owns that file; the engine only reads it to steer reasoning.
+export function readMatterJurisdictions(directory: string) {
   const file = path.join(directory, "matter.json")
-  if (!existsSync(file)) return undefined
-  return (JSON.parse(readFileSync(file, "utf8")) as { jurisdiction?: string }).jurisdiction || undefined
+  if (!existsSync(file)) return []
+  return (JSON.parse(readFileSync(file, "utf8")) as { jurisdictions?: string[] }).jurisdictions ?? []
 }
