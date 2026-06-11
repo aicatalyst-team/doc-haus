@@ -192,13 +192,15 @@ your infrastructure at any point.
 
 ## Validation status
 
-- Validated end-to-end on this machine: the Ollama config-only swap. A scratch
-  config dir was created with the `ollama` provider block above and nothing else
-  changed; the engine was started with `OPENCODE_CONFIG_DIR` pointing at it; the
-  engine parsed the config and listed `llama3.2:latest`; a session prompt returned
-  a correct completion served by the local Ollama endpoint at
-  `http://localhost:11434/v1`. No code was modified. The default Vertex config was
-  not touched.
+- Validated end-to-end on this machine (2026-06-11): the Ollama config-only swap.
+  A scratch config dir held only the `ollama` provider block above; the engine was
+  pointed at it with `OPENCODE_CONFIG_DIR` and nothing else changed. `opencode
+  models ollama` resolved `ollama/llama3.2:latest` from config alone, and `opencode
+  run --model ollama/llama3.2:latest` routed the turn to the local endpoint at
+  `http://localhost:11434/v1` and streamed model-generated tokens back. Inference
+  stayed on the machine; no code was modified and the default Vertex config was not
+  touched. (The 3B model's output quality is beside the point — the validated fact
+  is that the engine served the turn from the local endpoint purely from config.)
 - Validated structurally: the engine's provider lowerers natively support
   `@ai-sdk/openai-compatible`, `@ai-sdk/anthropic`, and `@ai-sdk/openai`, all
   recognizing `options.apiKey` and `options.baseURL` from config. The web Settings

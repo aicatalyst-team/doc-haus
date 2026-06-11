@@ -5,6 +5,10 @@
     "google-vertex": {
       "npm": "@ai-sdk/google-vertex",
       "name": "Google Vertex AI",
+      "options": {
+        "project": "{env:GOOGLE_VERTEX_PROJECT}",
+        "location": "{env:GOOGLE_VERTEX_LOCATION}"
+      },
       "models": {
         "gemini-3.1-pro-preview": {
           "name": "Gemini 3.1 Pro",
