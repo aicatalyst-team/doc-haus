@@ -26,6 +26,8 @@ export type GridCell = {
   // time, so editing a column marks its cells stale without changing them.
   status: "filled" | "reviewed"
   questionHash: string
+  // Free-text reviewer note on the cell; survives recomputes.
+  comment?: string
 }
 
 // Cells are keyed `<documentName>::<columnId>`.
