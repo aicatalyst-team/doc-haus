@@ -3,6 +3,8 @@ import { Route, Routes } from "react-router-dom"
 import Matters from "./pages/Matters"
 import Templates from "./pages/Templates"
 import Workflows from "./pages/Workflows"
+import Skills from "./pages/Skills"
+import Agents from "./pages/Agents"
 import MatterDetail from "./pages/MatterDetail"
 import Settings from "./components/Settings"
 import Onboarding from "./components/Onboarding"
@@ -53,6 +55,8 @@ export default function App() {
               <Route path="/" element={<Matters />} />
               <Route path="/templates" element={<Templates />} />
               <Route path="/workflows" element={<Workflows />} />
+              <Route path="/skills" element={<Skills />} />
+              <Route path="/agents" element={<Agents />} />
               <Route
                 path="/matter/:id"
                 element={<MatterDetail onSessionsChanged={() => setSessionsVersion((v) => v + 1)} />}

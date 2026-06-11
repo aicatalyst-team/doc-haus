@@ -34,5 +34,4 @@ process.
   and tell the user it is now available from the Workflows launcher in any
   matter chat.
 - Workflow names are immutable once created; to rename, delete and recreate.
-- No edge case handling, ever.
 </rules>

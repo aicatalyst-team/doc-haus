@@ -2,10 +2,15 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { WORKSPACE_ROOT } from "./matter"
+// Cycle with agent.ts (which imports listWorkflows for deleteAgent's dependent
+// guard) is safe: both modules only call across the boundary at request time.
+import { listAgents } from "./agent"
 
 // Resolved relative to this module so it does not depend on the ingest process cwd.
-// DOCHAUS_DIR env override lets tests point at a throwaway temp dir.
-export const DOCHAUS_DIR =
+// DOCHAUS_DIR env override lets tests point at a throwaway temp dir; read lazily
+// because bun test loads every test file into one process — a module-load capture
+// would freeze whichever file imported first.
+export const DOCHAUS_DIR = () =>
   process.env.DOCHAUS_DIR ??
   path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "dochaus")
 
@@ -13,14 +18,15 @@ export const DOCHAUS_DIR =
 // mirroring how template-builder runs in TEMPLATES_DIR).
 export const WORKFLOWS_DIR = path.join(WORKSPACE_ROOT, ".workflows")
 
-const REGISTRY_FILE = () => path.join(DOCHAUS_DIR, "workflows.json")
-const AGENT_DIR = () => path.join(DOCHAUS_DIR, "agent")
+const REGISTRY_FILE = () => path.join(DOCHAUS_DIR(), "workflows.json")
+const AGENT_DIR = () => path.join(DOCHAUS_DIR(), "agent")
 
 // A dochaus/agent/<name>.md that overrides a name the opencode engine reserves at
-// config merge would silently hijack that built-in agent. Block them here.
-const RESERVED_NAMES = ["auto", "build", "plan", "general", "explore", "summary", "title", "compaction", "triage"]
+// config merge would silently hijack that built-in agent. Block them here. Shared
+// with agent.ts — custom specialist agents land in the same namespace.
+export const RESERVED_NAMES = ["auto", "build", "plan", "general", "explore", "summary", "title", "compaction", "triage"]
 
-const NAME_RE = /^[a-z0-9][a-z0-9-]*$/
+export const NAME_RE = /^[a-z0-9][a-z0-9-]*$/
 
 export type WorkflowStep = {
   agent: string
@@ -118,7 +124,7 @@ export function renderAgentMarkdown(record: Workflow): string {
   outputLines.push(
     "- **Bottom line** — your own 2-4 sentence synthesis of where the workflow nets out.",
     "",
-    "Do not drop or rewrite the subagents' citations. No edge case handling, ever.",
+    "Do not drop or rewrite the subagents' citations.",
     "</output>",
   )
 
@@ -133,8 +139,16 @@ function validate(input: { label: string; description: string; scope: string; pr
   const name = slugify(input.label)
   if (!name || !NAME_RE.test(name)) throw new WorkflowError("label slugifies to an empty or invalid name", 400)
   if (!input.steps.length) throw new WorkflowError("steps must be non-empty", 400)
+  // A step naming a nonexistent or disabled subagent would break the workflow at
+  // every launch — the inverse of deleteAgent's dependent-workflow guard.
+  const enabled = listAgents().filter((a) => a.enabled).map((a) => a.name)
   for (const step of input.steps) {
     if (!NAME_RE.test(step.agent)) throw new WorkflowError(`step agent "${step.agent}" is not a valid name`, 400)
+    if (!enabled.includes(step.agent))
+      throw new WorkflowError(
+        `step agent "${step.agent}" is not an enabled subagent — valid agents: ${enabled.join(", ")}`,
+        400,
+      )
   }
   return name
 }
@@ -174,12 +188,11 @@ export function updateWorkflow(
 ): Workflow {
   validate(input)
   const registry = readRegistry()
-  const idx = registry.findIndex((r) => r.name === name)
-  if (idx === -1) throw new WorkflowError(`workflow "${name}" not found`, 404)
-  const record: Workflow = { ...registry[idx], label: input.label, description: input.description, scope: input.scope, prompt: input.prompt, steps: input.steps }
+  const existing = registry.find((r) => r.name === name)
+  if (!existing) throw new WorkflowError(`workflow "${name}" not found`, 404)
+  const record: Workflow = { ...existing, label: input.label, description: input.description, scope: input.scope, prompt: input.prompt, steps: input.steps }
   writeFileSync(agentPath(name), renderAgentMarkdown(record))
-  registry[idx] = record
-  writeRegistry(registry)
+  writeRegistry(registry.map((r) => (r.name === name ? record : r)))
   return record
 }
 

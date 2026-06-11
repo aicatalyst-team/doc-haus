@@ -329,10 +329,17 @@ textarea {
   margin-right: 8px;
 }
 
-/* Template row: a clickable one-line description (turns into an input on click)
-   and a quiet placeholder count, beside the View/Delete controls. */
+/* Template row: file name stacked above a clickable description (turns into an
+   input on click), with a quiet placeholder count beside the View/Delete controls. */
+.template-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .template-desc {
-  flex: 2;
   min-width: 0;
   cursor: text;
   overflow: hidden;
@@ -341,7 +348,7 @@ textarea {
 }
 
 .template-desc-input {
-  flex: 2;
+  width: 100%;
   min-width: 0;
 }
 
@@ -2100,4 +2107,26 @@ button.linklike:hover {
 .permission-reject {
   border-color: var(--danger);
   color: var(--danger);
+}
+
+/* Skill / agent source view: a roomier reading modal than the default picker,
+   with the markdown tightened up for dense reference text. */
+.doc-panel {
+  max-width: 780px;
+  height: min(84vh, 920px);
+}
+
+.doc-panel .picker-body {
+  gap: 4px;
+  padding: 16px 20px 20px;
+}
+
+.doc-panel .markdown p,
+.doc-panel .markdown ul,
+.doc-panel .markdown ol {
+  margin: 6px 0;
+}
+
+.doc-panel .markdown li {
+  margin: 3px 0;
 }

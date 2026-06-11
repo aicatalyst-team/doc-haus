@@ -15,3 +15,16 @@ export default function Markdown({ children }: { children: string }) {
     </div>
   )
 }
+
+// Skill bodies and agent instructions carry XML-ish section tags (<task>,
+// <rules>, ...) that ReactMarkdown would otherwise swallow as unknown HTML.
+// Re-emit each tag as inline code on its own line so the sections stay visible
+// and the markdown between them (bold, lists) still renders.
+export function DocMarkdown({ children }: { children: string }) {
+  const escaped = children.replace(/[ \t]*<(\/?[a-z][a-z0-9-]*)>[ \t]*/g, "\n\n`<$1>`\n\n")
+  return (
+    <div className="markdown">
+      <ReactMarkdown>{escaped}</ReactMarkdown>
+    </div>
+  )
+}

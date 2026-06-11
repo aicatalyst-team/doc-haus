@@ -290,3 +290,80 @@ export async function deleteWorkflow(name: string): Promise<void> {
   const res = await fetch(`${INGEST_URL}/workflows/${encodeURIComponent(name)}`, { method: "DELETE" })
   if (!res.ok) throw new Error(`${(await res.json()).error}`)
 }
+
+// The firm's skill library, owned by the ingest service: repo-shipped reference
+// skills (read-only) plus the custom ones under WORKSPACE_ROOT/.skills. The
+// response carries the library directory alongside the list — the skill builder
+// chat scopes its engine sessions to that directory (there is no matter to scope
+// to), so the page needs it from the same call.
+export type Skill = { name: string; description: string; content: string; builtin: boolean; enabled: boolean }
+
+export async function listSkills(): Promise<{ dir: string; skills: Skill[] }> {
+  const res = await fetch(`${INGEST_URL}/skills`)
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+  return res.json()
+}
+
+// Import an uploaded file as a skill: .md keeps its own frontmatter, .docx/.pdf/.txt
+// are text-extracted raw for the skill builder chat to refine afterwards.
+export async function importSkill(file: File): Promise<Skill> {
+  const form = new FormData()
+  form.append("file", file)
+  const res = await fetch(`${INGEST_URL}/skills/import`, { method: "POST", body: form })
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+  return res.json()
+}
+
+export async function deleteSkill(name: string): Promise<void> {
+  const res = await fetch(`${INGEST_URL}/skills/${encodeURIComponent(name)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+}
+
+// Flip a skill on or off — builtin and custom alike. A disabled skill stays in
+// the library but the engine hides it from every agent.
+export async function setSkillEnabled(name: string, enabled: boolean): Promise<Skill> {
+  const res = await fetch(`${INGEST_URL}/skills/${encodeURIComponent(name)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  })
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+  return res.json()
+}
+
+// The firm's specialist subagents, owned by the ingest service: repo-shipped
+// specialists (read-only) plus the custom ones the agent builder composed.
+// Custom agents are workflow building blocks — deletion is refused while a
+// workflow references one.
+export type AgentRecord = {
+  name: string
+  label: string
+  description: string
+  instructions: string
+  builtin: boolean
+  enabled: boolean
+  created_at: number
+}
+
+export async function listAgents(): Promise<{ dir: string; agents: AgentRecord[] }> {
+  const res = await fetch(`${INGEST_URL}/agents`)
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+  return res.json()
+}
+
+export async function deleteAgent(name: string): Promise<void> {
+  const res = await fetch(`${INGEST_URL}/agents/${encodeURIComponent(name)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+}
+
+// Flip an agent on or off — builtin and custom alike. A disabled agent stays in
+// the library but the engine drops it from the task/workflow roster.
+export async function setAgentEnabled(name: string, enabled: boolean): Promise<AgentRecord> {
+  const res = await fetch(`${INGEST_URL}/agents/${encodeURIComponent(name)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  })
+  if (!res.ok) throw new Error(`${(await res.json()).error}`)
+  return res.json()
+}

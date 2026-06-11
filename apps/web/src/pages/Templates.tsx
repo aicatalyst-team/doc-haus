@@ -148,32 +148,34 @@ export default function Templates() {
               const fills = t.placeholders.length - optional
               return (
                 <li key={t.name}>
-                  <span style={{ flex: 1 }}>{t.name}</span>
-                  {editing === t.name ? (
-                    <input
-                      className="template-desc-input"
-                      autoFocus
-                      defaultValue={t.description}
-                      placeholder="Add description"
-                      onClick={(e) => e.stopPropagation()}
-                      onBlur={(e) => saveDescription(t, e.target.value.trim())}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur()
-                        if (e.key === "Escape") setEditing(null)
-                      }}
-                    />
-                  ) : (
-                    <span
-                      className="muted template-desc"
-                      title="Click to edit description"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEditing(t.name)
-                      }}
-                    >
-                      {t.description || "Add description"}
-                    </span>
-                  )}
+                  <div className="template-info">
+                    <span className="template-name">{t.name}</span>
+                    {editing === t.name ? (
+                      <input
+                        className="template-desc-input"
+                        autoFocus
+                        defaultValue={t.description}
+                        placeholder="Add description"
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={(e) => saveDescription(t, e.target.value.trim())}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur()
+                          if (e.key === "Escape") setEditing(null)
+                        }}
+                      />
+                    ) : (
+                      <span
+                        className="muted template-desc"
+                        title="Click to edit description"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditing(t.name)
+                        }}
+                      >
+                        {t.description || "Add description"}
+                      </span>
+                    )}
+                  </div>
                   <span className="muted template-count">
                     {fills} placeholder{fills === 1 ? "" : "s"}
                     {optional > 0 && `, ${optional} optional clause${optional === 1 ? "" : "s"}`}

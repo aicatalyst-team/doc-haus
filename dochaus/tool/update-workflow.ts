@@ -42,11 +42,18 @@ export default tool({
   async execute(args, ctx) {
     await ctx.ask({ permission: "update-workflow", patterns: [args.name], metadata: { workflow: args.name } })
 
+    // The server PUT replaces the whole record, so an omitted prompt must be
+    // backfilled from the current registry entry to honor "omit to keep".
+    const { workflows } = (await (await fetch(`${ingestUrl}/workflows`)).json()) as {
+      workflows: { name: string; prompt: string }[]
+    }
+    const current = workflows.find((w) => w.name === args.name)
+
     const body = {
       label: args.label,
       description: args.description,
       scope: args.scope,
-      prompt: args.prompt ?? `Run the "${args.label}" workflow on this matter.`,
+      prompt: args.prompt ?? current?.prompt ?? `Run the "${args.label}" workflow on this matter.`,
       steps: args.steps.map((s) => ({ agent: s.agent, instructions: s.instructions ?? "" })),
     }
 

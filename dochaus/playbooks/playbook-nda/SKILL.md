@@ -1,13 +1,43 @@
 ---
 name: playbook-nda
-description: "Firm playbook: positions, fallbacks, and approved clause text for mutual NDAs."
+description: "Firm playbook: positions, fallbacks, and approved clause text for US-law mutual NDAs. Apply only to agreements governed by the law of a US state."
+version: "1.1"
+last-reviewed: "2026-06-11"
 ---
 
-This is an executable firm playbook for mutual non-disclosure agreements. Each
-`##` section is one clause type. Text inside an ```approved fence is the
-firm-approved replacement text — copy it byte-exact into the redline tool's
-`replacement` arg. Text inside an ```approved-fallback fence is the firm's
-fallback text, to be used only when its stated "when" condition is met.
+This is an executable firm playbook for mutual non-disclosure agreements
+governed by US law. Each `##` section is one clause type. Text inside an
+```approved fence is the firm-approved replacement text — copy it byte-exact
+into the redline tool's `replacement` arg. Text inside an ```approved-fallback
+fence is the firm's fallback text, to be used only when its stated "when"
+condition is met.
+
+**Jurisdiction guard:** Every position and fence in this playbook states a
+US-law position drafted for agreements governed by the law of a US state.
+Before applying any position, locate the agreement's governing-law clause. If
+the agreement is governed by the law of a non-US jurisdiction, or governing law
+is absent or cannot be determined, stop: do not present these positions or
+fences as firm-approved redlines. Warn the user that the bound playbook covers
+US-law mutual NDAs only and ask how to proceed.
+
+**oneNDA recognition:** oneNDA (https://www.onenda.org/) is a widely adopted
+standard-form mutual NDA whose body is fixed and which is negotiated only
+through its variable fields (parties, purpose, confidentiality period, term,
+governing law and jurisdiction). If the counterparty's paper is an unmodified
+oneNDA — identifiable by the oneNDA name and branding on the document and the
+fixed body paired with that short variables section — accept the body as-is and
+negotiate only the variable fields. Do not redline the oneNDA body text, and
+never copy oneNDA text into this playbook or any firm document (it is licensed
+CC BY-ND, which prohibits derivatives). If the body has been modified from the
+standard form, treat the document as ordinary counterparty paper and apply this
+playbook normally, subject to the jurisdiction guard above.
+
+Several sections below adapt language from the Bonterms Playbook for the
+Bonterms Mutual NDA (https://bonterms.com/resources/nda-playbook), which
+Bonterms publishes as public domain ("free to use, modify, or distribute," with
+the condition that use may not imply Bonterms' endorsement); defined terms have
+been conformed to this playbook's "Disclosing Party"/"Receiving Party"
+vocabulary.
 
 ## Definition of confidential information
 
@@ -204,36 +234,40 @@ preference but is genuinely negotiable.
 
 ## Governing law
 
-**Preferred:** A neutral, named jurisdiction with exclusive venue in that
-jurisdiction's courts; injunctive relief preserved for confidentiality breaches.
+**Preferred:** Delaware law with exclusive venue in Delaware courts — the
+firm's standard neutral jurisdiction; injunctive relief preserved for
+confidentiality breaches.
 
 ```approved
 This Agreement shall be governed by and construed in accordance with the laws of
-the State of [insert governing law state], without regard to its conflict-of-laws
-principles. The parties consent to the exclusive jurisdiction and venue of the
-state and federal courts located in [insert venue county and state] for any
-dispute arising out of or relating to this Agreement, except that either party
-may seek injunctive relief in any court of competent jurisdiction.
+the State of Delaware, without regard to its conflict-of-laws principles. The
+parties consent to the exclusive jurisdiction and venue of the state and federal
+courts located in New Castle County, Delaware for any dispute arising out of or
+relating to this Agreement, except that either party may seek injunctive relief
+in any court of competent jurisdiction.
 ```
 
-**Fallbacks:** when the counterparty rejects the firm's home jurisdiction and a
-neutral forum is acceptable.
+**Fallbacks:** when the counterparty rejects Delaware and a different neutral US
+forum is acceptable.
 
 ```approved-fallback
 This Agreement shall be governed by and construed in accordance with the laws of
-the State of Delaware, without regard to its conflict-of-laws principles, and the
+the State of New York, without regard to its conflict-of-laws principles. The
 parties consent to the exclusive jurisdiction and venue of the state and federal
-courts located in Delaware, except that either party may seek injunctive relief in
-any court of competent jurisdiction.
+courts located in New York County, New York for any dispute arising out of or
+relating to this Agreement, except that either party may seek injunctive relief
+in any court of competent jurisdiction.
 ```
 
 **Unacceptable:** governing law of the counterparty's home jurisdiction where it
-is not neutral; a carve-out stripping the right to seek injunctive relief in any
-competent court; mandatory arbitration with no equitable-relief exception.
+is not neutral; governing law of a non-US jurisdiction (out of scope for this
+playbook — stop and warn per the jurisdiction guard); a carve-out stripping the
+right to seek injunctive relief in any competent court; mandatory arbitration
+with no equitable-relief exception.
 
 **Rationale:** A neutral, named jurisdiction with preserved injunctive relief
 matches the clause-library disputes position; Delaware is the firm's standard
-neutral fallback.
+neutral choice and New York the accepted neutral alternative.
 
 ## Non-solicitation
 
@@ -259,3 +293,166 @@ provision; omission of the general-advertising carve-out.
 **Rationale:** Non-solicitation is not a confidentiality term and should be
 narrow, mutual, and time-limited; no-hire provisions and missing
 general-advertising carve-outs are routinely unenforceable and overbroad.
+
+## Affiliates
+
+**Preferred:** Either party may extend the agreement to its affiliates on
+notice, remaining responsible for affiliate compliance, with a 50%-control
+definition of affiliate.
+
+```approved
+Upon notice to the other party, a party may allow its Affiliate to act as a
+Disclosing Party or Receiving Party under this Agreement, provided that such
+party remains responsible for compliance by its Affiliate with the terms of this
+Agreement. "Affiliate" means an entity that controls, is controlled by, or is
+under common control with a party, where control means at least 50% ownership
+or power to direct an entity's management.
+```
+
+**Unacceptable:** affiliate access to Confidential Information with no party
+responsible for the affiliate's compliance; an affiliate definition with no
+control threshold; one-sided affiliate rights.
+
+**Rationale:** Affiliates routinely need access in diligence, but the
+contracting party must remain on the hook for them. Adapted from the Bonterms
+NDA playbook items (public domain).
+
+## Security safeguards
+
+**Preferred:** The Receiving Party maintains industry-standard administrative,
+physical, and technical safeguards, in addition to the general duty of care.
+
+```approved
+Without limiting the foregoing, the Receiving Party will implement and maintain
+industry-standard administrative, physical, and technical safeguards designed to
+prevent unauthorized access, use, alteration, or disclosure of Confidential
+Information.
+```
+
+**Unacceptable:** a standard of care lower than reasonable care; care limited to
+"the same care the Receiving Party uses for its own information" with no
+reasonable-care floor.
+
+**Rationale:** A concrete safeguards obligation gives the general duty of care
+operational content and a clear breach standard. Adapted from the Bonterms NDA
+playbook items (public domain).
+
+## Breach notification
+
+**Preferred:** The Receiving Party notifies the Disclosing Party of any
+unauthorized use, disclosure, or loss within a fixed deadline and cooperates in
+containment.
+
+```approved
+The Receiving Party will notify the Disclosing Party promptly, and in any event
+no later than 48 hours after the Receiving Party discovers any unauthorized use,
+disclosure, or loss of Confidential Information. The Receiving Party will
+cooperate with the Disclosing Party in every reasonable way to help regain
+possession of such Confidential Information and prevent its further unauthorized
+use or disclosure.
+```
+
+**Fallbacks:** when the counterparty cannot commit to a fixed-hour deadline.
+
+```approved-fallback
+The Receiving Party will notify the Disclosing Party promptly after discovering
+any unauthorized use, disclosure, or loss of Confidential Information, and will
+cooperate with the Disclosing Party in every reasonable way to help regain
+possession of such Confidential Information and prevent its further unauthorized
+use or disclosure.
+```
+
+**Unacceptable:** no breach-notice obligation of any kind; notice limited to
+breaches the Receiving Party deems material; no cooperation obligation.
+
+**Rationale:** Without a notice obligation the Disclosing Party learns of a leak
+only when the damage surfaces; prompt notice and cooperation preserve the
+containment and injunctive-relief options. Adapted from the Bonterms NDA
+playbook items (public domain).
+
+## Use of AI systems
+
+**Preferred:** Confidential Information may not be used to train or improve any
+AI, machine-learning, or large language model system.
+
+```approved
+The Receiving Party will not itself or allow any third party to use any
+Confidential Information to train or improve any artificial intelligence,
+machine learning, or large language model (LLM) system of any kind.
+```
+
+**Fallbacks:** when the counterparty uses third-party AI tools in the ordinary
+course of business and rejects a flat prohibition; the fallback still requires
+the provider to be barred from training on the information.
+
+```approved-fallback
+The Receiving Party will not upload or transmit Confidential Information to any
+third-party artificial intelligence, machine learning, or large language model
+(LLM) system unless the Receiving Party first ensures that the provider of the
+system is subject to binding obligations that (i) prohibit the use of the
+Confidential Information to train or improve the system and (ii) are otherwise
+no less protective of the Disclosing Party than this Agreement.
+```
+
+**Unacceptable:** silence on AI use combined with a broad license to use
+Confidential Information "for the Purpose" through third-party services; any
+express right to use Confidential Information for model training.
+
+**Rationale:** Training ingestion is effectively irreversible disclosure — the
+information cannot be returned or destroyed once embedded in a model. Adapted
+from the Bonterms NDA playbook items (public domain).
+
+## Residual knowledge
+
+**Preferred:** No residuals clause. Propose deletion of any residuals provision;
+there is no approved replacement text because the firm position is removal.
+
+**Fallbacks:** when the counterparty insists on a residuals clause as a
+condition of signing.
+
+```approved-fallback
+Notwithstanding anything to the contrary in this Agreement, the Receiving
+Party's employees may use their unaided memories to retain and use general
+knowledge, skills, experience and know-how learned during exposure to
+Confidential Information, provided they do not intentionally memorize
+Confidential Information for this purpose.
+```
+
+**Unacceptable:** residuals extending to information retained in documents,
+copies, or other tangible or electronic form; residuals with no
+unaided-memory limitation or no intentional-memorization exclusion; a residuals
+clause operating as a license to the Disclosing Party's intellectual property.
+
+**Rationale:** A residuals clause is a deliberate leak in the confidentiality
+obligation; if one must be conceded, the unaided-memory formulation is the
+narrowest market version. Fallback language adapted from the Bonterms NDA
+playbook items (public domain).
+
+## Assignment
+
+**Preferred:** No assignment without the other party's prior approval.
+
+```approved
+Neither party may assign this Agreement without the prior approval of the other
+party.
+```
+
+**Fallbacks:** when the counterparty requires a customary carve-out for
+corporate transactions.
+
+```approved-fallback
+Neither party may assign this Agreement without the prior written consent of the
+other party, except that either party may assign this Agreement without consent
+to a successor in connection with a merger, acquisition, or sale of all or
+substantially all of its assets, provided the successor agrees in writing to be
+bound by this Agreement.
+```
+
+**Unacceptable:** free assignability by either party; assignment to a direct
+competitor of the other party without consent, including under any
+corporate-transaction carve-out.
+
+**Rationale:** An NDA assigned freely can put Confidential Information in the
+hands of an unvetted or competing successor; consent or a narrow
+successor-in-interest carve-out keeps control with the parties. Approved
+language adapted from the Bonterms NDA playbook items (public domain).
