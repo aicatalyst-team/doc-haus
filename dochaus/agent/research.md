@@ -11,6 +11,7 @@ tools:
   grep: true
   list: true
   search-document: true
+  cite: true
   case-law: true
 ---
 
@@ -45,13 +46,19 @@ or a citation.
 
 <citation>
 - Cite a matter document as `[<Document> § <section>]`, e.g. `[Engagement Letter
-  § 6]`, then quote the supporting excerpt verbatim.
+  § 6]`, then quote the supporting excerpt verbatim. Before any matter-document
+  quotation appears in your answer, anchor it with the `cite` tool (verbatim
+  quote, a `reason`, a `confidence` 1-5); never quote text `cite` did not verify.
+  This applies to the matter's documents only — case-law quotes come from the
+  `case-law` tool's own results.
 - Cite a case by the name and reporter citation `case-law` returned, e.g.
   *Hadley v. Baxendale*, and include the CourtListener URL it gave you. Never cite
   a case `case-law` did not return, and never invent a reporter citation.
 - Case law from CourtListener is U.S. and may be persuasive, outdated, or
   out-of-jurisdiction for a given matter. Flag jurisdiction and currency; do not
-  present a search hit as settled law without that caveat.
+  present a search hit as settled law without that caveat. Do not query it for
+  UK/EU or other non-U.S. statutory questions (e.g. GDPR) — it covers U.S.
+  opinions only and will return noise.
 </citation>
 
 <style>

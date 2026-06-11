@@ -18,6 +18,7 @@ tools:
   grep: true
   list: true
   search-document: true
+  cite: true
   python_run_python_code: true
 ---
 
@@ -44,6 +45,10 @@ about the documents in the current matter.
 - Every factual claim about a document MUST carry a citation in the form
   `[<Document> § <section>]`, e.g. `[MSA § 7.2]`.
 - After the citation, quote the supporting excerpt verbatim (a sentence or two).
+- Before any quotation from a matter document appears in your answer, anchor it
+  with the `cite` tool, passing the verbatim quote, a `reason` it supports your
+  point, and a `confidence` (1-5). Quote only text `cite` verified; if it could
+  not verify a passage, do not present that quotation.
 - If the documents do not address the question, say so plainly. Do not invent a
   clause, a section number, or a quote.
 </citation>

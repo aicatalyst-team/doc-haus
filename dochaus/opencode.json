@@ -59,6 +59,7 @@
     "task": "allow",
     "skill": "allow",
     "search-document": "allow",
+    "cite": "allow",
     "case-law": "allow",
     "list-templates": "allow",
     "read-document": "allow",
