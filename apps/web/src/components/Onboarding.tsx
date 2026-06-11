@@ -14,6 +14,19 @@ import { isGated, loadVerified } from "../providers"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 
+// Shown one at a time while the provider/model catalog loads. Legalese with a
+// wink — the wait is a couple of network calls, so most users only see two.
+// Phrases stay either obviously whimsical or factually true; nothing that
+// claims real legal work (reviewing, vetting) is happening.
+const LOADING_PHRASES = [
+  "Sharpening pencils...",
+  "Looking for your model providers...",
+  "Polishing the letterhead...",
+  "Aligning the margins...",
+  "Hereinafter referred to as “loading”...",
+  "Untangling the red tape...",
+]
+
 // First-run onboarding. Auto-detects the providers the engine already has
 // credentials for — host sign-ins and environment (Vertex ADC, Bedrock,
 // AWS/Azure SDK creds), or a key typed below — then asks only for the two
@@ -31,6 +44,8 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
   const [primary, setPrimary] = useState("")
   const [fast, setFast] = useState("")
   const [notice, setNotice] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [phrase, setPhrase] = useState(0)
   // Reveal the connect step even when models are detected, so a user with one
   // provider ready can still wire up another before choosing.
   const [forceConnect, setForceConnect] = useState(false)
@@ -50,12 +65,19 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
     // Seed from any model already saved so re-opening shows the live config.
     setPrimary((p) => p || cfg.model || "")
     setFast((f) => f || cfg.small_model || "")
+    setLoading(false)
   }
 
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!loading) return
+    const timer = setInterval(() => setPhrase((p) => (p + 1) % LOADING_PHRASES.length), 1600)
+    return () => clearInterval(timer)
+  }, [loading])
 
   // Host-credential providers (Vertex/Bedrock) report connected on project presence
   // alone, never on a real sign-in — so onboarding offers them only once they've
@@ -125,7 +147,20 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
         <div className="picker-body">
           {notice && <p className="settings-notice">{notice}</p>}
 
-          {!showConnect ? (
+          {loading ? (
+            <div className="onboard-loading">
+              <div className="onboard-doc">
+                <span className="sk-line" />
+                <span className="sk-line" />
+                <span className="sk-line" />
+                <span className="sk-line" />
+              </div>
+              {/* Keyed on the index so each phrase replays the fade-in. */}
+              <p key={phrase} className="onboard-phrase">
+                {LOADING_PHRASES[phrase]}
+              </p>
+            </div>
+          ) : !showConnect ? (
             <>
               <p className="settings-notice">
                 Detected {connectedProviders.map((p) => p.name).join(", ")}. Pick your models to get started.
@@ -285,12 +320,14 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
             </>
           )}
 
-          <p className="settings-hint muted" style={{ marginTop: 16 }}>
-            Need a cloud project/region or to manage providers?{" "}
-            <button className="linklike" onClick={onOpenSettings}>
-              Open full settings
-            </button>
-          </p>
+          {!loading && (
+            <p className="settings-hint muted" style={{ marginTop: 16 }}>
+              Need a cloud project/region or to manage providers?{" "}
+              <button className="linklike" onClick={onOpenSettings}>
+                Open full settings
+              </button>
+            </p>
+          )}
         </div>
       </div>
     </div>
