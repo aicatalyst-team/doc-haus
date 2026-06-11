@@ -8,6 +8,7 @@ import {
   getRedline,
   setRedlineStatus,
   pendingRedlineCounts,
+  getInjectionReport,
 } from "./db"
 import { ingestDocument, extractDocumentText } from "./ingest"
 import { pdfToDocx } from "./convert"
@@ -355,10 +356,14 @@ app.get("/matters/:id/documents/content", async (c) => {
 // The plain text of a matter document, mammoth-extracted (the same text indexing
 // uses). The drafter's read-document tool reads it to convert an existing document
 // into a template by replacing every client-specific detail with a placeholder.
+// Ships the document's ingest-time injection report (null when clean) so the tool
+// can hand the model the text and the warning together.
 app.get("/matters/:id/documents/text", async (c) => {
-  const file = path.join(matterDir(c.req.param("id")), path.basename(c.req.query("name") ?? ""))
+  const dir = matterDir(c.req.param("id"))
+  const file = path.join(dir, path.basename(c.req.query("name") ?? ""))
   if (!existsSync(file)) return c.notFound()
-  return c.json({ text: await extractDocumentText(file, Buffer.from(await Bun.file(file).bytes())) })
+  const injection = existsSync(path.join(dir, ".dochaus", "legal.db")) ? getInjectionReport(openDb(dir), file) : null
+  return c.json({ text: await extractDocumentText(file, Buffer.from(await Bun.file(file).bytes())), injection })
 })
 
 // The global template library. Templates are firm-managed drafting bases shared

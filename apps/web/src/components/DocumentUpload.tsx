@@ -40,6 +40,18 @@ export default function DocumentUpload({
     for (const file of files) {
       const result = await uploadDocument(matterId, file)
       onUploaded()
+      // A flagged upload is a finding the lawyer needs to see, not a failure: the
+      // document is indexed, the assistant treats the flagged text as untrusted,
+      // and the warning says what ingest found.
+      if (result.injection) {
+        toast(
+          "warning",
+          `Indexed ${result.name} with warnings — possible prompt injection: ${[
+            ...new Set(result.injection.findings.map((f) => f.detail)),
+          ].join("; ")}. The assistant will treat this content as untrusted.`,
+        )
+        continue
+      }
       toast("success", `Indexed ${result.name}: ${result.sections} sections, ${result.chunks} chunks.`)
     }
     setBusy(false)
