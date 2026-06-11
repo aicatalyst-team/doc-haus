@@ -1120,6 +1120,7 @@ const PERMISSION_VERBS: Record<string, string> = {
   redline: "propose a redline in",
   "draft-document": "create",
   "create-template": "create the template",
+  redact: "permanently remove content from",
 }
 
 // One parked edit-tool call awaiting the user's decision. The metadata the tool
@@ -1135,9 +1136,15 @@ function PermissionCard({
 }) {
   const meta = request.metadata
   const document = typeof meta.document === "string" ? meta.document : request.patterns[0] && basename(request.patterns[0])
-  const oldText = (meta.find ?? meta.clause) as string | undefined
-  const newText = (meta.replace ?? meta.replacement) as string | undefined
+  const oldText = (meta.find ?? meta.clause ?? meta.text) as string | undefined
+  const newText = (meta.replace ?? meta.replacement ?? meta.label) as string | undefined
   const verb = PERMISSION_VERBS[request.permission] ?? `use ${humanizeTool(request.permission)} on`
+  // Redaction is irreversible, so its card spells out the scope (occurrence
+  // count) and the reason that will go to the redaction log.
+  const detail =
+    request.permission === "redact"
+      ? `Removes ${meta.occurrences ?? "all"} occurrence(s) and any metadata mentions — this cannot be undone. Reason: ${meta.reason}`
+      : undefined
   return (
     <div className="permission-card">
       <div className="permission-title">
@@ -1149,6 +1156,7 @@ function PermissionCard({
           {newText && <div className="redline-new">{newText}</div>}
         </div>
       )}
+      {detail && <div className="permission-title">{detail}</div>}
       <div className="permission-actions">
         <button className="primary" onClick={() => onReply(request.id, "once")}>
           Allow once

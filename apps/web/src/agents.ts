@@ -24,6 +24,12 @@ export const CHAT_ASSISTANTS: AssistantMeta[] = [
     description: "Edits and redlines this matter's documents as tracked changes you accept or reject in Word.",
   },
   {
+    name: "redactor",
+    label: "Redact",
+    description:
+      "Finds PII and sensitive content and permanently removes it from the document — true redaction, with a per-matter redaction log.",
+  },
+  {
     name: "research",
     label: "Research",
     description:
