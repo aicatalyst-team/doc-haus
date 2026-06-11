@@ -93,7 +93,10 @@ echo "doc.haus: web UI will be at $WEB_URL"
 # silently drifting to a random port the web app cannot reach. Bind loopback by
 # default; set OPENCODE_HOSTNAME=0.0.0.0 to expose it (Docker, reverse proxy) — the
 # same loopback-default the engine, ingest, and vite all keep.
-OPENCODE_CONFIG_DIR="$PWD/dochaus" bun run packages/opencode/src/index.ts serve --port 4096 --hostname "${OPENCODE_HOSTNAME:-127.0.0.1}" &
+# --print-logs surfaces engine warnings/errors (failed requests, provider/model
+# errors) in this console instead of only the log file; WARN keeps the local-dev
+# DEBUG default from flooding the terminal. Override with OPENCODE_LOG_LEVEL.
+OPENCODE_CONFIG_DIR="$PWD/dochaus" bun run packages/opencode/src/index.ts serve --port 4096 --hostname "${OPENCODE_HOSTNAME:-127.0.0.1}" --print-logs --log-level "${OPENCODE_LOG_LEVEL:-WARN}" &
 pids+=($!)
 
 (cd services/ingest && bun run start) &
