@@ -17,7 +17,7 @@ import {
   type PermissionReply,
   type PermissionRequest,
 } from "../api/opencode"
-import { CHAT_ASSISTANTS, isAuto, WORKFLOWS } from "../agents"
+import { CHAT_ASSISTANTS, isAuto, TEMPLATE_BUILDER, WORKFLOWS, type AssistantMeta } from "../agents"
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
 import ModelSelector from "./ModelSelector"
@@ -152,7 +152,9 @@ function humanizeTool(tool: string) {
 // The agent name as a byline on an answer. Prefer the registry's own label (so
 // "qa" reads "Q&A" and "redliner" reads "Redline"); anything off-registry
 // humanizes cleanly ("redline" -> "Redline").
-const AGENT_LABELS: Record<string, string> = Object.fromEntries(CHAT_ASSISTANTS.map((a) => [a.name, a.label]))
+const AGENT_LABELS: Record<string, string> = Object.fromEntries(
+  [...CHAT_ASSISTANTS, TEMPLATE_BUILDER].map((a) => [a.name, a.label]),
+)
 const agentLabel = (name: string) => AGENT_LABELS[name] ?? humanizeTool(name)
 
 // Verbs that turn a raw tool name + its target into a readable action line
@@ -319,8 +321,14 @@ export default function ChatPanel({
   directory,
   sessionID,
   created,
+  initialPrompt,
   agent,
   available,
+  pinned,
+  title = "Ask the matter",
+  emptyHint = "Ask a question about this matter's documents. Every answer cites the source section.",
+  starters = STARTERS,
+  composerPlaceholder = "e.g. What termination rights does each party have?",
   onAgentChange,
   onSessionCreated,
   onSessionStarted,
@@ -334,8 +342,22 @@ export default function ChatPanel({
   // under the new id (see onSessionCreated). The user was typing here a beat ago,
   // so seat the cursor like a fresh chat rather than treating it as a reopen.
   created?: boolean
+  // A prompt to seat the composer with on a fresh chat (no session yet) — e.g.
+  // "Save as template" deep-links into chat with the drafter pinned and this
+  // prefilled. Prefilled, not auto-sent: the lawyer reviews and sends it.
+  initialPrompt?: string
   agent: string
   available: Set<string>
+  // A single fixed assistant for this surface (e.g. the Templates page's
+  // template-builder). Replaces the assistant picker and workflow launcher with a
+  // static chip — there is nothing to choose when one agent owns the room.
+  pinned?: AssistantMeta
+  // Surface copy — defaults read for a matter chat; other surfaces (the template
+  // library) pass their own heading, empty-state hint, starters, and placeholder.
+  title?: string
+  emptyHint?: string
+  starters?: string[]
+  composerPlaceholder?: string
   onAgentChange: (name: string) => void
   // Open the redline viewer on a document, optionally scrolled to a specific
   // proposal — fired by the in-chat redline preview's "View in document" link.
@@ -452,6 +474,9 @@ export default function ChatPanel({
   // A conversation reopened from the rail skips this; it focuses once a turn
   // settles (see below).
   useEffect(() => {
+    // A fresh chat deep-linked with a prompt (e.g. "Save as template") seats it in
+    // the composer for the lawyer to review and send — prefill, never auto-send.
+    if (initialPrompt && !sessionID) setInput(initialPrompt)
     if (!sessionID || created) inputRef.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -467,15 +492,16 @@ export default function ChatPanel({
     wasBusy.current = busy
   }, [busy])
 
-  // Admit a streamed part into the live view. The moment a draft-document call
-  // completes (not on its later re-deliveries), the matter's document set changed
-  // — tell the parent so the documents rail picks up the new file mid-turn.
+  // Admit a streamed part into the live view. The moment a draft-document or
+  // create-template call completes (not on its later re-deliveries), the
+  // surface's document set changed — tell the parent so its list (the documents
+  // rail, the template library) picks up the new file mid-turn.
   function admitPart(part: Part) {
     const prev = partsRef.current.get(part.id)
     partsRef.current.set(part.id, part)
     if (
       part.type === "tool" &&
-      part.tool === "draft-document" &&
+      (part.tool === "draft-document" || part.tool === "create-template") &&
       part.state.status === "completed" &&
       !(prev?.type === "tool" && prev.state.status === "completed")
     )
@@ -730,15 +756,15 @@ export default function ChatPanel({
   return (
     <div className="card">
       <div className="row" style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Ask the matter</h2>
+        <h2 style={{ margin: 0 }}>{title}</h2>
       </div>
       <div className="chat-log" ref={logRef}>
         {loading && turns.length === 0 && <ChatSkeleton />}
         {!loading && turns.length === 0 && !busy && (
           <div className="chat-empty">
-            <p className="muted">Ask a question about this matter's documents. Every answer cites the source section.</p>
+            <p className="muted">{emptyHint}</p>
             <div className="starters">
-              {STARTERS.map((s) => (
+              {starters.map((s) => (
                 <button key={s} className="starter" onClick={() => setInput(s)}>
                   {s}
                 </button>
@@ -834,24 +860,36 @@ export default function ChatPanel({
         <PermissionCard key={p.id} request={p} onReply={onPermissionReply} />
       ))}
       <div className="composer-tools">
-        <ModelSelector
-          available={available}
-          value={agent}
-          resolvedLabel={isAuto(agent) && resolvedAgent ? agentLabel(resolvedAgent) : undefined}
-          onChange={(a) => {
-            onAgentChange(a)
-            // Leaving Auto drops the last routing so the chip does not keep showing
-            // a resolved label under a manually-picked assistant.
-            if (!isAuto(a)) setResolvedAgent(undefined)
-            inputRef.current?.focus()
-          }}
-        />
-        <WorkflowLauncher available={available} onLaunch={runWorkflow} />
+        {pinned ? (
+          <span className="assistant-trigger" style={{ cursor: "default" }} title={pinned.description}>
+            <svg className="assistant-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+              <path d="M20 3v4M22 5h-4M4 17v2M5 18H3" />
+            </svg>
+            <span className="assistant-trigger-label">{pinned.label}</span>
+          </span>
+        ) : (
+          <>
+            <ModelSelector
+              available={available}
+              value={agent}
+              resolvedLabel={isAuto(agent) && resolvedAgent ? agentLabel(resolvedAgent) : undefined}
+              onChange={(a) => {
+                onAgentChange(a)
+                // Leaving Auto drops the last routing so the chip does not keep showing
+                // a resolved label under a manually-picked assistant.
+                if (!isAuto(a)) setResolvedAgent(undefined)
+                inputRef.current?.focus()
+              }}
+            />
+            <WorkflowLauncher available={available} onLaunch={runWorkflow} />
+          </>
+        )}
       </div>
       <div className="composer">
         <textarea
           ref={inputRef}
-          placeholder="e.g. What termination rights does each party have?"
+          placeholder={composerPlaceholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -968,6 +1006,7 @@ const PERMISSION_VERBS: Record<string, string> = {
   "tracked-changes": "propose a tracked change in",
   redline: "propose a redline in",
   "draft-document": "create",
+  "create-template": "create the template",
 }
 
 // One parked edit-tool call awaiting the user's decision. The metadata the tool

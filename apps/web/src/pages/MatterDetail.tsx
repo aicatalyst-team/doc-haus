@@ -64,8 +64,14 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
           setAgents(list as Agent[])
           // A new chat opens on Auto (a pseudo-assistant always offered, so no
           // availability check); an existing session restores the agent it last
-          // used (see ChatPanel's load effect), so don't force Auto here.
-          if (!session) setAgent(AUTO)
+          // used (see ChatPanel's load effect), so don't force Auto here. When a
+          // surface deep-links in with an `agent` param (e.g. "Save as template"
+          // pinning the drafter), honour it if it is a real assistant — this must
+          // live in this effect or the unconditional setAgent(AUTO) clobbers it.
+          if (!session) {
+            const pinned = params.get("agent")
+            setAgent(pinned && (list as Agent[]).some((a) => a.name === pinned) ? pinned : AUTO)
+          }
           return
         }
         await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -75,8 +81,11 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
     return () => {
       cancelled = true
     }
+    // Re-run when the deep-linked agent param changes (e.g. "Save as template"
+    // pins the drafter while already in the matter) so the pin is honoured even
+    // though `matter` is unchanged.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matter])
+  }, [matter, params.get("agent")])
 
   if (!matter) return <p className="muted">Loading matter...</p>
 
@@ -130,6 +139,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
               directory={matter.dir}
               sessionID={session}
               created={createdRef.current === session}
+              initialPrompt={params.get("prompt") ?? undefined}
               agent={agent}
               available={available}
               onAgentChange={setAgent}
@@ -183,6 +193,19 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
           onClose={() => setViewing(undefined)}
           onChanged={refresh}
           onConverted={(name) => setViewing(name)}
+          onSaveTemplate={
+            viewing.toLowerCase().endsWith(".docx")
+              ? () => {
+                  const doc = viewing
+                  setViewing(undefined)
+                  setParams({
+                    view: "chat",
+                    agent: "drafter",
+                    prompt: `Save "${doc}" as a reusable template. Read the document and replace every party name, date, amount, address, and other client-specific detail with a unique [insert ...] placeholder, then save it to the template library.`,
+                  })
+                }
+              : undefined
+          }
         />
       )}
     </>
