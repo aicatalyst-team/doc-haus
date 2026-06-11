@@ -5,6 +5,7 @@ import {
   getProviderOptions,
   listAuthMethods,
   listProviders,
+  probeProvider,
   setDefaultModel,
   setDisabledProviders,
   setProviderKey,
@@ -17,6 +18,22 @@ import { defaultProvider, pickForProvider, providerOf } from "../models"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 type Methods = Record<string, { type: "oauth" | "api"; label: string }[]>
+
+// The host-credential providers that passed a live credential probe, remembered
+// across reloads. localStorage (not engine config) because it is a per-browser UI
+// gate over the engine's auth, not an engine setting — the engine has no notion of
+// "verified", it reports Vertex/Bedrock connected on project presence alone.
+const VERIFIED_KEY = "dochaus.verifiedProviders"
+function loadVerified(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(VERIFIED_KEY) ?? "[]") as string[])
+  } catch {
+    return new Set()
+  }
+}
+function saveVerified(ids: Set<string>) {
+  localStorage.setItem(VERIFIED_KEY, JSON.stringify([...ids]))
+}
 
 // Engine-wide settings: connect model providers, add a local endpoint, and pick
 // the default model. These act on the engine's global config + auth store (not a
@@ -36,6 +53,14 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
   const [smallModel, setSmallModelValue] = useState("")
   const [disabled, setDisabled] = useState<string[]>([])
   const [notice, setNotice] = useState("")
+
+  // Host-credential providers (Vertex/Bedrock) report "connected" on project/region
+  // presence alone — the engine never checks the sign-in actually resolves. So we
+  // keep them out of the model picker until a live probe (probeProvider) confirms
+  // real credentials, and remember the ones that passed across reloads.
+  const [verified, setVerified] = useState<Set<string>>(loadVerified)
+  const [probing, setProbing] = useState("")
+  const [probeErr, setProbeErr] = useState<Record<string, string>>({})
 
   // Cloud add: which provider is picked in the select, and its key.
   const [pick, setPick] = useState("")
@@ -82,6 +107,45 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
 
   const connectedProviders = all.filter((p) => connected.has(p.id))
 
+  // Vertex/Bedrock need a passing credential probe before they count as ready;
+  // every other (API-key/OAuth) provider is ready the moment it's connected.
+  const gated = (id: string) => CLOUD_SETUPS.some((c) => c.id === id)
+  const readyProviders = connectedProviders.filter((p) => !gated(p.id) || verified.has(p.id))
+
+  // Host-credential providers in the catalog that haven't passed a probe yet —
+  // shown under "Needs setup" with their project/region fields and an Enable button.
+  const needsSetup = all.filter((p) => gated(p.id) && !verified.has(p.id))
+
+  // Probe a host provider's credentials with one real call; on success mark it
+  // verified (persisted) so it joins the picker, on failure surface the engine's
+  // credential error and keep it gated.
+  async function enable(p: Provider) {
+    const modelID = Object.keys(p.models)[0]
+    if (!modelID) return setProbeErr((e) => ({ ...e, [p.id]: "Provider has no models to test." }))
+    setProbing(p.id)
+    setProbeErr((e) => ({ ...e, [p.id]: "" }))
+    const result = await probeProvider(client, p.id, modelID)
+    setProbing("")
+    if (!result.ok) return setProbeErr((e) => ({ ...e, [p.id]: result.error }))
+    setVerified((prev) => {
+      const next = new Set(prev).add(p.id)
+      saveVerified(next)
+      return next
+    })
+    setNotice(`${p.name} verified.`)
+  }
+
+  // Drop a host provider back to "Needs setup" so its project/region can be changed
+  // and re-verified.
+  function unverify(id: string) {
+    setVerified((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      saveVerified(next)
+      return next
+    })
+  }
+
   // Providers re-enabled this session won't be back in `all` until the engine
   // refreshes its catalog, so render them from the connected set directly.
   const extraReady = [...connected].filter((id) => !all.some((p) => p.id === id))
@@ -97,7 +161,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
 
   // Every model across connected providers, as the "providerID/modelID" strings
   // the engine expects, for the model pickers.
-  const models = connectedProviders
+  const models = readyProviders
     .flatMap((p) =>
       Object.values(p.models).map((m) => ({
         value: `${p.id}/${m.id}`,
@@ -153,7 +217,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
               <span className="muted">Provider</span>
               <select value={provider} onChange={(e) => changeProvider(e.target.value)} disabled={models.length === 0}>
                 <option value="">{models.length ? "Select a provider" : "Connect a provider first"}</option>
-                {connectedProviders.map((p) => (
+                {readyProviders.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
@@ -210,15 +274,20 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
             </p>
 
             <div className="settings-connected">
-              {connectedProviders.length === 0 && disabled.length === 0 && (
+              {readyProviders.length === 0 && needsSetup.length === 0 && disabled.length === 0 && (
                 <span className="muted">None detected yet. Connect one below.</span>
               )}
-              {connectedProviders.map((p) => (
+              {readyProviders.map((p) => (
                 <div key={p.id} className="settings-conn">
                   <span className="settings-conn-name">{p.name}</span>
                   <span className="settings-conn-meta muted">
                     {statusLabel(p, methods)} · {Object.keys(p.models).length} models
                   </span>
+                  {gated(p.id) && (
+                    <button className="settings-switch" onClick={() => unverify(p.id)}>
+                      Reconfigure
+                    </button>
+                  )}
                   <button className="settings-switch on" onClick={() => toggle(p.id, p.name, false)}>
                     On
                   </button>
@@ -287,24 +356,45 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
             </div>
           </section>
 
-          {all.some((p) => CLOUD_SETUPS.some((c) => c.id === p.id)) && (
+          {needsSetup.length > 0 && (
             <section className="settings-section">
-              <h3>Cloud project &amp; region</h3>
+              <h3>Needs setup</h3>
               <p className="settings-hint muted">
-                Vertex and Bedrock authenticate from the host sign-in (gcloud ADC / AWS), but still need to know which
-                project or region to call. Set them here — no environment variables required.
+                Vertex and Bedrock sign in from the server (gcloud ADC / AWS), not an API key. Set the project or region,
+                sign in on the server, then Enable to verify — until a live check passes they stay out of the model
+                picker so you can't pick a provider that will fail on the first call.
               </p>
-              {CLOUD_SETUPS.filter((c) => all.some((p) => p.id === c.id)).map((c) => (
-                <CloudSetup
-                  key={c.id}
-                  spec={c}
-                  onSave={async (options) => {
-                    await setProviderOptions(c.id, options)
-                    setNotice(`Saved ${c.name} settings. Restart the engine to apply.`)
-                    await load()
-                  }}
-                />
-              ))}
+              {needsSetup.map((p) => {
+                const spec = CLOUD_SETUPS.find((c) => c.id === p.id)
+                return (
+                  <div key={p.id} className="settings-needs">
+                    <div className="row settings-row">
+                      <span className="settings-conn-name">{p.name}</span>
+                      <span className="settings-conn-meta muted">
+                        {p.id === "google-vertex"
+                          ? "Server sign-in: gcloud auth application-default login"
+                          : "Server sign-in: configure AWS credentials (profile or role)"}
+                      </span>
+                    </div>
+                    {spec && (
+                      <CloudSetup
+                        spec={spec}
+                        onSave={async (options) => {
+                          await setProviderOptions(p.id, options)
+                          setNotice(`Saved ${p.name} project/region.`)
+                          await load()
+                        }}
+                      />
+                    )}
+                    <div className="row settings-row">
+                      <button className="primary" disabled={probing === p.id} onClick={() => enable(p)}>
+                        {probing === p.id ? "Verifying..." : "Enable"}
+                      </button>
+                      {probeErr[p.id] && <span className="settings-conn-meta muted">{probeErr[p.id]}</span>}
+                    </div>
+                  </div>
+                )
+              })}
             </section>
           )}
 

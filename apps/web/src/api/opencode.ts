@@ -300,6 +300,43 @@ function routePrompt(input: { candidates: { name: string; description: string }[
   ].join("\n")
 }
 
+// Real credential probe for host-credential providers (Vertex ADC, Bedrock AWS).
+// The engine reports these "connected" on project/region presence alone — it never
+// checks that the sign-in actually resolves — so a project set without a working
+// gcloud/AWS login still lists as ready and only fails at the first real call. To
+// gate the picker on real auth we make one: spin up a throwaway session, send a
+// 1-token prompt to the provider's cheapest model, and read the assistant message's
+// error slot — a ProviderAuthError/APIError means credentials did not resolve.
+// Mirrors routeOnce: timeout-bounded (a header-less settings client cold-boots the
+// server-cwd instance on first touch) and deletes the session in a finally so the
+// probe leaves nothing behind.
+export async function probeProvider(
+  client: Client,
+  providerID: string,
+  modelID: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const id = (await createSession(client, "doc.haus provider probe").catch(() => null))?.id
+  if (!id) return { ok: false, error: "Could not open a probe session against the engine." }
+  try {
+    const turn = client.session
+      .prompt({ path: { id }, body: { model: { providerID, modelID }, parts: [{ type: "text", text: "ping" }] } })
+      .then((r) => r.data ?? null)
+      .catch((e) => ({ thrown: e instanceof Error ? e.message : String(e) }) as const)
+    const res = await Promise.race([
+      turn,
+      new Promise<{ timeout: true }>((resolve) => setTimeout(() => resolve({ timeout: true }), 30000)),
+    ])
+    if (!res) return { ok: false, error: "No response from the engine." }
+    if ("timeout" in res) return { ok: false, error: "Timed out resolving credentials." }
+    if ("thrown" in res) return { ok: false, error: res.thrown }
+    const err = res.info.error
+    if (err) return { ok: false, error: (err as { data?: { message?: string } }).data?.message ?? err.name }
+    return { ok: true }
+  } finally {
+    await deleteSession(client, id).catch(() => {})
+  }
+}
+
 // Revert a user message and everything after it, rolling the session back to
 // just before that turn. Used by edit/retry: revert, then send the new prompt
 // so the assistant answer is regenerated from the edited question.

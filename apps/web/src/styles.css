@@ -1671,6 +1671,14 @@ button.linklike:hover {
   opacity: 0.7;
 }
 
+.settings-needs {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  margin-bottom: 12px;
+}
+
 .settings-conn-name {
   font-weight: 600;
 }
