@@ -11,6 +11,7 @@ import {
 } from "../api/ingest"
 import JurisdictionSelect from "../components/JurisdictionSelect"
 import { useToast } from "../components/Toast"
+import { loadPrefs } from "../prefs"
 
 export default function Matters() {
   const [matters, setMatters] = useState<Matter[]>([])
@@ -18,7 +19,9 @@ export default function Matters() {
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState("")
   const [reference, setReference] = useState("")
-  const [newJurisdictions, setNewJurisdictions] = useState<string[]>([])
+  // New matters start from the firm's default jurisdictions (Settings → Matter
+  // defaults) instead of empty.
+  const [newJurisdictions, setNewJurisdictions] = useState<string[]>(() => loadPrefs().defaultJurisdictions)
   const [filter, setFilter] = useState("")
   const [busy, setBusy] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -54,7 +57,7 @@ export default function Matters() {
     setMatters((prev) => [...prev, matter])
     setTitle("")
     setReference("")
-    setNewJurisdictions([])
+    setNewJurisdictions(loadPrefs().defaultJurisdictions)
     setBusy(false)
     toast("success", `Created matter "${matter.title}".`)
   }

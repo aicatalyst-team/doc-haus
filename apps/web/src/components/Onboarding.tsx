@@ -9,8 +9,17 @@ import {
   settingsClient,
   type Client,
 } from "../api/opencode"
+import {
+  getPreferences,
+  listJurisdictions,
+  savePreferences,
+  type DraftingPreferences,
+  type Jurisdiction,
+} from "../api/ingest"
 import { defaultProvider, pickForProvider, providerOf } from "../models"
+import { loadPrefs, savePrefs } from "../prefs"
 import { isGated, loadVerified } from "../providers"
+import JurisdictionSelect from "./JurisdictionSelect"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 
@@ -49,6 +58,18 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
   // Reveal the connect step even when models are detected, so a user with one
   // provider ready can still wire up another before choosing.
   const [forceConnect, setForceConnect] = useState(false)
+
+  // Final step: the key details every drafted document leans on — attorney,
+  // firm, default jurisdictions. Saved into the same drafting-preferences file
+  // Settings → Drafting manages, so this is a head start, not a separate store.
+  const [step, setStep] = useState<"setup" | "details">("setup")
+  const [drafting, setDrafting] = useState<DraftingPreferences | null>(null)
+  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([])
+  const [selectedJx, setSelectedJx] = useState<string[]>(() => loadPrefs().defaultJurisdictions)
+  useEffect(() => {
+    getPreferences().then(setDrafting)
+    listJurisdictions().then(setJurisdictions)
+  }, [])
 
   // Cloud add: which provider is picked in the select, and its key.
   const [pick, setPick] = useState("")
@@ -160,6 +181,57 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
                 {LOADING_PHRASES[phrase]}
               </p>
             </div>
+          ) : step === "details" ? (
+            <>
+              <p className="settings-notice">Models saved. A few details to personalise your drafts — all optional.</p>
+
+              <section className="settings-section">
+                <h3>Attorney and firm</h3>
+                <p className="settings-hint muted">
+                  Used when drafting — signature blocks, notice clauses, letterhead. Change anytime in Settings →
+                  Drafting.
+                </p>
+                <div className="settings-grid">
+                  <label className="settings-label">Attorney</label>
+                  <input
+                    placeholder="Jane Doe"
+                    value={drafting?.attorney ?? ""}
+                    onChange={(e) => setDrafting((d) => d && { ...d, attorney: e.target.value })}
+                  />
+                  <label className="settings-label">Firm</label>
+                  <input
+                    placeholder="Doe & Partners LLP"
+                    value={drafting?.firm ?? ""}
+                    onChange={(e) => setDrafting((d) => d && { ...d, firm: e.target.value })}
+                  />
+                </div>
+              </section>
+
+              <section className="settings-section">
+                <h3>Jurisdictions</h3>
+                <p className="settings-hint muted">
+                  Preselected on every new matter — most firms work in one or two. You can still change them per
+                  matter.
+                </p>
+                <div className="row settings-row">
+                  <JurisdictionSelect jurisdictions={jurisdictions} selected={selectedJx} onChange={setSelectedJx} />
+                </div>
+              </section>
+
+              <div className="row" style={{ justifyContent: "space-between", marginTop: 12 }}>
+                <button onClick={() => setStep("setup")}>Back</button>
+                <button
+                  className="primary"
+                  onClick={async () => {
+                    savePrefs({ defaultJurisdictions: selectedJx })
+                    if (drafting) await savePreferences(drafting)
+                    onClose()
+                  }}
+                >
+                  Get started
+                </button>
+              </div>
+            </>
           ) : !showConnect ? (
             <>
               <p className="settings-notice">
@@ -224,10 +296,11 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
                     // No fast pick -> fall back to the primary so Auto routing and
                     // title generation still have a model to call.
                     await setSmallModel(fast || primary)
-                    onClose()
+                    setNotice("")
+                    setStep("details")
                   }}
                 >
-                  Get started
+                  Continue
                 </button>
               </div>
             </>

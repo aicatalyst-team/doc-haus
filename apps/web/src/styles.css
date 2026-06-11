@@ -10,6 +10,16 @@
   --danger: #8a2a2a;
 }
 
+/* Text size (Settings → Appearance). Component sizes are in px, so scale the
+   whole UI rather than just the body font. */
+:root[data-text="compact"] body {
+  zoom: 0.92;
+}
+
+:root[data-text="large"] body {
+  zoom: 1.08;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1861,10 +1871,107 @@ button.linklike:hover {
   color: var(--text);
 }
 
-/* Settings: opened from the sidebar as an engine-wide modal for credentials,
-   local providers, and the default model. Reuses the picker modal shell. */
+/* Settings: opened from the sidebar. A left rail of tabs (models, providers,
+   drafting, defaults, approvals, appearance) beside one scrolling content pane,
+   inside the picker modal shell. Fixed height so switching tabs never resizes
+   the modal. */
 .settings-panel {
-  max-width: 600px;
+  max-width: 960px;
+  height: min(680px, calc(100vh - 64px));
+}
+
+.settings-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.settings-nav {
+  width: 180px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-nav button {
+  text-align: left;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settings-nav button:hover {
+  background: var(--bg);
+}
+
+.settings-nav button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 14px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Segmented control: the pick-one primitive of the preference tabs. */
+.settings-seg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.settings-seg {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.settings-seg button {
+  border: none;
+  border-radius: 0;
+  background: var(--panel);
+  padding: 5px 14px;
+  font-size: 12.5px;
+}
+
+.settings-seg button + button {
+  border-left: 1px solid var(--border);
+}
+
+.settings-seg button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.settings-textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+}
+
+.settings-toggle-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
 }
 
 .settings-label {
@@ -1979,8 +2086,10 @@ button.linklike:hover {
   align-items: center;
 }
 
-.settings-row input,
-.settings-row select {
+/* Direct children only: the jurisdiction popover nests its own checkboxes
+   inside a settings-row and they must not inherit flex: 1. */
+.settings-row > input,
+.settings-row > select {
   flex: 1;
   min-width: 0;
 }
@@ -2016,7 +2125,7 @@ button.linklike:hover {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-left: 4px solid var(--muted);
   border-radius: 6px;

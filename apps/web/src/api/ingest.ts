@@ -108,6 +108,35 @@ export async function probeVertexHost(input: {
   return res.json()
 }
 
+// Firm-wide drafting preferences (Settings → Drafting). Stored on the engine
+// host and rendered into a standing-instructions file every assistant reads, so
+// a save steers the model from its next reply.
+export type DraftingPreferences = {
+  attorney: string
+  firm: string
+  posture: "client-favorable" | "balanced" | "conservative"
+  formality: "formal" | "plain"
+  detail: "concise" | "detailed"
+  dateFormat: "month-day-year" | "day-month-year" | "iso"
+  numberStyle: "words-and-numerals" | "numerals"
+  houseStyle: string
+}
+
+export async function getPreferences(): Promise<DraftingPreferences> {
+  const res = await fetch(`${INGEST_URL}/preferences`)
+  return res.json()
+}
+
+export async function savePreferences(prefs: DraftingPreferences): Promise<DraftingPreferences> {
+  const res = await fetch(`${INGEST_URL}/preferences`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(prefs),
+  })
+  if (!res.ok) throw new Error(`Failed to save preferences (${res.status})`)
+  return res.json()
+}
+
 export async function listJurisdictions(): Promise<Jurisdiction[]> {
   const res = await fetch(`${INGEST_URL}/jurisdictions`)
   return res.json()

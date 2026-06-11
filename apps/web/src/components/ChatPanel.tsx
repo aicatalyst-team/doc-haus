@@ -18,6 +18,7 @@ import {
   type PermissionRequest,
 } from "../api/opencode"
 import { CHAT_ASSISTANTS, isAuto, TEMPLATE_BUILDER, type AssistantMeta, type WorkflowMeta } from "../agents"
+import { autoApproved } from "../prefs"
 import CitationView from "./CitationView"
 import Markdown from "./Markdown"
 import ModelSelector from "./ModelSelector"
@@ -557,6 +558,13 @@ export default function ChatPanel({
     if (pe.type === "permission.asked") {
       const req = pe.properties
       if (req.sessionID !== sessionRef.current && !childRef.current.has(req.sessionID)) return
+      // Lawyer opted in (Settings → Approvals): approve immediately instead of
+      // carding it. Only proposal-shaped asks are eligible (see prefs.ts) — a
+      // redline still lands as a tracked change to accept or reject.
+      if (autoApproved(req.permission)) {
+        replyPermission(directory, req.id, "once").catch(() => {})
+        return
+      }
       setPermissions((prev) => [...prev.filter((p) => p.id !== req.id), req])
       return
     }
@@ -608,7 +616,11 @@ export default function ChatPanel({
     // A permission.asked emitted during the gap was missed the same way as the
     // parts — without it the turn sits parked on an approval nobody can see.
     const pending = await listPermissions(directory)
-    setPermissions(pending.filter((p) => p.sessionID === sessionRef.current || childRef.current.has(p.sessionID)))
+    const mine = pending.filter((p) => p.sessionID === sessionRef.current || childRef.current.has(p.sessionID))
+    // Same auto-approval as the live event path, for asks that arrived in the gap.
+    for (const p of mine.filter((p) => autoApproved(p.permission)))
+      replyPermission(directory, p.id, "once").catch(() => {})
+    setPermissions(mine.filter((p) => !autoApproved(p.permission)))
     bump((n) => n + 1)
     // Finalize only when THIS turn produced a NEW settled answer: the last message
     // overall is a completed assistant whose id we have not already settled.

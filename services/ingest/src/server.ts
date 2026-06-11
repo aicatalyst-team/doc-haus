@@ -20,6 +20,7 @@ import { listAgents, createAgent, updateAgent, deleteAgent, setAgentEnabled, AGE
 import { docxodus } from "./docxodus"
 import { listGcpProjects, listAwsProfiles, probeVertex } from "./host"
 import { readGrid, writeGrid, type Grid } from "./grid"
+import { readDraftingPreferences, writeDraftingPreferences } from "./preferences"
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
@@ -55,6 +56,13 @@ app.post("/host/probe-vertex", async (c) =>
 )
 
 app.get("/matters", (c) => c.json(listMatters()))
+
+// Firm-wide drafting preferences (Settings → Drafting). Saving re-renders the
+// standing-instructions markdown the engine reads on every turn (see
+// preferences.ts), so a change applies from the assistant's next reply.
+app.get("/preferences", (c) => c.json(readDraftingPreferences()))
+
+app.put("/preferences", async (c) => c.json(writeDraftingPreferences(await c.req.json())))
 
 // The jurisdiction packs a matter can be assigned, read from the dochaus config
 // layer. The web app populates its matter-creation dropdown from this (issue #18).

@@ -15,17 +15,43 @@ import {
   type Client,
 } from "../api/opencode"
 import { defaultProvider, pickForProvider, probeModel, providerOf } from "../models"
-import { listAwsProfiles, listGcpProjects, probeVertexHost } from "../api/ingest"
+import {
+  getPreferences,
+  listAwsProfiles,
+  listGcpProjects,
+  listJurisdictions,
+  probeVertexHost,
+  savePreferences,
+  type DraftingPreferences,
+  type Jurisdiction,
+} from "../api/ingest"
 import { isGated, loadVerified, saveVerified } from "../providers"
+import { loadPrefs, savePrefs, type Prefs } from "../prefs"
+import JurisdictionSelect from "./JurisdictionSelect"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
 type Methods = Record<string, { type: "oauth" | "api"; label: string }[]>
 
-// Engine-wide settings: connect model providers, add a local endpoint, and pick
-// the default model. These act on the engine's global config + auth store (not a
-// matter), so the modal opens from the app header. The flow reads top-down the
-// way you set it up: see what's connected, connect more, then choose a model.
+// The settings modal: a left rail of tabs over one shared shell. Models and
+// Providers act on the engine's global config + auth store (so they share the
+// header-less settings client and provider state); Drafting persists standing
+// instructions through the ingest service; Matter defaults, Approvals, and
+// Appearance are per-browser preferences (see prefs.ts).
+type Tab = "models" | "providers" | "drafting" | "matters" | "approvals" | "appearance"
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "models", label: "Models" },
+  { id: "providers", label: "Providers" },
+  { id: "drafting", label: "Drafting" },
+  { id: "matters", label: "Matter defaults" },
+  { id: "approvals", label: "Approvals" },
+  { id: "appearance", label: "Appearance" },
+]
+
 export default function Settings({ onClose, firstRun = false }: { onClose: () => void; firstRun?: boolean }) {
+  // First run is about getting a provider connected, so land there; otherwise
+  // open on the models people come back to tweak.
+  const [tab, setTab] = useState<Tab>(firstRun ? "providers" : "models")
   const client = useMemo<Client>(() => settingsClient(), [])
   const [all, setAll] = useState<Provider[]>([])
   const [connected, setConnected] = useState<Set<string>>(new Set())
@@ -90,6 +116,13 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // A tab switch is a context switch — a stale "Models saved." under the
+  // Drafting form reads as that form being saved.
+  function switchTab(next: Tab) {
+    setTab(next)
+    setNotice("")
+  }
 
   const connectedProviders = all.filter((p) => connected.has(p.id))
 
@@ -229,198 +262,464 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
           <span className="viewer-title">Settings</span>
           <button onClick={onClose}>Close</button>
         </div>
-        <div className="picker-body">
-          {firstRun && (
-            <p className="settings-notice">
-              Welcome to doc.haus. Connect a model provider — from a host sign-in (gcloud/AWS), an API key, or a local
-              endpoint — then choose your default model to get started.
-            </p>
-          )}
-          {notice && <p className="settings-notice">{notice}</p>}
-
-          <section className="settings-section">
-            <h3>Ready to use</h3>
-            <p className="settings-hint muted">
-              Model providers the engine already has credentials for — picked up from the server's sign-in (a gcloud or
-              AWS login on the host). Nothing to set up; pick one as your default model below.
-            </p>
-
-            <div className="settings-connected">
-              {readyProviders.length === 0 && needsSetup.length === 0 && disabled.length === 0 && (
-                <span className="muted">None detected yet. Connect one below.</span>
-              )}
-              {readyProviders.map((p) => (
-                <div key={p.id} className="settings-conn">
-                  <span className="settings-conn-name">{p.name}</span>
-                  <span className="settings-conn-meta muted">
-                    {statusLabel(p, methods)} · {Object.keys(p.models).length} models
-                  </span>
-                  {isGated(p.id) && (
-                    <button className="settings-switch" onClick={() => unverify(p.id)}>
-                      Reconfigure
-                    </button>
-                  )}
-                  <button className="settings-switch on" onClick={() => toggle(p.id, p.name, false)}>
-                    On
-                  </button>
-                </div>
-              ))}
-              {extraReady.map((id) => (
-                <div key={id} className="settings-conn">
-                  <span className="settings-conn-name">{nameMemo[id] ?? id}</span>
-                  <span className="settings-conn-meta muted">ready</span>
-                  <button className="settings-switch on" onClick={() => toggle(id, nameMemo[id] ?? id, false)}>
-                    On
-                  </button>
-                </div>
-              ))}
-              {disabled.map((id) => (
-                <div key={id} className="settings-conn off">
-                  <span className="settings-conn-name">{nameByID.get(id) ?? nameMemo[id] ?? id}</span>
-                  <span className="settings-conn-meta muted">disabled</span>
-                  <button
-                    className="settings-switch"
-                    onClick={() => toggle(id, nameByID.get(id) ?? nameMemo[id] ?? id, true)}
-                  >
-                    Off
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {setupCards.length > 0 && (
-            <section className="settings-section">
-              <h3>Needs setup</h3>
-              <p className="settings-hint muted">
-                Vertex and Bedrock sign in from the server (gcloud ADC / AWS), not an API key. Set the project or region,
-                sign in on the server, then Enable to verify — until a live check passes they stay out of the model
-                picker so you can't pick a provider that will fail on the first call.
+        <div className="settings-body">
+          <nav className="settings-nav">
+            {TABS.map((t) => (
+              <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => switchTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+          <div className="settings-content">
+            {firstRun && tab === "providers" && (
+              <p className="settings-notice">
+                Welcome to doc.haus. Connect a model provider — from a host sign-in (gcloud/AWS), an API key, or a
+                local endpoint — then pick your default model under Models.
               </p>
-              {setupCards.map((spec) => {
-                const pending = needsSetup.filter((p) => spec.ids.includes(p.id))
-                return (
-                  <NeedsSetupCard
-                    key={spec.ids[0]}
-                    spec={spec}
-                    providers={pending}
-                    probing={pending.some((p) => probing === p.id)}
-                    error={probeErr[spec.ids[0]] ?? ""}
-                    onEnable={(options) => enable(pending, options)}
-                  />
-                )
-              })}
-            </section>
-          )}
+            )}
+            {notice && <p className="settings-notice">{notice}</p>}
 
-          <section className="settings-section">
-            <h3>Add a provider — API key</h3>
-            <p className="settings-hint muted">
-              A hosted provider you connect with an API key (OpenAI, Anthropic, Groq...). The key is stored on the
-              engine. Vertex and Bedrock instead sign in on the server — see Needs setup above.
-            </p>
-            <div className="row settings-row">
-              <select value={pick} onChange={(e) => setPick(e.target.value)}>
-                <option value="">Choose a provider</option>
-                {keyProviders.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {connected.has(p.id) ? " · connected" : ""}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="password"
-                placeholder={pick && connected.has(pick) ? "Replace key" : "API key"}
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                disabled={!pick}
-              />
-              <button
-                className="primary"
-                disabled={!pick || !key.trim()}
-                onClick={async () => {
-                  const name = all.find((p) => p.id === pick)?.name ?? pick
-                  await setProviderKey(client, pick, key.trim())
-                  setNotice(`Connected ${name}.`)
-                  setPick("")
-                  setKey("")
-                  await load()
-                }}
-              >
-                Connect
-              </button>
-            </div>
-          </section>
+            {tab === "models" && (
+              <section className="settings-section">
+                <h3>Choose models</h3>
+                <p className="settings-hint muted">
+                  Pick a default and a fast model from one connected provider — both stay on that provider, so the Auto
+                  router (which runs the fast model) can never call across clouds.
+                </p>
+                {models.length === 0 && (
+                  <p className="settings-hint muted">
+                    No provider is ready yet.{" "}
+                    <button className="linklike" onClick={() => switchTab("providers")}>
+                      Connect one under Providers.
+                    </button>
+                  </p>
+                )}
+                <div className="row settings-row">
+                  <span className="muted">Provider</span>
+                  <select value={provider} onChange={(e) => changeProvider(e.target.value)} disabled={models.length === 0}>
+                    <option value="">{models.length ? "Select a provider" : "Add a provider first"}</option>
+                    {readyProviders.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="row settings-row">
+                  <span className="muted">Default</span>
+                  <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!provider}>
+                    <option value="">Select a model</option>
+                    {providerModels.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="row settings-row">
+                  <span className="muted">Fast</span>
+                  <select value={smallModel} onChange={(e) => setSmallModelValue(e.target.value)} disabled={!provider}>
+                    <option value="">Same as default</option>
+                    {providerModels.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="row settings-row">
+                  <button
+                    className="primary"
+                    disabled={!model}
+                    onClick={async () => {
+                      // Save both slots together so the persisted config is always
+                      // same-provider — no window where default and fast disagree.
+                      await setDefaultModel(model)
+                      await setSmallModel(smallModel || model)
+                      // On first run, picking a model is the whole point of the modal —
+                      // close once it's saved so the user lands straight in the app.
+                      if (firstRun) return onClose()
+                      setNotice(`Models saved.`)
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </section>
+            )}
 
-          <LocalEndpoint
-            onAdd={async (input) => {
-              await addLocalProvider(input)
-              setNotice(`Added ${input.name}. Restart the engine if its models don't appear.`)
-              await load()
-            }}
-          />
+            {tab === "providers" && (
+              <>
+                <section className="settings-section">
+                  <h3>Ready to use</h3>
+                  <p className="settings-hint muted">
+                    Model providers the engine already has credentials for — picked up from the server's sign-in (a
+                    gcloud or AWS login on the host). Nothing to set up; pick one as your default model under Models.
+                  </p>
 
-          <section className="settings-section">
-            <h3>Choose models</h3>
-            <p className="settings-hint muted">
-              Once a provider is ready above, pick a default and a fast model from it — both stay on the one provider, so
-              the Auto router (which runs the fast model) can never call across clouds.
-            </p>
-            <div className="row settings-row">
-              <span className="muted">Provider</span>
-              <select value={provider} onChange={(e) => changeProvider(e.target.value)} disabled={models.length === 0}>
-                <option value="">{models.length ? "Select a provider" : "Add a provider first"}</option>
-                {readyProviders.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="row settings-row">
-              <span className="muted">Default</span>
-              <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!provider}>
-                <option value="">Select a model</option>
-                {providerModels.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="row settings-row">
-              <span className="muted">Fast</span>
-              <select value={smallModel} onChange={(e) => setSmallModelValue(e.target.value)} disabled={!provider}>
-                <option value="">Same as default</option>
-                {providerModels.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="row settings-row">
-              <button
-                className="primary"
-                disabled={!model}
-                onClick={async () => {
-                  // Save both slots together so the persisted config is always
-                  // same-provider — no window where default and fast disagree.
-                  await setDefaultModel(model)
-                  await setSmallModel(smallModel || model)
-                  // On first run, picking a model is the whole point of the modal —
-                  // close once it's saved so the user lands straight in the app.
-                  if (firstRun) return onClose()
-                  setNotice(`Models saved.`)
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </section>
+                  <div className="settings-connected">
+                    {readyProviders.length === 0 && needsSetup.length === 0 && disabled.length === 0 && (
+                      <span className="muted">None detected yet. Connect one below.</span>
+                    )}
+                    {readyProviders.map((p) => (
+                      <div key={p.id} className="settings-conn">
+                        <span className="settings-conn-name">{p.name}</span>
+                        <span className="settings-conn-meta muted">
+                          {statusLabel(p, methods)} · {Object.keys(p.models).length} models
+                        </span>
+                        {isGated(p.id) && (
+                          <button className="settings-switch" onClick={() => unverify(p.id)}>
+                            Reconfigure
+                          </button>
+                        )}
+                        <button className="settings-switch on" onClick={() => toggle(p.id, p.name, false)}>
+                          On
+                        </button>
+                      </div>
+                    ))}
+                    {extraReady.map((id) => (
+                      <div key={id} className="settings-conn">
+                        <span className="settings-conn-name">{nameMemo[id] ?? id}</span>
+                        <span className="settings-conn-meta muted">ready</span>
+                        <button className="settings-switch on" onClick={() => toggle(id, nameMemo[id] ?? id, false)}>
+                          On
+                        </button>
+                      </div>
+                    ))}
+                    {disabled.map((id) => (
+                      <div key={id} className="settings-conn off">
+                        <span className="settings-conn-name">{nameByID.get(id) ?? nameMemo[id] ?? id}</span>
+                        <span className="settings-conn-meta muted">disabled</span>
+                        <button
+                          className="settings-switch"
+                          onClick={() => toggle(id, nameByID.get(id) ?? nameMemo[id] ?? id, true)}
+                        >
+                          Off
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {setupCards.length > 0 && (
+                  <section className="settings-section">
+                    <h3>Needs setup</h3>
+                    <p className="settings-hint muted">
+                      Vertex and Bedrock sign in from the server (gcloud ADC / AWS), not an API key. Set the project or
+                      region, sign in on the server, then Enable to verify — until a live check passes they stay out of
+                      the model picker so you can't pick a provider that will fail on the first call.
+                    </p>
+                    {setupCards.map((spec) => {
+                      const pending = needsSetup.filter((p) => spec.ids.includes(p.id))
+                      return (
+                        <NeedsSetupCard
+                          key={spec.ids[0]}
+                          spec={spec}
+                          providers={pending}
+                          probing={pending.some((p) => probing === p.id)}
+                          error={probeErr[spec.ids[0]] ?? ""}
+                          onEnable={(options) => enable(pending, options)}
+                        />
+                      )
+                    })}
+                  </section>
+                )}
+
+                <section className="settings-section">
+                  <h3>Add a provider — API key</h3>
+                  <p className="settings-hint muted">
+                    A hosted provider you connect with an API key (OpenAI, Anthropic, Groq...). The key is stored on the
+                    engine. Vertex and Bedrock instead sign in on the server — see Needs setup above.
+                  </p>
+                  <div className="row settings-row">
+                    <select value={pick} onChange={(e) => setPick(e.target.value)}>
+                      <option value="">Choose a provider</option>
+                      {keyProviders.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                          {connected.has(p.id) ? " · connected" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="password"
+                      placeholder={pick && connected.has(pick) ? "Replace key" : "API key"}
+                      value={key}
+                      onChange={(e) => setKey(e.target.value)}
+                      disabled={!pick}
+                    />
+                    <button
+                      className="primary"
+                      disabled={!pick || !key.trim()}
+                      onClick={async () => {
+                        const name = all.find((p) => p.id === pick)?.name ?? pick
+                        await setProviderKey(client, pick, key.trim())
+                        setNotice(`Connected ${name}.`)
+                        setPick("")
+                        setKey("")
+                        await load()
+                      }}
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </section>
+
+                <LocalEndpoint
+                  onAdd={async (input) => {
+                    await addLocalProvider(input)
+                    setNotice(`Added ${input.name}. Restart the engine if its models don't appear.`)
+                    await load()
+                  }}
+                />
+              </>
+            )}
+
+            {tab === "drafting" && <DraftingTab onNotice={setNotice} />}
+            {tab === "matters" && <MatterDefaultsTab />}
+            {tab === "approvals" && <ApprovalsTab />}
+            {tab === "appearance" && <AppearanceTab />}
+          </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Firm-wide drafting preferences. Saved through the ingest service, which
+// renders them into the standing-instructions file the engine reads on every
+// turn — so a save here changes how every assistant drafts from its next reply.
+function DraftingTab({ onNotice }: { onNotice: (text: string) => void }) {
+  const [prefs, setPrefs] = useState<DraftingPreferences | null>(null)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    getPreferences().then(setPrefs)
+  }, [])
+  if (!prefs) return <p className="muted">Loading preferences...</p>
+  const set = (patch: Partial<DraftingPreferences>) => setPrefs({ ...prefs, ...patch })
+  return (
+    <section className="settings-section">
+      <h3>Drafting preferences</h3>
+      <p className="settings-hint muted">
+        How every assistant drafts, redlines, and explains its work — across all matters. Saved as standing
+        instructions on the engine; changes apply from the next reply.
+      </p>
+      <div className="settings-grid">
+        <label className="settings-label">Attorney</label>
+        <input placeholder="Jane Doe" value={prefs.attorney} onChange={(e) => set({ attorney: e.target.value })} />
+        <label className="settings-label">Firm</label>
+        <input placeholder="Doe & Partners LLP" value={prefs.firm} onChange={(e) => set({ firm: e.target.value })} />
+      </div>
+      <SegRow
+        label="Posture"
+        hint="How hard negotiated terms lean toward your client."
+        value={prefs.posture}
+        onChange={(posture) => set({ posture: posture as DraftingPreferences["posture"] })}
+        options={[
+          { value: "client-favorable", label: "Client-favorable" },
+          { value: "balanced", label: "Balanced" },
+          { value: "conservative", label: "Conservative" },
+        ]}
+      />
+      <SegRow
+        label="Style"
+        hint="Formal legal drafting, or plain language where precision allows."
+        value={prefs.formality}
+        onChange={(formality) => set({ formality: formality as DraftingPreferences["formality"] })}
+        options={[
+          { value: "formal", label: "Formal" },
+          { value: "plain", label: "Plain language" },
+        ]}
+      />
+      <SegRow
+        label="Explanations"
+        hint="How much reasoning the assistant shows for its suggestions."
+        value={prefs.detail}
+        onChange={(detail) => set({ detail: detail as DraftingPreferences["detail"] })}
+        options={[
+          { value: "concise", label: "Concise" },
+          { value: "detailed", label: "Detailed" },
+        ]}
+      />
+      <SegRow
+        label="Dates"
+        value={prefs.dateFormat}
+        onChange={(dateFormat) => set({ dateFormat: dateFormat as DraftingPreferences["dateFormat"] })}
+        options={[
+          { value: "month-day-year", label: "June 11, 2026" },
+          { value: "day-month-year", label: "11 June 2026" },
+          { value: "iso", label: "2026-06-11" },
+        ]}
+      />
+      <SegRow
+        label="Numbers"
+        value={prefs.numberStyle}
+        onChange={(numberStyle) => set({ numberStyle: numberStyle as DraftingPreferences["numberStyle"] })}
+        options={[
+          { value: "words-and-numerals", label: "thirty (30) days" },
+          { value: "numerals", label: "30 days" },
+        ]}
+      />
+      <label className="settings-label">House style notes</label>
+      <textarea
+        className="settings-textarea"
+        rows={4}
+        placeholder={'Anything else the assistants should always honor, e.g. "Define parties as Customer and Provider, never Licensee/Licensor."'}
+        value={prefs.houseStyle}
+        onChange={(e) => set({ houseStyle: e.target.value })}
+      />
+      <div className="row settings-row">
+        <button
+          className="primary"
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true)
+            setPrefs(await savePreferences(prefs))
+            setSaving(false)
+            onNotice("Drafting preferences saved. They apply from the assistant's next reply.")
+          }}
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+// Defaults applied when a new matter is created. Per-browser (prefs.ts); the
+// new-matter form reads them as its starting jurisdiction selection.
+function MatterDefaultsTab() {
+  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([])
+  const [selected, setSelected] = useState<string[]>(() => loadPrefs().defaultJurisdictions)
+  useEffect(() => {
+    listJurisdictions().then(setJurisdictions)
+  }, [])
+  return (
+    <section className="settings-section">
+      <h3>Matter defaults</h3>
+      <p className="settings-hint muted">
+        Jurisdictions preselected on every new matter. Most firms work in one or two — set them once here instead of
+        picking them on each matter. You can still change them per matter.
+      </p>
+      <div className="row settings-row">
+        <span className="muted">Jurisdictions</span>
+        <JurisdictionSelect
+          jurisdictions={jurisdictions}
+          selected={selected}
+          onChange={(codes) => {
+            setSelected(codes)
+            savePrefs({ defaultJurisdictions: codes })
+          }}
+        />
+      </div>
+    </section>
+  )
+}
+
+// Which assistant actions need a click-through before they run. Auto-approval
+// only covers proposal-shaped asks — redlines still land as tracked changes the
+// lawyer accepts or rejects in the document, and brand-new files are additive.
+// Direct edits to existing documents (Word integration) always ask.
+function ApprovalsTab() {
+  const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
+  const set = (patch: Partial<Prefs>) => setPrefs(savePrefs(patch))
+  return (
+    <section className="settings-section">
+      <h3>Approvals</h3>
+      <p className="settings-hint muted">
+        What the assistant must ask before doing. Everything it proposes is still reviewable: redlines land as tracked
+        changes you accept or reject in the document.
+      </p>
+      <ToggleRow
+        title="Redlines & tracked changes"
+        description="Proposing a tracked change or redline in a document."
+        on={prefs.autoApproveRedlines}
+        onChange={(on) => set({ autoApproveRedlines: on })}
+      />
+      <ToggleRow
+        title="New documents & templates"
+        description="Drafting a new document or creating a template."
+        on={prefs.autoApproveDrafting}
+        onChange={(on) => set({ autoApproveDrafting: on })}
+      />
+      <p className="settings-hint muted">
+        Direct edits to an existing document always ask, regardless of these settings.
+      </p>
+    </section>
+  )
+}
+
+function ToggleRow({
+  title,
+  description,
+  on,
+  onChange,
+}: {
+  title: string
+  description: string
+  on: boolean
+  onChange: (on: boolean) => void
+}) {
+  return (
+    <div className="settings-conn">
+      <div className="settings-toggle-text">
+        <span className="settings-conn-name">{title}</span>
+        <span className="muted">{description}</span>
+      </div>
+      <button className={`settings-switch${on ? " on" : ""}`} onClick={() => onChange(!on)}>
+        {on ? "Auto-approve" : "Ask first"}
+      </button>
+    </div>
+  )
+}
+
+// Text size, applied instantly (prefs.ts reflects it onto <html>).
+function AppearanceTab() {
+  const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
+  const set = (patch: Partial<Prefs>) => setPrefs(savePrefs(patch))
+  return (
+    <section className="settings-section">
+      <h3>Appearance</h3>
+      <SegRow
+        label="Text size"
+        value={prefs.textSize}
+        onChange={(textSize) => set({ textSize: textSize as Prefs["textSize"] })}
+        options={[
+          { value: "compact", label: "Compact" },
+          { value: "standard", label: "Standard" },
+          { value: "large", label: "Large" },
+        ]}
+      />
+    </section>
+  )
+}
+
+// A labeled segmented control row — the pick-one primitive the preference tabs
+// are built from.
+function SegRow({
+  label,
+  hint,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  hint?: string
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="settings-seg-row">
+      <label className="settings-label">{label}</label>
+      <div className="settings-seg">
+        {options.map((o) => (
+          <button key={o.value} className={value === o.value ? "active" : ""} onClick={() => onChange(o.value)}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {hint && <p className="settings-hint muted">{hint}</p>}
     </div>
   )
 }

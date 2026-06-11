@@ -10,6 +10,9 @@
       "{env:WORKSPACE_ROOT}/.skills"
     ]
   },
+  "instructions": [
+    "{env:WORKSPACE_ROOT}/.preferences/drafting.md"
+  ],
   "disabled_providers": [
     "opencode"
   ],

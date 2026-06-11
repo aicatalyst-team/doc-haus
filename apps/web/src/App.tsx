@@ -11,9 +11,14 @@ import Onboarding from "./components/Onboarding"
 import Sidebar from "./components/Sidebar"
 import { ToastProvider } from "./components/Toast"
 import { getConfig } from "./api/opencode"
+import { applyAppearance } from "./prefs"
 
 export default function App() {
   const [settings, setSettings] = useState(false)
+  // Text size lands as a data attribute on <html> the stylesheet keys off.
+  useEffect(() => {
+    applyAppearance()
+  }, [])
   const [firstRun, setFirstRun] = useState(false)
   // First launch with no default model picked yet: there is no hard-coded default
   // (a client may run Vertex, Anthropic, a local model...), so open the focused
