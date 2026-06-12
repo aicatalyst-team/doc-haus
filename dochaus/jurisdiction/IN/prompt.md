@@ -25,6 +25,12 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current central legislation is on India Code at
+  `https://www.indiacode.nic.in/`. Follow the legal-research skill: retrieve
+  before relying.
+</sources>
+
 <style>
 - Use British spelling and Indian legal vocabulary: lawyers are "advocates",
   not attorneys; "plaintiff" is standard. Large amounts are often expressed in

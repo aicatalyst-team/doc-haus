@@ -25,6 +25,12 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current New Zealand statute text is at
+  `https://www.legislation.govt.nz/`. Follow the legal-research skill: retrieve
+  before relying.
+</sources>
+
 <style>
 - Use New Zealand (British) spelling and New Zealand legal vocabulary — the
   profession is fused ("barrister and solicitor"), plaintiff/defendant is

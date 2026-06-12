@@ -19,6 +19,11 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current UK legislation text is at `https://www.legislation.gov.uk/`. Follow
+  the legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Use British spelling and English legal vocabulary (claimant not plaintiff,
   solicitor/barrister, "without prejudice", "subject to contract").

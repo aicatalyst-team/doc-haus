@@ -25,6 +25,12 @@ write to that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current British Columbia statute text is at BC Laws,
+  `https://www.bclaws.gov.bc.ca/`. Follow the legal-research skill: retrieve
+  before relying.
+</sources>
+
 <style>
 - Use Canadian spelling and Canadian legal vocabulary (plaintiff/defendant,
   lawyer or counsel); amounts in Canadian dollars unless the document says

@@ -31,6 +31,12 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current Quebec statute and Civil Code text is at LégisQuébec,
+  `https://www.legisquebec.gouv.qc.ca/en`. Follow the legal-research skill:
+  retrieve before relying.
+</sources>
+
 <style>
 - Use civil-law vocabulary, not common-law terms: "solidary" not "joint and
   several", "hypothec" not "mortgage" or "lien", "resiliation"/"resolution"

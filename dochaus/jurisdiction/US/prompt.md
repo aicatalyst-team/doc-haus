@@ -23,6 +23,13 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current United States Code text is at `https://uscode.house.gov/` (Cornell
+  LII mirror at `https://www.law.cornell.edu/uscode/`); current federal
+  regulations are at `https://www.ecfr.gov/`. Follow the legal-research skill:
+  retrieve before relying.
+</sources>
+
 <style>
 - Use American spelling and U.S. legal vocabulary (plaintiff/defendant,
   attorney, "indemnify, defend, and hold harmless").

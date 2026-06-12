@@ -20,6 +20,12 @@ write to that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current Illinois Compiled Statutes text is at
+  `https://www.ilga.gov/legislation/ilcs/ilcs.asp`. Follow the legal-research
+  skill: retrieve before relying.
+</sources>
+
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.

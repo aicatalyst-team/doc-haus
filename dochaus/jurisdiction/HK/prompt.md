@@ -26,6 +26,12 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current ordinance text is on Hong Kong e-Legislation at
+  `https://www.elegislation.gov.hk/`. Follow the legal-research skill: retrieve
+  before relying.
+</sources>
+
 <style>
 - Use British spelling and English-style legal vocabulary. The profession is
   split between solicitors and barristers; "plaintiff" remains the standard

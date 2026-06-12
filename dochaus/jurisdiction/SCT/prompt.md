@@ -27,6 +27,12 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current UK and Scottish legislation text (including Acts of the Scottish
+  Parliament) is at `https://www.legislation.gov.uk/`. Follow the
+  legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Use British spelling and Scots legal vocabulary (pursuer/defender not
   claimant/plaintiff, solicitor/advocate not barrister, delict not tort,

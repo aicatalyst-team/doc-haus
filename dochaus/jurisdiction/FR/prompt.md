@@ -23,6 +23,12 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current text of the codes and statutes is at
+  `https://www.legifrance.gouv.fr/`. Follow the legal-research skill: retrieve
+  before relying.
+</sources>
+
 <style>
 - Lawyers are avocats; notaires handle certain formal transactions.
 - Write dates in day/month/year form; amounts are in euros unless the document

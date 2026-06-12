@@ -3,6 +3,7 @@ import { existsSync } from "node:fs"
 import { findQuote, liveText } from "../lib/extract"
 import { formatCitations, type DocumentCitation } from "../lib/citations"
 import { loadJurisdiction, readMatterJurisdictions } from "../lib/jurisdiction"
+import { isOfficialSource, researchScope } from "../lib/research"
 
 // doc.haus legal plugin — citation verification (issue #6) and per-matter
 // jurisdiction steering (issue #18).
@@ -86,16 +87,16 @@ export const LegalPlugin: Plugin = async (input) => ({
     // statute and regulation text (the legal-research skill), not browse the
     // web. Enforce the official-primary-source boundary deterministically here
     // rather than trusting the prompt — blogs and commentary are not authority,
-    // and every fetched page is one more injection surface.
+    // and every fetched page is one more injection surface. The firm can widen
+    // the fence to the open web in Settings (lib/research.ts).
     if (input.tool !== "webfetch") return
-    const host = new URL(String(output.args.url)).hostname
-    const exact = ["law.cornell.edu", "courtlistener.com", "legislation.gov.uk", "eur-lex.europa.eu"]
-    const suffixes = [".gov", ".gov.uk", ".europa.eu", ".law.cornell.edu", ".courtlistener.com"]
-    if (exact.includes(host) || suffixes.some((s) => host.endsWith(s))) return
+    if (isOfficialSource(String(output.args.url))) return
+    if (researchScope() === "open") return
     throw new Error(
       `webfetch is limited to official primary legal sources (government and court sites, ` +
-        `law.cornell.edu, legislation.gov.uk, eur-lex.europa.eu); ${host} is not one. ` +
-        `Use the sources in the legal-research skill or the matter's jurisdiction pack.`,
+        `official legislation portals); ${new URL(String(output.args.url)).hostname} is not one. ` +
+        `Use the sources in the legal-research skill or the matter's jurisdiction pack. ` +
+        `The firm can allow open-web research in Settings (Drafting > Web research).`,
     )
   },
   "tool.execute.after": async (input, output) => {

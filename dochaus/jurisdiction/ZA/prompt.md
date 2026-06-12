@@ -27,6 +27,11 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- South African Acts are at `https://www.gov.za/documents/acts`. Follow the
+  legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Use British spelling and South African legal vocabulary: the profession is
   split between attorneys and advocates, and "plaintiff" is standard.

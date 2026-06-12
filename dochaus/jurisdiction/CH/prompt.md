@@ -26,6 +26,11 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current federal law text is at `https://www.fedlex.admin.ch/`. Follow the
+  legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Switzerland has three official drafting languages (German, French, Italian);
   statutes exist in each, and the same statute or court may appear under

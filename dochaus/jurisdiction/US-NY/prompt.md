@@ -21,6 +21,12 @@ write to that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current New York Consolidated Laws text is at
+  `https://www.nysenate.gov/legislation`. Follow the legal-research skill:
+  retrieve before relying.
+</sources>
+
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.

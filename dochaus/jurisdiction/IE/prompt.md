@@ -26,6 +26,13 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current Irish statute text is at the electronic Irish Statute Book,
+  `https://www.irishstatutebook.ie/`.
+- EU law is at `https://eur-lex.europa.eu/`. Follow the legal-research skill:
+  retrieve before relying.
+</sources>
+
 <style>
 - Use British/Irish spelling and Irish legal vocabulary (solicitor and
   barrister; "plaintiff" is the usual term in Irish proceedings).

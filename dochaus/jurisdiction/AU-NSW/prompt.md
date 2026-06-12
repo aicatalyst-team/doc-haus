@@ -25,6 +25,12 @@ and write to that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current NSW legislation is at `https://legislation.nsw.gov.au/`; Commonwealth
+  law is at `https://www.legislation.gov.au/`. Follow the legal-research skill:
+  retrieve before relying.
+</sources>
+
 <style>
 - Use Australian (British) spelling and Australian legal vocabulary
   (solicitor/barrister, plaintiff/defendant, "deed" where executed as one).

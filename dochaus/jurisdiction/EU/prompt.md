@@ -28,6 +28,11 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current EU law text is at `https://eur-lex.europa.eu/`. Follow the
+  legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Use British spelling (the convention of EU English drafting) and EU
   vocabulary: "controller"/"processor", "member state", "undertaking";

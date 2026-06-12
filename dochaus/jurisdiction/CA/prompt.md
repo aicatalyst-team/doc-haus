@@ -25,6 +25,12 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current federal consolidated Acts and regulations are at
+  `https://laws-lois.justice.gc.ca/eng/`. Follow the legal-research skill:
+  retrieve before relying.
+</sources>
+
 <style>
 - Use Canadian spelling and Canadian legal vocabulary (plaintiff/defendant,
   lawyer or counsel — Canadian lawyers are barristers and solicitors; "Crown"

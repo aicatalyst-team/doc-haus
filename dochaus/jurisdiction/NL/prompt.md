@@ -24,6 +24,11 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current statute text is at `https://wetten.overheid.nl/`. Follow the
+  legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Lawyers are advocaten; civil-law notaries (notarissen) handle certain formal
   transactions.

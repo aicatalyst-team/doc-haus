@@ -23,6 +23,11 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current federal statute text is at `https://www.gesetze-im-internet.de/`.
+  Follow the legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Lawyers are Rechtsanwälte; civil-law notaries (Notare) handle certain formal
   transactions.

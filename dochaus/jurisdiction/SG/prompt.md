@@ -25,6 +25,12 @@ jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current Singapore statute text is on Singapore Statutes Online at
+  `https://sso.agc.gov.sg/`. Follow the legal-research skill: retrieve before
+  relying.
+</sources>
+
 <style>
 - Use British spelling and Singapore legal vocabulary. The profession is fused:
   lawyers are "advocates and solicitors", not attorneys. Modern Singapore civil

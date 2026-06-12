@@ -27,6 +27,12 @@ Centre (DIFC), United Arab Emirates**. Reason and write to that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- UAE federal legislation is at `https://uaelegislation.gov.ae/`.
+- DIFC laws and regulations are at `https://www.difc.ae/`. Follow the
+  legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Use British spelling and English-style legal vocabulary in DIFC drafting;
   onshore UAE documents are often bilingual with the Arabic text prevailing —

@@ -25,6 +25,12 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current Ontario statute text is at Ontario e-Laws,
+  `https://www.ontario.ca/laws`. Follow the legal-research skill: retrieve
+  before relying.
+</sources>
+
 <style>
 - Use Canadian spelling and Canadian legal vocabulary (plaintiff/defendant,
   lawyer or counsel); amounts in Canadian dollars unless the document says

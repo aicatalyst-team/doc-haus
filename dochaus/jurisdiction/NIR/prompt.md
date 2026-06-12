@@ -27,6 +27,12 @@ that jurisdiction.
 - Matter documents keep the existing `[<Document> § <section>]` form.
 </citation>
 
+<sources>
+- Current UK and Northern Ireland legislation text (including Acts of the
+  Northern Ireland Assembly) is at `https://www.legislation.gov.uk/`. Follow
+  the legal-research skill: retrieve before relying.
+</sources>
+
 <style>
 - Use British spelling and Northern Ireland legal vocabulary (solicitor and
   barrister). Older procedural terminology such as "plaintiff" and "writ"
