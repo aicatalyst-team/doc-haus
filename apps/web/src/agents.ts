@@ -8,7 +8,14 @@ export type AssistantMeta = { name: string; label: string; description: string }
 // `scope` decides which conversation a workflow runs in: "matter" routines span
 // every document and open as their own new chat; "document" routines act on the
 // thread you are already in and run in the current chat.
-export type WorkflowMeta = AssistantMeta & { prompt: string; scope: "matter" | "document"; custom?: boolean }
+// `steps` is the pipeline shown in the workflow View panel; for built-ins it
+// mirrors the orchestrator agent's pipeline in dochaus/agent/<name>.md.
+export type WorkflowMeta = AssistantMeta & {
+  prompt: string
+  scope: "matter" | "document"
+  custom?: boolean
+  steps?: { agent: string; instructions: string }[]
+}
 
 // Conversational assistants offered in the chat picker. Every name here MUST be a
 // real agent id in dochaus/agent/*.md — these are sent to the engine verbatim.
@@ -120,5 +127,24 @@ export const WORKFLOWS: WorkflowMeta[] = [
     scope: "matter",
     prompt:
       "Run a complete legal review of the documents in this matter: run the full review pipeline defined in your instructions, every step in order, and return the combined report.",
+    steps: [
+      {
+        agent: "legal-reviewer",
+        instructions: "Reads every document in the matter and reports findings with citations.",
+      },
+      {
+        agent: "playbook-reviewer",
+        instructions:
+          "Checks the documents against the firm playbook bound to the matter and proposes firm-approved redlines.",
+      },
+      {
+        agent: "assumption-challenger",
+        instructions: "Attacks the findings and playbook deviations to expose weak assumptions.",
+      },
+      {
+        agent: "summarizer",
+        instructions: "Condenses the findings, deviations, and challenges into one summary.",
+      },
+    ],
   },
 ]

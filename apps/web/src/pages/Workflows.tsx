@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { deleteWorkflow, listMatters, listWorkflows, type CustomWorkflow, type Matter } from "../api/ingest"
 import { useToast } from "../components/Toast"
 import ChatPanel from "../components/ChatPanel"
+import { DocMarkdown } from "../components/Markdown"
 import { WORKFLOW_BUILDER, WORKFLOWS, type WorkflowMeta } from "../agents"
 
 // The firm's workflow library: built-in multi-agent review routines plus custom
@@ -23,6 +24,7 @@ export default function Workflows() {
   const [confirmName, setConfirmName] = useState<string | null>(null)
   // The workflow being launched — either a built-in WorkflowMeta or a custom one.
   const [using, setUsing] = useState<WorkflowMeta | CustomWorkflow>()
+  const [viewing, setViewing] = useState<WorkflowMeta | CustomWorkflow>()
   const [matters, setMatters] = useState<Matter[]>([])
   const navigate = useNavigate()
   const createdRef = useRef<string | undefined>(undefined)
@@ -106,6 +108,16 @@ export default function Workflows() {
                   >
                     Use
                   </button>
+                  <button
+                    className="icon-btn"
+                    title="View what this workflow does"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setViewing(wf)
+                    }}
+                  >
+                    View
+                  </button>
                 </div>
               </li>
             ))}
@@ -131,6 +143,16 @@ export default function Workflows() {
                       }}
                     >
                       Use
+                    </button>
+                    <button
+                      className="icon-btn"
+                      title="View what this workflow does"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setViewing(wf)
+                      }}
+                    >
+                      View
                     </button>
                     {confirmName === wf.name ? (
                       <button
@@ -210,6 +232,39 @@ export default function Workflows() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewing && (
+        <div className="viewer-overlay" onClick={() => setViewing(undefined)}>
+          <div className="picker-panel doc-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="viewer-bar">
+              <span className="viewer-title">
+                {viewing.label}
+                {"created_at" in viewing ? "" : " (built-in)"}
+              </span>
+              <button onClick={() => setViewing(undefined)}>Close</button>
+            </div>
+            <div className="picker-body">
+              <p className="muted">{viewing.description}</p>
+              <p className="muted">
+                {viewing.scope === "matter"
+                  ? "Runs across every document in the matter, as its own conversation."
+                  : "Runs on the document conversation you are already in."}
+              </p>
+              <DocMarkdown>
+                {[
+                  viewing.steps?.length
+                    ? "**Pipeline**\n\n" +
+                      viewing.steps.map((s, i) => `${i + 1}. **${s.agent}** — ${s.instructions}`).join("\n")
+                    : "",
+                  `**Launch prompt**\n\n> ${viewing.prompt}`,
+                ]
+                  .filter(Boolean)
+                  .join("\n\n")}
+              </DocMarkdown>
             </div>
           </div>
         </div>
