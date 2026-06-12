@@ -2,7 +2,8 @@ import { writeFileSync } from "node:fs"
 import path from "node:path"
 import mammoth from "mammoth"
 import { openDb, upsertDocument, insertChunk } from "./db"
-import { embed } from "./embed"
+import { embedChunk, migrateEmbeddings } from "./embed"
+import { extractStructure, migrateStructure } from "./structure"
 import { pdfToText } from "./pdf"
 import { detectInjection, normalizeExtractedText, scanDocxHiddenContent } from "./sanitize"
 
@@ -75,6 +76,11 @@ export async function ingestDocument(matterDir: string, fileName: string, buffer
   const sections = sectionize(text)
 
   const db = openDb(matterDir)
+  // Never mix vectors from two embedding models in one matter — re-embed any
+  // stale chunks before this document's are written (no-op on current DBs).
+  // Same for structure rows extracted by an older pattern version.
+  await migrateEmbeddings(db)
+  migrateStructure(db)
   const documentId = upsertDocument(
     db,
     docPath,
@@ -87,7 +93,7 @@ export async function ingestDocument(matterDir: string, fileName: string, buffer
   let flaggedChunks = 0
   for (const section of sections) {
     for (const chunk of chunkSection(section)) {
-      const embedding = await embed(chunk.text)
+      const embedding = await embedChunk(fileName, section.label, chunk.text)
       const flagged = findings.some(
         (f) => f.charStart !== undefined && f.charEnd !== undefined && f.charStart < chunk.charEnd && f.charEnd > chunk.charStart,
       )
@@ -106,6 +112,7 @@ export async function ingestDocument(matterDir: string, fileName: string, buffer
       })
     }
   }
+  extractStructure(db, docPath, fileName, text)
   db.close()
 
   return {

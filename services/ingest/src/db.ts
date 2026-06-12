@@ -43,14 +43,26 @@ export function openDb(matterDir: string): Database {
   // gain them here; their documents read as clean until re-ingested.
   if (!hasColumn(db, "documents", "injection_report")) db.run("ALTER TABLE documents ADD COLUMN injection_report TEXT")
   if (!hasColumn(db, "chunks", "flagged")) db.run("ALTER TABLE chunks ADD COLUMN flagged INTEGER NOT NULL DEFAULT 0")
+  // Small key-value table for index-level facts that aren't rows — currently
+  // which embedding model wrote the chunk vectors (see embed.ts migration).
+  db.run("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
   // Lexical channel for hybrid retrieval (issue #67): a BM25-ranked FTS5 index
   // over the same chunks the vector channel scans. external-content mode stores
   // only the index and reads row text back from chunks, so chunk text is never
-  // duplicated. The section label is indexed alongside the body so a query
-  // naming a clause ("Section 8.3") matches the clause's own chunks directly.
+  // duplicated. The section label and document name are indexed alongside the
+  // body so a query naming a clause ("Section 8.3") or a document matches that
+  // clause's or document's own chunks directly.
+  // Databases indexed before doc_name was added carry a two-column chunks_fts;
+  // FTS5 has no ALTER, so drop and recreate (the rebuild below repopulates).
+  const ftsSql = (db.query("SELECT sql FROM sqlite_master WHERE name = 'chunks_fts'").get() as { sql: string } | null)
+    ?.sql
+  if (ftsSql && !ftsSql.includes("doc_name")) {
+    for (const trigger of ["chunks_fts_ai", "chunks_fts_ad", "chunks_fts_au"]) db.run(`DROP TRIGGER IF EXISTS ${trigger}`)
+    db.run("DROP TABLE chunks_fts")
+  }
   db.run(`
     CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
-      text, section,
+      text, section, doc_name,
       content='chunks', content_rowid='id',
       tokenize='unicode61 remove_diacritics 2'
     )
@@ -60,18 +72,18 @@ export function openDb(matterDir: string): Database {
   // FTS5 requires the special 'delete' insert form to unindex a row.
   db.run(`
     CREATE TRIGGER IF NOT EXISTS chunks_fts_ai AFTER INSERT ON chunks BEGIN
-      INSERT INTO chunks_fts(rowid, text, section) VALUES (new.id, new.text, new.section);
+      INSERT INTO chunks_fts(rowid, text, section, doc_name) VALUES (new.id, new.text, new.section, new.doc_name);
     END
   `)
   db.run(`
     CREATE TRIGGER IF NOT EXISTS chunks_fts_ad AFTER DELETE ON chunks BEGIN
-      INSERT INTO chunks_fts(chunks_fts, rowid, text, section) VALUES ('delete', old.id, old.text, old.section);
+      INSERT INTO chunks_fts(chunks_fts, rowid, text, section, doc_name) VALUES ('delete', old.id, old.text, old.section, old.doc_name);
     END
   `)
   db.run(`
     CREATE TRIGGER IF NOT EXISTS chunks_fts_au AFTER UPDATE ON chunks BEGIN
-      INSERT INTO chunks_fts(chunks_fts, rowid, text, section) VALUES ('delete', old.id, old.text, old.section);
-      INSERT INTO chunks_fts(rowid, text, section) VALUES (new.id, new.text, new.section);
+      INSERT INTO chunks_fts(chunks_fts, rowid, text, section, doc_name) VALUES ('delete', old.id, old.text, old.section, old.doc_name);
+      INSERT INTO chunks_fts(rowid, text, section, doc_name) VALUES (new.id, new.text, new.section, new.doc_name);
     END
   `)
   // Backfill databases that predate the FTS table, and self-heal any drift (a
@@ -81,6 +93,61 @@ export function openDb(matterDir: string): Database {
   const chunkCount = (db.query("SELECT COUNT(*) AS n FROM chunks").get() as { n: number }).n
   const ftsCount = (db.query("SELECT COUNT(*) AS n FROM chunks_fts").get() as { n: number }).n
   if (ftsCount !== chunkCount) db.run("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')")
+  // Contract-structure tables: deterministic, regex-extracted facts about each
+  // document (see structure.ts). Every row is a pointer (offsets) into the
+  // document's extracted text plus the verbatim text at that pointer — nothing
+  // here is generated, so the lookup tools built on these tables cannot
+  // fabricate. A parse miss means a missing row, and the tools say "not found"
+  // and fall back to search; it never means a wrong fact.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS defined_terms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      doc_path TEXT NOT NULL,
+      doc_name TEXT NOT NULL,
+      term TEXT NOT NULL,
+      definition TEXT NOT NULL,
+      char_start INTEGER NOT NULL,
+      char_end INTEGER NOT NULL
+    )
+  `)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS section_refs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      doc_path TEXT NOT NULL,
+      doc_name TEXT NOT NULL,
+      ref_kind TEXT NOT NULL,
+      ref_label TEXT NOT NULL,
+      char_start INTEGER NOT NULL,
+      char_end INTEGER NOT NULL
+    )
+  `)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS parties (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      doc_path TEXT NOT NULL,
+      doc_name TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT,
+      char_start INTEGER NOT NULL,
+      char_end INTEGER NOT NULL
+    )
+  `)
+  // relation: currently only 'amends'. target_name is the verbatim title of the
+  // referenced document as this document states it; resolution to an actual
+  // matter document happens at lookup time by name match, never by guess.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS doc_relations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      doc_path TEXT NOT NULL,
+      doc_name TEXT NOT NULL,
+      relation TEXT NOT NULL,
+      target_name TEXT NOT NULL,
+      char_start INTEGER NOT NULL,
+      char_end INTEGER NOT NULL
+    )
+  `)
+  db.run("CREATE INDEX IF NOT EXISTS defined_terms_term ON defined_terms(term)")
+  db.run("CREATE INDEX IF NOT EXISTS section_refs_doc ON section_refs(doc_path)")
   // Pending redline proposals. The canonical .docx stays clean (the accepted
   // state); each redline a tool proposes is a row here until a reviewer accepts
   // it (baked into the doc) or rejects it. scope drives how the edit is replayed:
@@ -107,6 +174,17 @@ export function openDb(matterDir: string): Database {
 
 function hasColumn(db: Database, table: string, column: string) {
   return (db.query(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === column)
+}
+
+export function getMeta(db: Database, key: string): string | null {
+  return (db.query("SELECT value FROM meta WHERE key = ?").get(key) as { value: string } | null)?.value ?? null
+}
+
+export function setMeta(db: Database, key: string, value: string) {
+  db.run("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", [
+    key,
+    value,
+  ])
 }
 
 export type RedlineRow = {
@@ -158,6 +236,8 @@ export function listDocuments(db: Database) {
 export function deleteDocument(db: Database, docPath: string) {
   db.run("DELETE FROM chunks WHERE doc_path = ?", [docPath])
   db.run("DELETE FROM documents WHERE doc_path = ?", [docPath])
+  for (const table of ["defined_terms", "section_refs", "parties", "doc_relations"])
+    db.run(`DELETE FROM ${table} WHERE doc_path = ?`, [docPath])
 }
 
 // Re-ingesting a document replaces its rows so the index never holds stale chunks.
