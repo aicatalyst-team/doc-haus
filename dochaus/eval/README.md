@@ -87,6 +87,40 @@ no deterministic oracle for jurisdiction discipline).
   pass/fail and conservative: test that the model qualifies and abstains
   correctly, not that it recites specific law.
 
+## Harvey LAB benchmark
+
+Two runners drive the [Harvey LAB](https://github.com/harveyai/harvey-labs)
+benchmark against local doc.haus. Both need the stack running (`opencode serve`
+on :4096, `services/ingest` on :4500) and run from the `dochaus/` package
+directory. The Vertex judge project comes from `--project` or
+`GOOGLE_CLOUD_PROJECT` / `GOOGLE_VERTEX_PROJECT` — nothing is hardcoded.
+
+- `run-harvey-task.ts` — one task: creates a matter, uploads the task's
+  `documents/`, prompts the drafter with the `task.json` instructions
+  (auto-approving permission asks), stages produced `.docx` into the
+  harvey-labs results tree, and prints the scoring command.
+- `run-harvey-suite.ts` — the whole benchmark (1251 tasks, including
+  `scenario-NN` sub-tasks): spawns the single-task runner once per task,
+  strictly serially. Quota safety is the point: `--cooldown` seconds between
+  tasks (default 20), per-task `--task-timeout` minutes (default 25, kills the
+  child and moves on), and a 429/RESOURCE_EXHAUSTED retry ladder (wait 5 min,
+  retry; wait 10 min, retry; then mark failed and continue).
+
+```
+bun eval/run-harvey-suite.ts --tasks-root ~/path/to/harvey-labs/tasks \
+  [run-id] [--area immigration,tax] [--task substring] [--limit 10] [--dry-run] \
+  [--jurisdiction US-CA,US-NY] [--project <gcp-project>] [--location <loc>] \
+  [--judge-model <model>]
+```
+
+`--dry-run` prints the selected task list and exits without touching anything.
+Outputs land at `results/<run-id>/<area>/<slug>/output` and a crash-safe
+`results/<run-id>/suite-manifest.json` records every task's status; rerunning
+with the same run-id skips tasks whose output dir is already non-empty, so an
+interrupted suite resumes. Scoring is a separate step (the suite prints the
+`evaluation.run_eval` command, pinned to `--parallel 1`) — wait a few minutes
+after generation before judging so the Vertex quota recovers.
+
 ## Future: LegalBench `contract_nli_*` as an NDA-playbook regression suite
 
 [LegalBench](https://github.com/HazyResearch/legalbench) includes the
