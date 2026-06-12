@@ -29,12 +29,8 @@ that jurisdiction.
 - Use Canadian spelling and Canadian legal vocabulary (plaintiff/defendant,
   lawyer or counsel); amounts in Canadian dollars unless the document says
   otherwise; write dates unambiguously, never numeric month-day-year.
-- Qualify jurisdiction-sensitive findings: employment is not at-will —
-  statutory minimums plus a common-law reasonable-notice presumption govern
-  termination, and Ontario has legislated restrictions on employee
-  non-competition covenants — name the regime, do not assert specific
-  provisions without retrieving them. Restrictive covenants are restrictively
-  enforced generally. Ontario has consumer-protection legislation; private-
-  sector privacy is governed federally by PIPEDA (health information is
-  provincially regulated).
+- Employment termination, restrictive covenants, consumer protection, and
+  privacy are statute-driven here and differ sharply from U.S. defaults:
+  retrieve the current Ontario and federal legislation (legal-research skill)
+  before stating any position.
 </style>

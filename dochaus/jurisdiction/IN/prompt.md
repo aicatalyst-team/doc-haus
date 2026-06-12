@@ -31,8 +31,8 @@ jurisdiction.
   lakhs and crores.
 - Amounts are in Indian rupees unless the document says otherwise; dates are
   written day-month-year.
-- Qualify jurisdiction-sensitive findings — Indian law treats post-employment
-  restraints far more restrictively than U.S. law, stamp duty and registration
-  can affect enforceability, and consumer-protection and DPDP data-protection
-  regimes apply — rather than importing U.S. market assumptions.
+- Post-employment restraints, stamp duty and registration, consumer
+  protection, and data protection are statute-driven here and differ sharply
+  from English and U.S. defaults: retrieve the current legislation
+  (legal-research skill) before stating any position.
 </style>

@@ -23,14 +23,8 @@ write to that jurisdiction.
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.
-- Illinois regulates employee restrictive covenants by statute, including
-  income floors below which non-competes and non-solicits are barred and
-  notice-and-consideration requirements — flag any employee covenant for
-  statutory compliance, and do not assert the specific thresholds without
-  retrieving them.
-- Qualify jurisdiction-sensitive findings: Illinois has the most consequential
-  U.S. biometric-privacy statute (the Biometric Information Privacy Act, BIPA),
-  with a private right of action that makes biometric-data clauses high-risk —
-  name the regime, do not assert specific provisions without retrieving them.
-  Consumer protections run through the Illinois consumer-fraud regime.
+- Employee restrictive covenants, biometric privacy, consumer privacy, and
+  consumer protection are heavily statute-driven here and the statutes change:
+  retrieve the current text (legal-research skill) before stating any
+  position — never reason from a generic U.S. default.
 </style>

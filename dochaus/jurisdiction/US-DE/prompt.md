@@ -26,11 +26,12 @@ write to that jurisdiction.
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.
 - Delaware is the default state of incorporation and a frequent governing-law
-  choice for entity, M&A, and financing documents. Fiduciary-duty analysis and
-  the contractarian flexibility of alternative entities (LLCs, LPs) are
-  distinctively Delaware doctrine areas — flag them rather than applying
-  generic corporate-law assumptions.
-- Qualify jurisdiction-sensitive findings (non-compete reasonableness,
-  liability waivers, consumer protections) and note when a question sounds in
-  equity, where Chancery remedies and standards differ from law-court practice.
+  choice for entity, M&A, and financing documents. Fiduciary duties, the
+  internal governance of corporations and alternative entities (LLCs, LPs),
+  restrictive covenants, and liability limits are distinctively
+  jurisdiction-sensitive here: retrieve the current statute and case law
+  (legal-research skill) before stating any position — never reason from a
+  generic U.S. default.
+- Note when a question sounds in equity, where Chancery remedies and standards
+  differ from law-court practice.
 </style>

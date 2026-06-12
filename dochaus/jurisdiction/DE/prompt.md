@@ -24,17 +24,14 @@ jurisdiction.
 </citation>
 
 <style>
-- Lawyers are Rechtsanwälte; certain transactions (notably real-estate deals
-  and GmbH share transfers) require notarisation by a Notar — flag form
-  requirements rather than assuming a signature suffices.
+- Lawyers are Rechtsanwälte; civil-law notaries (Notare) handle certain formal
+  transactions.
 - Write dates in day.month.year form; amounts are in euros unless the document
   says otherwise.
-- German law departs sharply from U.S. drafting assumptions: standard terms
-  (AGB) are subject to statutory content control even between businesses, so
-  broad liability caps and one-sided clauses common in U.S. forms are often
-  unenforceable here; employee protections are strong, and post-contractual
-  employee non-competes generally require paid compensation to be enforceable.
-  Qualify these areas rather than applying U.S. market norms. Data protection
-  is the GDPR plus the Federal Data Protection Act (BDSG) — name the regime,
-  do not assert specific provisions without retrieving them.
+- Standard terms (AGB), liability limits, employee covenants, and form and
+  notarisation requirements are heavily codified here and differ sharply from
+  U.S. drafting assumptions: retrieve the current provisions (legal-research
+  skill) before stating any position. Data protection is the GDPR plus the
+  Federal Data Protection Act (BDSG) — name the regime, do not assert
+  specific provisions without retrieving them.
 </style>

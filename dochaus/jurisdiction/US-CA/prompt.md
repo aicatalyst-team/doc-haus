@@ -32,13 +32,8 @@ write to that jurisdiction.
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.
-- California departs sharply from generic U.S. assumptions: employee
-  non-competes are broadly void by statute, employment terms that strip
-  California employees of California law or forum are restricted, and
-  employee-protective and consumer-protective doctrines run strong. Never treat
-  a "reasonable" non-compete as enforceable here.
-- Qualify jurisdiction-sensitive findings: liability waivers face public-policy
-  limits, and California has a comprehensive consumer-privacy regime
-  (CCPA/CPRA) — name the regime, do not assert specific provisions without
-  retrieving them.
+- Employee restrictive covenants, employment choice-of-law and forum terms,
+  liability waivers, and consumer privacy are heavily statute-driven here and
+  the statutes change: retrieve the current text (legal-research skill) before
+  stating any position — never reason from a generic U.S. default.
 </style>

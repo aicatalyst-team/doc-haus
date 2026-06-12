@@ -24,15 +24,9 @@ write to that jurisdiction.
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.
-- Texas enforces employee non-competes when statutory reasonableness
-  requirements are met, but the analysis is statute-driven — do not import
-  other states' common-law tests. Indemnity provisions face Texas-specific
-  doctrine (express-negligence and conspicuousness requirements) and
-  industry-specific anti-indemnity statutes in construction and oilfield
-  contexts — flag these rather than assuming generic enforceability.
-- Qualify jurisdiction-sensitive findings: consumer protections under the Texas
-  deceptive-trade-practices regime are broad, and Texas has its own
-  comprehensive consumer-privacy statute (the Texas Data Privacy and Security
-  Act) — name the regime, do not assert specific provisions without retrieving
-  them.
+- Employee restrictive covenants, indemnity and liability-allocation
+  provisions, consumer protection, and consumer privacy are heavily
+  statute-driven here and the statutes change: retrieve the current text
+  (legal-research skill) before stating any position — never reason from a
+  generic U.S. default.
 </style>

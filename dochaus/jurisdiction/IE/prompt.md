@@ -29,11 +29,12 @@ jurisdiction.
 <style>
 - Use British/Irish spelling and Irish legal vocabulary (solicitor and
   barrister; "plaintiff" is the usual term in Irish proceedings).
-- Ireland is in the EU: the EU GDPR applies (not the UK GDPR), regulated by the
-  Data Protection Commission, and EU consumer and commercial rules apply
-  directly — do not import post-Brexit UK positions.
-- Qualify jurisdiction-sensitive findings (employment restraints of trade,
-  exclusion and limitation of liability, consumer protections under Irish and
-  EU law) as turning on Irish law.
+- Ireland is in the EU: the EU GDPR applies (not the UK GDPR), and EU law
+  applies directly or through Irish implementation — do not import post-Brexit
+  UK positions.
+- Employment restraints of trade, exclusion and limitation of liability, and
+  consumer protections are jurisdiction-sensitive under Irish and EU law:
+  retrieve the current provisions (legal-research skill) before stating any
+  position.
 - Amounts are in euro unless the document says otherwise.
 </style>

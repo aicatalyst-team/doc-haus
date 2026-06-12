@@ -32,10 +32,9 @@ jurisdiction.
 - Amounts are in Canadian dollars unless the document says otherwise; write
   dates unambiguously (day-month-year or ISO), never numeric month-day-year.
 - Federal statutes are equally authoritative in English and French.
-- Qualify jurisdiction-sensitive findings by the governing province:
-  employment is not at-will (reasonable-notice obligations apply), restrictive
-  covenants are restrictively enforced, consumer protection is provincial, and
-  privacy is governed federally by PIPEDA with substantially similar provincial
-  regimes in some provinces — name the regime, do not assert specific
-  provisions without retrieving them.
+- Employment termination, restrictive covenants, consumer protection, and
+  privacy are statute-driven here, vary by the governing province (privacy
+  involves both federal and provincial statute), and differ sharply from U.S.
+  defaults: retrieve the current legislation (legal-research skill) before
+  stating any position.
 </style>

@@ -31,14 +31,11 @@ that jurisdiction.
 - Use British spelling and Northern Ireland legal vocabulary (solicitor and
   barrister). Older procedural terminology such as "plaintiff" and "writ"
   remains in use here, unlike modern England & Wales practice.
-- Northern Ireland law diverges from Great Britain in material areas —
-  employment law (separate tribunal system and fair-employment rules) most
-  notably — so do not assume the GB statutory position applies. Under the
-  Windsor Framework, certain EU rules continue to apply to goods in Northern
-  Ireland; flag goods-related regulatory questions rather than assuming the GB
-  position.
-- Qualify jurisdiction-sensitive findings (employment restraints, liability
-  exclusions, consumer protections). Data protection is the UK GDPR and Data
-  Protection Act 2018, regulated by the ICO.
+- Employment law, goods-related regulation (including the Windsor Framework),
+  employment restraints, liability exclusions, and consumer protections are
+  jurisdiction-sensitive here and differ from Great Britain — do not assume
+  the GB statutory position applies: retrieve the current Northern Ireland
+  provisions (legal-research skill) before stating any position. Data
+  protection is the UK GDPR and Data Protection Act 2018.
 - Amounts are in pounds sterling unless the document says otherwise.
 </style>

@@ -34,18 +34,14 @@ that jurisdiction.
 <style>
 - Use civil-law vocabulary, not common-law terms: "solidary" not "joint and
   several", "hypothec" not "mortgage" or "lien", "resiliation"/"resolution"
-  rather than generic "termination"/"rescission", "penal clause" (enforceable,
-  but reducible if abusive) rather than assuming a penalty doctrine. Lawyers
-  are avocats; notaries are a separate regulated profession.
+  rather than generic "termination"/"rescission", "penal clause" rather than
+  assuming a penalty doctrine. Lawyers are avocats; notaries are a separate
+  regulated profession.
 - Amounts are in Canadian dollars unless the document says otherwise; write
   dates unambiguously, never numeric month-day-year.
-- Quebec's Charter of the French Language imposes French-language requirements
-  on contracts and commercial documents — flag English-only paper rather than
-  assuming it is compliant, and name the regime without asserting specific
-  provisions.
-- Qualify jurisdiction-sensitive findings: employment is not at-will and
-  restrictive covenants face codified limits; consumer protection is strong
-  and largely non-waivable; private-sector privacy is governed by Quebec's own
-  statute (as amended by Law 25), which is stricter than PIPEDA — name the
-  regime, do not assert specific provisions without retrieving them.
+- Employment termination, restrictive covenants, consumer protection, privacy,
+  and the language of contracts and commercial documents are statute-driven
+  here and differ sharply from common-law and U.S. defaults: retrieve the
+  current Quebec legislation (legal-research skill) before stating any
+  position.
 </style>

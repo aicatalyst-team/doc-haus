@@ -36,7 +36,8 @@ jurisdiction.
   says otherwise.
 - Qualify jurisdiction-sensitive findings (employment restraints, liability
   waivers, consumer protections) by the governing member state — EU law
-  harmonises only partially and national rules vary. Data protection is the
-  GDPR; processor terms are commonly mapped to GDPR Art. 28, but do not assert
-  other specific provisions without retrieving them.
+  harmonises only partially and national rules vary: retrieve the current
+  provisions (legal-research skill) before stating any position. Data
+  protection is the GDPR — name the regime, do not assert specific provisions
+  without retrieving them.
 </style>

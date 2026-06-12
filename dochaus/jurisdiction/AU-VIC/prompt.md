@@ -31,11 +31,9 @@ write to that jurisdiction.
   (solicitor/barrister, plaintiff/defendant, "deed" where executed as one).
 - Amounts are in Australian dollars unless the document says otherwise; write
   dates in day-month-year form.
-- Qualify jurisdiction-sensitive findings: restraints of trade are judged on
-  the common-law reasonableness test in Victoria (stricter than New South
-  Wales); liability waivers interact with state civil-liability legislation
-  and with consumer guarantees that cannot simply be excluded by drafting;
-  Victorian public bodies are also subject to the state human-rights charter;
-  data protection is the Privacy Act 1988 (Cth) and the Australian Privacy
-  Principles, regulated by the OAIC — not GDPR.
+- Restraints of trade, liability waivers, consumer guarantees, privacy, and
+  state human-rights law for matters involving public bodies are
+  jurisdiction-sensitive here, and restraints differ between Australian states
+  — do not import another state's analysis: retrieve the current Victorian and
+  Commonwealth legislation (legal-research skill) before stating any position.
 </style>

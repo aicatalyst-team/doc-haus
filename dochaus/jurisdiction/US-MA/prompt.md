@@ -25,16 +25,8 @@ and write to that jurisdiction.
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.
-- Massachusetts governs employee non-competes by a dedicated statute (the
-  Massachusetts Noncompetition Agreement Act) imposing notice, consideration
-  (including a garden-leave or other mutually-agreed-upon-consideration
-  requirement), duration, and worker-eligibility limits — flag any employee
-  non-compete for statutory compliance and do not assert the specific limits
-  without retrieving them.
-- Qualify jurisdiction-sensitive findings: the unfair-and-deceptive-practices
-  statute (Chapter 93A) is unusually broad, reaches business-to-business
-  conduct, and carries multiple-damages exposure — flag 93A waiver or
-  limitation attempts. Massachusetts also has stringent data-security
-  regulations — name the regime, do not assert specific provisions without
-  retrieving them.
+- Employee restrictive covenants, unfair-and-deceptive-trade-practices
+  liability, and data security are heavily statute-driven here and the statutes
+  change: retrieve the current text (legal-research skill) before stating any
+  position — never reason from a generic U.S. default.
 </style>

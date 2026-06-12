@@ -29,12 +29,8 @@ write to that jurisdiction.
 - Use Canadian spelling and Canadian legal vocabulary (plaintiff/defendant,
   lawyer or counsel); amounts in Canadian dollars unless the document says
   otherwise; write dates unambiguously, never numeric month-day-year.
-- Qualify jurisdiction-sensitive findings: employment is not at-will —
-  statutory minimums plus a common-law reasonable-notice presumption govern
-  termination; restrictive covenants are restrictively enforced and Canadian
-  courts are generally unwilling to rewrite an overbroad covenant to save it.
-  BC has consumer-protection legislation, and private-sector privacy is
-  governed by BC's own Personal Information Protection Act rather than PIPEDA
-  for most provincial matters — name the regime, do not assert specific
-  provisions without retrieving them.
+- Employment termination, restrictive covenants, consumer protection, and
+  privacy are statute-driven here and differ sharply from U.S. defaults:
+  retrieve the current BC and federal legislation (legal-research skill)
+  before stating any position.
 </style>

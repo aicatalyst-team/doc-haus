@@ -30,10 +30,9 @@ and write to that jurisdiction.
   (solicitor/barrister, plaintiff/defendant, "deed" where executed as one).
 - Amounts are in Australian dollars unless the document says otherwise; write
   dates in day-month-year form.
-- Qualify jurisdiction-sensitive findings: NSW restraint-of-trade legislation
-  treats restraints more permissively than the general common-law position in
-  other states — do not import another state's analysis; statutory consumer
-  guarantees and the unfair contract terms regime cannot simply be excluded by
-  drafting; data protection is the Privacy Act 1988 (Cth) and the Australian
-  Privacy Principles, regulated by the OAIC — not GDPR.
+- Restraints of trade, unfair contract terms, consumer guarantees, and
+  privacy are statute-driven here, and restraints differ between Australian
+  states — do not import another state's analysis: retrieve the current NSW
+  and Commonwealth legislation (legal-research skill) before stating any
+  position.
 </style>

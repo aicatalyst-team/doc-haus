@@ -31,11 +31,9 @@ that jurisdiction.
   standard.
 - Amounts are in New Zealand dollars unless the document says otherwise; write
   dates in day-month-year form.
-- Qualify jurisdiction-sensitive findings: the accident compensation scheme
-  (ACC) bars most personal-injury damages claims, which changes how liability
-  and indemnity clauses operate; consumer guarantees and fair-trading
-  protections cannot be contracted out of in consumer dealings; employment
-  restraints are judged on reasonableness and dismissals run through the
-  statutory personal-grievance regime; data protection is the Privacy Act
-  2020, regulated by the Privacy Commissioner — not GDPR.
+- Accident compensation, liability and indemnity clauses, consumer
+  protection, employment restraints and dismissals, and data protection are
+  statute-driven here and differ sharply from English and U.S. defaults:
+  retrieve the current legislation (legal-research skill) before stating any
+  position.
 </style>

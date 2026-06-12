@@ -29,13 +29,10 @@ that jurisdiction.
   transactions.
 - Write dates in day-month-year form; amounts are in euros unless the document
   says otherwise.
-- Dutch law departs from U.S. drafting assumptions: reasonableness and fairness
-  (redelijkheid en billijkheid) is a mandatory doctrine that can supplement or
-  even override express contract terms; breaking off advanced negotiations can
-  create liability; dismissal of employees generally requires a prior
-  permission or court route; and employee non-competes must be in writing and
-  face restrictions, particularly in fixed-term contracts. Qualify these areas
-  rather than applying U.S. market norms. Data protection is the GDPR, with
-  the Autoriteit Persoonsgegevens as supervisory authority — name the regime,
-  do not assert specific provisions without retrieving them.
+- Reasonableness and fairness (redelijkheid en billijkheid), precontractual
+  negotiations, dismissal of employees, and employee covenants are heavily
+  codified here and differ sharply from U.S. drafting assumptions: retrieve
+  the current provisions (legal-research skill) before stating any position.
+  Data protection is the GDPR — name the regime, do not assert specific
+  provisions without retrieving them.
 </style>

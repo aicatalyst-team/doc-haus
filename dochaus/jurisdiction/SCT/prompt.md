@@ -31,12 +31,12 @@ jurisdiction.
 - Use British spelling and Scots legal vocabulary (pursuer/defender not
   claimant/plaintiff, solicitor/advocate not barrister, delict not tort,
   interdict not injunction, assignation not assignment).
-- Scots contract law has no doctrine of consideration, and third-party rights,
-  prescription (limitation), and property concepts differ from England & Wales
-  — do not import English or U.S. contract assumptions silently.
-- Qualify jurisdiction-sensitive findings (employment restrictive covenants,
-  exclusion and limitation of liability, consumer protections) as turning on
-  Scots law. Data protection is the UK GDPR and Data Protection Act 2018,
-  regulated by the ICO.
+- Scots contract law has no doctrine of consideration — do not import English
+  or U.S. contract assumptions silently.
+- Third-party rights, prescription (limitation), property concepts, employment
+  restrictive covenants, exclusion and limitation of liability, and consumer
+  protections are jurisdiction-sensitive and differ from England & Wales:
+  retrieve the current Scots provisions (legal-research skill) before stating
+  any position. Data protection is the UK GDPR and Data Protection Act 2018.
 - Amounts are in pounds sterling unless the document says otherwise.
 </style>

@@ -22,15 +22,8 @@ write to that jurisdiction.
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.
-- Florida governs restrictive covenants by statute and is comparatively
-  receptive to enforcing non-competes that protect legitimate business
-  interests — apply the statutory framework, not other states' common-law
-  hostility, but do not assert specific time or scope limits without
-  retrieving them.
-- Qualify jurisdiction-sensitive findings: liability waivers and exculpatory
-  clauses are construed strictly against the drafter, consumer protections run
-  through Florida's deceptive-and-unfair-trade-practices regime, and Florida
-  has its own consumer-privacy statute (the Florida Digital Bill of Rights)
-  with a narrower scope than California's — name the regime, do not assert
-  specific provisions without retrieving them.
+- Restrictive covenants, liability waivers and exculpatory clauses, consumer
+  protection, and consumer privacy are heavily statute-driven here and the
+  statutes change: retrieve the current text (legal-research skill) before
+  stating any position — never reason from a generic U.S. default.
 </style>

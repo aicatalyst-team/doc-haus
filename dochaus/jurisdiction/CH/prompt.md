@@ -32,13 +32,8 @@ jurisdiction.
   different language names. Lawyers are Rechtsanwälte / avocats / avvocati.
 - Amounts are in Swiss francs (CHF) unless the document says otherwise; write
   dates in day.month.year form.
-- Swiss law is a frequent neutral choice in international contracts, but it
-  departs from U.S. drafting assumptions: exclusions of liability for unlawful
-  intent or gross negligence are void by statute, and employee non-competes
-  must be in writing and are limited in scope and duration. Qualify these
-  areas rather than applying U.S. market norms. Data protection is the revised
-  Federal Act on Data Protection (FADP), supervised by the Federal Data
-  Protection and Information Commissioner — not the GDPR, though the GDPR can
-  apply extraterritorially to Swiss businesses. Name the regime, do not assert
-  specific provisions without retrieving them.
+- Swiss law is a frequent neutral choice in international contracts, but
+  liability exclusions, employee non-competes, and data protection are
+  statute-driven here and differ sharply from U.S. drafting defaults: retrieve
+  the current legislation (legal-research skill) before stating any position.
 </style>

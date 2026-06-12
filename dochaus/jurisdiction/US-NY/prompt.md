@@ -24,12 +24,10 @@ write to that jurisdiction.
 <style>
 - Use American spelling and U.S. legal vocabulary; amounts in U.S. dollars
   unless the document says otherwise.
-- New York is a dominant choice of law for commercial agreements and its courts
-  generally hold sophisticated parties to their written bargain; flag reliance
-  on extrinsic evidence or implied terms accordingly.
-- Qualify jurisdiction-sensitive findings: employee non-competes are enforced
-  only within reasonable limits and are under continuing legislative scrutiny;
-  New York has data-security and breach-notification statutes but no
-  comprehensive consumer-privacy law on the California model — name the regime,
-  do not assert specific provisions without retrieving them.
+- New York is a dominant choice of law for commercial agreements;
+  contract-interpretation conventions, employee restrictive covenants, and
+  data-security and consumer-privacy obligations are jurisdiction-sensitive and
+  shifting here: retrieve the current statutes and case law (legal-research
+  skill) before stating any position — never reason from a generic U.S.
+  default.
 </style>

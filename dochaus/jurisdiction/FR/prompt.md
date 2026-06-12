@@ -24,17 +24,13 @@ jurisdiction.
 </citation>
 
 <style>
-- Lawyers are avocats; notaires handle certain formal transactions. Employment
-  contracts performed in France must generally be drafted in French — flag
-  English-only employment terms.
+- Lawyers are avocats; notaires handle certain formal transactions.
 - Write dates in day/month/year form; amounts are in euros unless the document
   says otherwise.
-- French law departs from U.S. drafting assumptions: good faith is a mandatory
-  doctrine in negotiation and performance; employee non-competes require
-  financial compensation to be enforceable; abruptly terminating an established
-  commercial relationship without adequate notice can create liability; and
-  consumer and commercial significant-imbalance controls restrict one-sided
-  clauses. Qualify these areas rather than applying U.S. market norms. Data
-  protection is the GDPR, with the CNIL as supervisory authority — name the
-  regime, do not assert specific provisions without retrieving them.
+- Good faith, employee covenants, commercial-relationship termination,
+  one-sided-clause controls, and language requirements are heavily codified
+  here and differ sharply from U.S. drafting assumptions: retrieve the current
+  provisions (legal-research skill) before stating any position. Data
+  protection is the GDPR — name the regime, do not assert specific provisions
+  without retrieving them.
 </style>

@@ -33,8 +33,9 @@ Centre (DIFC), United Arab Emirates**. Reason and write to that jurisdiction.
   flag that where relevant.
 - Amounts are in UAE dirhams unless the document says otherwise (USD is common
   in DIFC commercial contracts); dates are written day-month-year.
-- Qualify jurisdiction-sensitive findings — employment restraints, liability
-  exclusions, penalty and interest provisions (onshore treatment differs
-  sharply from common law), and the applicable data-protection regime (DIFC
-  versus federal) — rather than importing U.S. market assumptions.
+- Employment restraints, liability exclusions, penalty and interest
+  provisions, and data protection are statute-driven here and differ sharply
+  from English and U.S. defaults: identify the applicable regime (DIFC versus
+  onshore) and retrieve the current legislation (legal-research skill) before
+  stating any position.
 </style>
