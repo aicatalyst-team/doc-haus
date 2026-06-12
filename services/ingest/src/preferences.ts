@@ -22,6 +22,10 @@ export type DraftingPreferences = {
   dateFormat: "month-day-year" | "day-month-year" | "iso"
   numberStyle: "words-and-numerals" | "numerals"
   houseStyle: string
+  // Enforced by the legal plugin's webfetch fence (dochaus/lib/research.ts),
+  // not rendered into drafting.md: "official" limits web research to official
+  // primary legal sources; "open" allows the whole web.
+  webResearch: "official" | "open"
 }
 
 export const DEFAULT_DRAFTING: DraftingPreferences = {
@@ -33,6 +37,7 @@ export const DEFAULT_DRAFTING: DraftingPreferences = {
   dateFormat: "month-day-year",
   numberStyle: "words-and-numerals",
   houseStyle: "",
+  webResearch: "official",
 }
 
 export function readDraftingPreferences(): DraftingPreferences {

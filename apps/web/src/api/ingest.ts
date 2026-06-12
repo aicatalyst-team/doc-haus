@@ -133,6 +133,7 @@ export type DraftingPreferences = {
   dateFormat: "month-day-year" | "day-month-year" | "iso"
   numberStyle: "words-and-numerals" | "numerals"
   houseStyle: string
+  webResearch: "official" | "open"
 }
 
 export async function getPreferences(): Promise<DraftingPreferences> {

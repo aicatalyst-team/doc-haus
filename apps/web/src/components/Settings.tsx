@@ -568,6 +568,16 @@ function DraftingTab({ onSaved }: { onSaved: (text: string) => void }) {
           { value: "numerals", label: "30 days" },
         ]}
       />
+      <SegRow
+        label="Web research"
+        hint="Where the assistants may read when a question turns on current law. Official sources are government legislation portals and court sites; the open web adds commentary, which is not authority and is a larger prompt-injection surface."
+        value={prefs.webResearch}
+        onChange={(webResearch) => set({ webResearch: webResearch as DraftingPreferences["webResearch"] })}
+        options={[
+          { value: "official", label: "Official legal sources only" },
+          { value: "open", label: "Entire web" },
+        ]}
+      />
       <label className="settings-label">House style notes</label>
       <textarea
         className="settings-textarea"
