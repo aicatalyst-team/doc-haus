@@ -1965,6 +1965,16 @@ li.list-row {
   padding: 3px 6px;
 }
 
+/* While editing, stretch the wrap and bubble to the full 76% so the textarea
+   matches the bubble width instead of collapsing to its content. */
+.msg-user-wrap:has(.msg-edit) {
+  width: 76%;
+}
+
+.msg-user-wrap:has(.msg-edit) .msg.user {
+  width: 100%;
+}
+
 .msg-edit {
   display: flex;
   flex-direction: column;
