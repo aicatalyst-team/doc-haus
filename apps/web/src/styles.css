@@ -3684,6 +3684,22 @@ button.linklike:hover:not(:disabled) {
   color: var(--danger);
 }
 
+/* Masked API-key input + its show/hide toggle, sat on one row. */
+.settings-password {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-password > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-reveal {
+  flex: 0 0 auto;
+}
+
 .settings-row {
   gap: 8px;
   align-items: center;

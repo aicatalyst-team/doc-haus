@@ -35,15 +35,16 @@ type Methods = Record<string, { type: "oauth" | "api"; label: string }[]>
 
 // The settings modal: a left rail of tabs over one shared shell. Models and
 // Providers act on the engine's global config + auth store (so they share the
-// header-less settings client and provider state); Drafting persists standing
-// instructions through the ingest service; Matter defaults, Approvals, and
-// Appearance are per-browser preferences (see prefs.ts).
-type Tab = "models" | "providers" | "drafting" | "matters" | "approvals" | "appearance"
+// header-less settings client and provider state); Drafting and Research persist
+// standing instructions through the ingest service; Matter defaults, Approvals,
+// and Appearance are per-browser preferences (see prefs.ts).
+type Tab = "models" | "providers" | "drafting" | "research" | "matters" | "approvals" | "appearance"
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "models", label: "Models" },
   { id: "providers", label: "Providers" },
   { id: "drafting", label: "Drafting" },
+  { id: "research", label: "Research" },
   { id: "matters", label: "Matter defaults" },
   { id: "approvals", label: "Approvals" },
   { id: "appearance", label: "Appearance" },
@@ -449,11 +450,10 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="password"
+                    <PasswordInput
                       placeholder={pick && connected.has(pick) ? "Replace key" : "API key"}
                       value={key}
-                      onChange={(e) => setKey(e.target.value)}
+                      onChange={setKey}
                       disabled={!pick}
                     />
                     <button
@@ -484,6 +484,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
             )}
 
             {tab === "drafting" && <DraftingTab onSaved={(m) => toast("success", m)} />}
+            {tab === "research" && <ResearchTab onSaved={(m) => toast("success", m)} />}
             {tab === "matters" && <MatterDefaultsTab />}
             {tab === "approvals" && <ApprovalsTab />}
             {tab === "appearance" && <AppearanceTab />}
@@ -578,34 +579,6 @@ function DraftingTab({ onSaved }: { onSaved: (text: string) => void }) {
           { value: "numerals", label: "30 days" },
         ]}
       />
-      <SegRow
-        label="Web research"
-        hint="Where the assistants may read when a question turns on current law. Official sources are government legislation portals and court sites; the open web adds commentary, which is not authority and is a larger prompt-injection surface."
-        value={prefs.webResearch}
-        onChange={(webResearch) => set({ webResearch: webResearch as DraftingPreferences["webResearch"] })}
-        options={[
-          { value: "official", label: "Official legal sources only" },
-          { value: "open", label: "Entire web" },
-        ]}
-      />
-      <label className="settings-label">Web search key</label>
-      <p className="settings-hint muted">
-        Web search lets the assistants discover a citation they do not already know — which statute governs, the
-        section number, the official page — before reading the law itself from the official source. Uses Exa
-        (exa.ai has a free tier); the key takes effect immediately after saving.
-      </p>
-      <input
-        type="password"
-        placeholder="Exa API key"
-        value={prefs.searchApiKey}
-        onChange={(e) => set({ searchApiKey: e.target.value })}
-      />
-      {!prefs.searchApiKey.trim() && (
-        <p className="settings-hint settings-warning">
-          No search key set. Assistants can still fetch law they can already cite from official sources, but they
-          cannot discover citations they do not know — a key part of live legal research.
-        </p>
-      )}
       <label className="settings-label">House style notes</label>
       <textarea
         className="settings-textarea"
@@ -629,6 +602,106 @@ function DraftingTab({ onSaved }: { onSaved: (text: string) => void }) {
         </button>
       </div>
     </section>
+  )
+}
+
+// Where the assistants may read on the live web, and the key that powers it.
+// Saved through the same ingest preferences as Drafting (it's one standing-
+// instructions file), but split into its own tab because web search is a
+// distinct, service-backed capability — not a drafting style choice.
+function ResearchTab({ onSaved }: { onSaved: (text: string) => void }) {
+  const [prefs, setPrefs] = useState<DraftingPreferences | null>(null)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    getPreferences().then(setPrefs)
+  }, [])
+  if (!prefs) return <p className="muted">Loading preferences...</p>
+  const set = (patch: Partial<DraftingPreferences>) => setPrefs({ ...prefs, ...patch })
+  return (
+    <section className="settings-section">
+      <h3>Research</h3>
+      <p className="settings-hint muted">
+        How the assistants read the live web when a question turns on current law. Saved as standing instructions on
+        the engine; changes apply from the next reply.
+      </p>
+      <SegRow
+        label="Web research"
+        hint="Where the assistants may read when a question turns on current law. Official sources are government legislation portals and court sites; the open web adds commentary, which is not authority and is a larger prompt-injection surface."
+        value={prefs.webResearch}
+        onChange={(webResearch) => set({ webResearch: webResearch as DraftingPreferences["webResearch"] })}
+        options={[
+          { value: "official", label: "Official legal sources only" },
+          { value: "open", label: "Entire web" },
+        ]}
+      />
+      <label className="settings-label">Exa API key</label>
+      <p className="settings-hint muted">
+        Web search is provided by Exa (exa.ai) — paste an Exa API key here. It lets the assistants discover a citation
+        they do not already know — which statute governs, the section number, the official page — before reading the law
+        itself from the official source. Exa has a free tier; the key takes effect immediately after saving.
+      </p>
+      <PasswordInput
+        placeholder="Exa API key (exa.ai)"
+        value={prefs.searchApiKey}
+        onChange={(searchApiKey) => set({ searchApiKey })}
+      />
+      {!prefs.searchApiKey.trim() && (
+        <p className="settings-hint settings-warning">
+          No Exa key set. Assistants can still fetch law they can already cite from official sources, but they cannot
+          discover citations they do not know — a key part of live legal research.
+        </p>
+      )}
+      <div className="row settings-row">
+        <button
+          className={`primary${saving ? " btn-loading" : ""}`}
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true)
+            setPrefs(await savePreferences(prefs))
+            setSaving(false)
+            onSaved("Research preferences saved. They apply from the assistant's next reply.")
+          }}
+        >
+          Save
+        </button>
+      </div>
+    </section>
+  )
+}
+
+// A masked text input with a show/hide toggle, for API keys. Defaults to hidden;
+// the toggle flips the input type so the key can be checked without re-typing.
+function PasswordInput({
+  value,
+  placeholder,
+  disabled,
+  onChange,
+}: {
+  value: string
+  placeholder?: string
+  disabled?: boolean
+  onChange: (value: string) => void
+}) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="settings-password">
+      <input
+        type={show ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        className="btn-sm ghost settings-reveal"
+        disabled={disabled}
+        aria-pressed={show}
+        onClick={() => setShow((s) => !s)}
+      >
+        {show ? "Hide" : "Show"}
+      </button>
+    </div>
   )
 }
 
