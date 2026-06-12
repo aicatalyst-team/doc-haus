@@ -1,5 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
+import { isAbsolute, relative, resolve, sep } from "node:path"
 import { findQuote, liveText } from "../lib/extract"
 import { formatCitations, type DocumentCitation } from "../lib/citations"
 import { loadJurisdiction, readMatterJurisdictions } from "../lib/jurisdiction"
@@ -29,8 +30,14 @@ import { isOfficialSource, researchScope } from "../lib/research"
 // the model is told to have the document re-ingested. A lawyer must never be
 // handed a quote whose text no longer exists in the document.
 
-export const LegalPlugin: Plugin = async (input) => ({
-  "experimental.chat.system.transform": async (_, output) => {
+export const LegalPlugin: Plugin = async (input) => {
+  // Matter-isolation boundary: the engine instantiates one plugin per matter and
+  // hands it that matter's directory, so every hook closes over the one matter it
+  // serves. The generic file tools resolve absolute paths and would otherwise
+  // reach across matters; the fence in tool.execute.before keeps them in here.
+  const matterDir = input.directory
+  return {
+    "experimental.chat.system.transform": async (_, output) => {
     // Untrusted-document guard (issue #17): injected for every agent — built-in
     // and firm-composed alike — so document content is always framed as data.
     // This is the model-side half of the defense; the ingest service detects and
@@ -83,6 +90,28 @@ export const LegalPlugin: Plugin = async (input) => ({
     }
   },
   "tool.execute.before": async (input, output) => {
+    // Matter-isolation fence: the generic file tools resolve absolute paths, so
+    // without this a session scoped to one matter could read or copy another
+    // matter's documents — a confidentiality breach the tools do not guard
+    // themselves (read-document / search-document are matter-scoped; read, glob,
+    // grep, list are not). Reject any target that escapes the matter directory.
+    if (input.tool === "read" || input.tool === "glob" || input.tool === "grep" || input.tool === "list") {
+      const args = output.args as Record<string, unknown>
+      const escapes = [args.filePath, args.path, args.pattern]
+        .filter((t): t is string => typeof t === "string")
+        .some((t) => {
+          const rel = relative(matterDir, isAbsolute(t) ? t : resolve(matterDir, t))
+          return rel === ".." || rel.startsWith(".." + sep) || isAbsolute(rel)
+        })
+      if (escapes)
+        throw new Error(
+          `This path is outside the current matter. Each matter's documents are confidential to that ` +
+            `matter, and the file tools cannot reach another matter's directory. Work only within the ` +
+            `current matter; use search-document and read-document to retrieve its documents. If the ` +
+            `documents you need are not in this matter, ask the user to upload them here.`,
+        )
+    }
+
     // Legal-research fence: webfetch exists so the agents can retrieve CURRENT
     // statute and regulation text (the legal-research skill), not browse the
     // web. Enforce the official-primary-source boundary deterministically here
@@ -174,8 +203,9 @@ export const LegalPlugin: Plugin = async (input) => ({
           `either the passage was removed or the quotation is invalid. ` +
           `Do not quote or rely on the rejected passages. `) +
       `If ${staleDocs} changed after indexing, it must be re-uploaded (re-ingested) before its contents can be cited.`
-  },
-})
+    },
+  }
+}
 
 // Run the exact → re-anchor → reject ladder for one citation. Returns the
 // verified (possibly re-anchored) citation, or undefined to reject it.
