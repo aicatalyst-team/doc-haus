@@ -7,7 +7,7 @@
 // the current code to record a baseline, change the retrieval code, run again,
 // then compare:
 //
-//   bun eval/retrieval-eval.ts build            # ingest corpus, derive exact-token gold
+//   HARVEY_ROOT=<harvey-labs checkout> bun eval/retrieval-eval.ts build   # ingest corpus, derive exact-token gold
 //   bun eval/retrieval-eval.ts run baseline     # score current code
 //   ... change retrieval ...
 //   bun eval/retrieval-eval.ts run hybrid
@@ -32,7 +32,8 @@ import path from "node:path"
 import searchDocument from "../tool/search-document"
 import { ingestDocument } from "../../services/ingest/src/ingest"
 
-const HARVEY_ROOT = process.env.HARVEY_ROOT ?? "/Users/nickwatson/Documents/GitHub/harvey-labs"
+// Local checkout of harvey-labs (the benchmark corpus source); required by `build` only.
+const HARVEY_ROOT = process.env.HARVEY_ROOT
 const CORPUS_TASKS = [
   "corporate-ma/analyze-change-of-control-provisions-across-targets-material-contracts",
   "banking-finance/compare-credit-agreement-against-term-sheet",
@@ -59,6 +60,7 @@ else {
 }
 
 async function build() {
+  if (!HARVEY_ROOT) throw new Error("set HARVEY_ROOT to a local harvey-labs checkout, e.g. HARVEY_ROOT=../harvey-labs bun eval/retrieval-eval.ts build")
   rmSync(CORPUS_DIR, { recursive: true, force: true })
   mkdirSync(CORPUS_DIR, { recursive: true })
   for (const task of CORPUS_TASKS) {
