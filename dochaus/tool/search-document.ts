@@ -7,7 +7,7 @@ import { pendingRedlinesForDoc } from "../lib/redlines"
 
 // doc.haus retrieval tool. Reads the per-matter legal.db that
 // `services/ingest` populates and runs the query through two channels — the
-// same local MiniLM embedding used at ingest time, and the BM25-ranked FTS5
+// same local embedding model used at ingest time, and the BM25-ranked FTS5
 // index ingest maintains over the same chunks — fused into one citation list.
 //
 // The database lives inside the matter directory (`<matter>/.dochaus/legal.db`)
@@ -15,16 +15,21 @@ import { pendingRedlinesForDoc } from "../lib/redlines"
 // another matter's privileged material. This tool is read-only; all writes
 // happen in the ingest service.
 
-const MODEL = "Xenova/all-MiniLM-L6-v2"
+// Must stay in lockstep with services/ingest/src/embed.ts (same model id and
+// pooling), or query and chunk vectors stop being comparable. The model card
+// specifies CLS pooling. Queries embed raw; chunks were embedded with a
+// document › section breadcrumb prepended (see embed.ts), which only the
+// document side carries.
+const MODEL = "onnx-community/granite-embedding-small-english-r2-ONNX"
 const DIM = 384
 
 let extractor: any
 async function embed(text: string) {
   if (!extractor) {
-    const { pipeline } = await import("@xenova/transformers")
-    extractor = await pipeline("feature-extraction", MODEL)
+    const { pipeline } = await import("@huggingface/transformers")
+    extractor = await pipeline("feature-extraction", MODEL, { dtype: "q8" })
   }
-  const output = await extractor(text, { pooling: "mean", normalize: true })
+  const output = await extractor(text, { pooling: "cls", normalize: true })
   return output.data as Float32Array
 }
 
@@ -86,9 +91,10 @@ function lexicalChannel(db: Database, query: string, document?: string): ChunkRo
     "SELECT c.id, c.doc_name, c.doc_path, c.section, c.text, c.char_start, c.char_end, c.flagged" +
     " FROM chunks_fts f JOIN chunks c ON c.id = f.rowid WHERE chunks_fts MATCH ?" +
     (document ? " AND c.doc_name = ?" : "") +
-    // bm25() is best-first ascending; weight the section label above body text so
-    // a query naming a clause ranks the clause's own chunks before passing mentions.
-    " ORDER BY bm25(chunks_fts, 1.0, 2.0) LIMIT ?"
+    // bm25() is best-first ascending; weight the section label and document name
+    // above body text so a query naming a clause or a document ranks that
+    // clause's or document's own chunks before passing mentions.
+    " ORDER BY bm25(chunks_fts, 1.0, 2.0, 2.0) LIMIT ?"
   const params = document ? [match, document, CANDIDATES] : [match, CANDIDATES]
   return db.query(sql).all(...params) as ChunkRow[]
 }
@@ -109,7 +115,7 @@ function phraseChannel(db: Database, query: string, document?: string): ChunkRow
     "SELECT c.id, c.doc_name, c.doc_path, c.section, c.text, c.char_start, c.char_end, c.flagged" +
     " FROM chunks_fts f JOIN chunks c ON c.id = f.rowid WHERE chunks_fts MATCH ?" +
     (document ? " AND c.doc_name = ?" : "") +
-    " ORDER BY bm25(chunks_fts, 1.0, 2.0) LIMIT ?"
+    " ORDER BY bm25(chunks_fts, 1.0, 2.0, 2.0) LIMIT ?"
   const params = document ? [phrase, document, CANDIDATES] : [phrase, CANDIDATES]
   return db.query(sql).all(...params) as ChunkRow[]
 }
@@ -148,12 +154,21 @@ export default tool({
     const k = args.k ?? 5
 
     const db = new Database(dbPath, { readonly: true })
+    // Vectors from a different embedding model are not comparable with this
+    // tool's query vectors — rankings would be silently wrong. Refuse instead.
+    const hasMeta = db.query("SELECT 1 FROM sqlite_master WHERE name = 'meta'").get()
+    const indexModel = hasMeta
+      ? (db.query("SELECT value FROM meta WHERE key = 'embedding_model'").get() as { value: string } | null)?.value
+      : null
+    if (indexModel !== MODEL) {
+      db.close()
+      return "This matter's search index was built by an older embedding model. Restart the ingest service to migrate it, then search again."
+    }
     const channels = [
       vectorChannel(db, queryVec, args.document),
       lexicalChannel(db, args.query, args.document),
       phraseChannel(db, args.query, args.document),
     ]
-    db.close()
 
     // score = Σ 1/(RRF_K + rank) over the channels a chunk appears in, divided
     // by the best possible sum (rank 1 in every channel) to cap it at 1. A hit
@@ -170,6 +185,10 @@ export default tool({
       .sort((a, b) => b.score - a.score)
       .slice(0, k)
       .map(({ row, score }) => ({ row, score: score / (channels.length / (RRF_K + 1)) }))
+
+    const definitionsNote = attachDefinitions(db, ranked)
+    const crossRefsNote = attachCrossRefs(db, ranked)
+    db.close()
 
     const signature = ranked.map(({ row }) => `${row.doc_name}§${row.section}`).join("|")
     const recent = recentBySession.get(ctx.sessionID) ?? []
@@ -213,8 +232,90 @@ export default tool({
 
     return {
       title: `${citations.length} passage(s) for "${args.query}"`,
-      output: (formatCitations(citations) || "No relevant passages found.") + pendingNote,
+      output: (formatCitations(citations) || "No relevant passages found.") + definitionsNote + crossRefsNote + pendingNote,
       metadata: { citations, pending },
     }
   },
 })
+
+// Auto-attach the verbatim definitions of defined terms that appear inside the
+// returned excerpts. A passage like "during the Cure Period" silently depends
+// on a definition that lives pages away; attaching it saves the model a lookup
+// and keeps it from guessing the meaning. Matching is case-sensitive whole-word
+// (defined terms are capitalized — case folding would match ordinary prose),
+// definition text is verbatim from the defined_terms table, and the list is
+// deduped and capped so a definition-dense passage cannot flood the response.
+const ATTACH_CAP = 5
+
+function attachDefinitions(db: Database, ranked: Array<{ row: ChunkRow }>) {
+  const docPaths = [...new Set(ranked.map(({ row }) => row.doc_path))]
+  if (!docPaths.length) return ""
+  const terms = db
+    .query(`SELECT doc_path, doc_name, term, definition FROM defined_terms WHERE doc_path IN (${docPaths.map(() => "?").join(",")})`)
+    .all(...docPaths) as Array<{ doc_path: string; doc_name: string; term: string; definition: string }>
+  const attached = terms
+    .filter((t) =>
+      ranked.some(({ row }) => {
+        if (row.doc_path !== t.doc_path) return false
+        // Skip excerpts that are themselves the definition site — attaching the
+        // definition under the passage that states it is noise.
+        if (row.text.includes(`"${t.term}"`) || row.text.includes(`“${t.term}”`)) return false
+        const at = row.text.indexOf(t.term)
+        if (at === -1) return false
+        const before = row.text[at - 1]
+        const after = row.text[at + t.term.length]
+        return (before === undefined || !/[A-Za-z0-9]/.test(before)) && (after === undefined || !/[A-Za-z0-9]/.test(after))
+      }),
+    )
+    .filter((t, i, all) => all.findIndex((o) => o.term === t.term && o.doc_path === t.doc_path) === i)
+    // Longer terms first: "Original Credit Agreement" beats "Credit Agreement"
+    // for the cap when both match the same excerpt.
+    .sort((a, b) => b.term.length - a.term.length)
+    .slice(0, ATTACH_CAP)
+  if (!attached.length) return ""
+  return (
+    `\n\nDefined terms used in these passages (definitions verbatim from the documents):\n` +
+    attached.map((t) => `- "${t.term}" (${t.doc_name}): ${t.definition}`).join("\n")
+  )
+}
+
+// Auto-resolve numbered cross-references appearing in the excerpts ("as set
+// forth in Section 8.3") against the citing document's own section labels, so
+// the model knows the referenced section is one get-section call away instead
+// of searching for it — or that it is not in the indexed text at all.
+const EXCERPT_REF_RE =
+  /\b(Section|Article|Clause|Exhibit|Schedule|Annex|Appendix)\s+(\d+(?:\.\d+)*(?:\([a-z]+\))*|[A-Z](?![A-Za-z])|[IVXLC]+(?![A-Za-z]))/g
+
+function attachCrossRefs(db: Database, ranked: Array<{ row: ChunkRow }>) {
+  const resolved = ranked
+    .flatMap(({ row }) =>
+      [...row.text.matchAll(EXCERPT_REF_RE)].map((m) => ({
+        docPath: row.doc_path,
+        docName: row.doc_name,
+        ownSection: row.section,
+        kind: m[1],
+        label: m[2],
+      })),
+    )
+    .filter((ref) => ref.label !== ref.ownSection)
+    .filter(
+      (ref, i, all) => all.findIndex((o) => o.docPath === ref.docPath && o.kind === ref.kind && o.label === ref.label) === i,
+    )
+    .map((ref) => ({
+      ...ref,
+      // EXCERPT_REF_RE labels cannot contain %/_ today; escape anyway so a
+      // widened ref pattern can never turn the label into a LIKE wildcard.
+      hit: db
+        .query(
+          "SELECT section FROM chunks WHERE doc_path = ?1 AND (section = ?2 OR section LIKE ?3 || '.%' ESCAPE '\\') LIMIT 1",
+        )
+        .get(ref.docPath, ref.label, ref.label.replaceAll(/[\\%_]/g, "\\$&")) as { section: string } | null,
+    }))
+    .filter((ref) => ref.hit)
+    .slice(0, ATTACH_CAP)
+  if (!resolved.length) return ""
+  return (
+    `\n\nCross-references in these passages that resolve to indexed sections (fetch with the get-section tool):\n` +
+    resolved.map((ref) => `- ${ref.kind} ${ref.label} → section "${ref.hit!.section}" of ${ref.docName}`).join("\n")
+  )
+}
