@@ -161,13 +161,25 @@ function partsToSteps(parts: Part[], matter: string, pool?: Part[]): Step[] {
       // timeline stays a one-line narration but the underlying work it explored
       // (a search's passages, a read's content, a failure's reason) is one click
       // away. Subagent task steps narrate through their nested children instead.
+      const input = "input" in p.state ? (p.state.input as Record<string, unknown> | undefined) : undefined
       const raw =
         p.state.status === "completed" ? p.state.output : p.state.status === "error" ? p.state.error : undefined
-      const detail = !children && raw?.trim() ? raw.trim() : undefined
+      // The python tool runs in a sandbox the lawyer never sees — surface the code
+      // it executed, not just the output, so a step that returns "['main.py']" is
+      // auditable. The source is what ran; the output is only its echo, useless on
+      // its own. Prepend the code; keep the output beneath it when there is one.
+      const code =
+        p.tool === "python_run_python_code"
+          ? ((input?.python_code ?? input?.code ?? input?.source) as string | undefined)
+          : undefined
+      const body =
+        code?.trim() && raw?.trim()
+          ? `${code.trim()}\n\n--- output ---\n${raw.trim()}`
+          : (code?.trim() ?? raw?.trim())
+      const detail = !children && body ? body : undefined
       // A read that finds no .dochaus/profile.md is the firm-profile skill's
       // expected "no profile yet" branch, not a failure — settle it as a
       // neutral step instead of an error.
-      const input = "input" in p.state ? (p.state.input as Record<string, unknown> | undefined) : undefined
       if (
         status === "error" &&
         p.tool === "read" &&
@@ -313,6 +325,7 @@ function readTurn(parts: Map<string, Part>, roles: Map<string, string>, matter: 
 function toTurns(
   msgs: { info: { id: string; role: "user" | "assistant"; agent?: string; error?: MessageError }; parts: Part[] }[],
   matter: string,
+  pool?: Part[],
 ): Turn[] {
   const groups: { role: "user" | "assistant"; id: string; parts: Part[]; agent?: string; error?: string }[] = []
   // An assistant turn answers the most recent user turn, so it inherits that
@@ -334,7 +347,7 @@ function toTurns(
       agent: g.agent,
       error: g.error,
       ...contentOf(g.parts),
-      steps: g.role === "assistant" ? partsToSteps(g.parts, matter) : [],
+      steps: g.role === "assistant" ? partsToSteps(g.parts, matter, pool) : [],
     }))
     .filter((t) => t.text || t.citations.length || t.steps.length || t.error)
 }
@@ -662,7 +675,28 @@ export default function ChatPanel({
       // live view and hanging on a half-settled turn.
       const msgs = await getMessages(client, sessionRef.current).catch(() => undefined)
       if (!msgs) return
-      setTurns(toTurns(msgs, matterName))
+      // A turn that consulted subagents spawned child sessions; each reviewer's
+      // reasoning and tool parts live in its own session, not this one. The live
+      // view nested them because partsRef held every session's parts — but the
+      // reload only pulls the main session, so without fetching the children too
+      // the settled turn drops the nesting that was just on screen. Reload each
+      // child a task step named and pool every part for toTurns to nest.
+      const childIDs = [
+        ...new Set(
+          msgs.flatMap((m) =>
+            m.parts.flatMap((p) =>
+              p.type === "tool" && p.tool === "task"
+                ? [(p.state as { metadata?: { sessionId?: string } }).metadata?.sessionId].filter(
+                    (id): id is string => Boolean(id),
+                  )
+                : [],
+            ),
+          ),
+        ),
+      ]
+      const children = await Promise.all(childIDs.map((id) => getMessages(client, id).catch(() => [])))
+      const pool = [...msgs, ...children.flat()].flatMap((m) => m.parts)
+      setTurns(toTurns(msgs, matterName, pool))
       for (const m of msgs) seenRef.current.add(m.info.id)
     }
     partsRef.current.clear()
