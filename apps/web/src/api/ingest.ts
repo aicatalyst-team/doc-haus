@@ -130,6 +130,7 @@ export type DraftingPreferences = {
   posture: "client-favorable" | "balanced" | "conservative"
   formality: "formal" | "plain"
   detail: "concise" | "detailed"
+  process: "plan-first" | "standard"
   dateFormat: "month-day-year" | "day-month-year" | "iso"
   numberStyle: "words-and-numerals" | "numerals"
   houseStyle: string

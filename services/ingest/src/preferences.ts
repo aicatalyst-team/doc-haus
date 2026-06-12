@@ -19,6 +19,10 @@ export type DraftingPreferences = {
   posture: "client-favorable" | "balanced" | "conservative"
   formality: "formal" | "plain"
   detail: "concise" | "detailed"
+  // "plan-first" makes assistants inventory the source documents, spot issues,
+  // research, and write an action plan before producing or revising a document.
+  // Slower and costs more model time; catches more.
+  process: "plan-first" | "standard"
   dateFormat: "month-day-year" | "day-month-year" | "iso"
   numberStyle: "words-and-numerals" | "numerals"
   houseStyle: string
@@ -38,6 +42,7 @@ export const DEFAULT_DRAFTING: DraftingPreferences = {
   posture: "balanced",
   formality: "formal",
   detail: "concise",
+  process: "plan-first",
   dateFormat: "month-day-year",
   numberStyle: "words-and-numerals",
   houseStyle: "",
@@ -88,6 +93,17 @@ const NUMBERS: Record<DraftingPreferences["numberStyle"], string> = {
   numerals: 'Write numbers as plain numerals: "30 days".',
 }
 
+const PLAN_FIRST = [
+  "<plan_first_drafting>",
+  "The lawyer has enabled plan-first drafting. It applies whenever you produce or revise a document (drafting, redlining, marking up); it does not apply to questions, summaries, or review-only work. Work in four explicit phases, each shown in the conversation:",
+  "1. Inventory. Read every source document in full, not just search snippets. Produce a facts table (every party, individual, amount, percentage, date, duration, plan name, classification) and a provision inventory (every section and term of the controlling documents).",
+  "2. Issue spotting and research. Assess EVERY provision in the inventory against the governing jurisdiction's law and the controlling documents — not only the provisions that look unusual; a defect you already fixed in one clause often recurs in another. Verify that every named institution, statute, and benefit plan actually exists. Where you can spawn subagents, use the legal-reviewer for this research.",
+  "3. Action plan. For each provision, decide: keep, modify (state how), remove, or flag. Every modify, remove, and flag decision must also appear in the cover memo or report — including issues you spotted but deliberately left for the client. List the open items.",
+  "4. Execute and verify. Produce the document from the plan. Then read the result back and walk the action plan item by item, confirming each decision landed; fix anything that did not before reporting.",
+  "Do not skip or merge phases, and do not start the document until the action plan is complete.",
+  "</plan_first_drafting>",
+].join("\n")
+
 function renderInstructions(prefs: DraftingPreferences) {
   const who = prefs.attorney
     ? [`Documents are prepared by ${prefs.attorney}${prefs.firm ? ` of ${prefs.firm}` : ""}.`]
@@ -107,6 +123,7 @@ function renderInstructions(prefs: DraftingPreferences) {
     `- ${DATES[prefs.dateFormat]}`,
     `- ${NUMBERS[prefs.numberStyle]}`,
     "</drafting_preferences>",
+    ...(prefs.process === "plan-first" ? ["", PLAN_FIRST] : []),
     ...(house ? ["", "<house_style>", house, "</house_style>"] : []),
     "",
   ].join("\n")

@@ -519,6 +519,16 @@ function DraftingTab({ onSaved }: { onSaved: (text: string) => void }) {
         <input placeholder="Doe & Partners LLP" value={prefs.firm} onChange={(e) => set({ firm: e.target.value })} />
       </div>
       <SegRow
+        label="Process"
+        hint="Plan-first makes the assistants inventory the source documents, spot issues against the governing law, research, and write a provision-by-provision action plan before touching the document. Slower and uses more model time; catches more."
+        value={prefs.process}
+        onChange={(process) => set({ process: process as DraftingPreferences["process"] })}
+        options={[
+          { value: "plan-first", label: "Plan-first" },
+          { value: "standard", label: "Standard" },
+        ]}
+      />
+      <SegRow
         label="Posture"
         hint="How hard negotiated terms lean toward your client."
         value={prefs.posture}
