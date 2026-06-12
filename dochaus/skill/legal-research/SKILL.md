@@ -13,9 +13,14 @@ text and reason from what you retrieved.
    document's governing-law clause decide which jurisdiction's sources control.
 2. **Resolve the citation to an official source.** The matter's jurisdiction
    pack may carry a `<sources>` URL pattern; use it. Otherwise use the sources
-   below.
+   below. If you do not know WHICH statute or section governs, use the
+   `web-search` tool to discover the citation — search results are leads, never
+   authority. If web-search reports it is not configured, tell the user a search
+   API key can be added in Settings, and say plainly that you cannot discover
+   the citation; never substitute a remembered one.
 3. **Fetch with `webfetch`** and read the section text. Fetch the specific
-   section, not a search page.
+   section, not a search page. `web-search` finds the citation; `webfetch`
+   against the official source reads the law — only the latter is authority.
 4. **Quote and cite what you fetched** — cite the statute (code name and
    section) and reason only from the retrieved text. If the fetch fails or the
    section cannot be located, say so plainly; never substitute remembered text

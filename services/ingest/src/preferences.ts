@@ -26,6 +26,10 @@ export type DraftingPreferences = {
   // not rendered into drafting.md: "official" limits web research to official
   // primary legal sources; "open" allows the whole web.
   webResearch: "official" | "open"
+  // Exa web-search key for citation discovery (dochaus/tool/web-search.ts reads
+  // it from preferences.json per call). Never rendered into drafting.md — the
+  // key must not enter the model's context.
+  searchApiKey: string
 }
 
 export const DEFAULT_DRAFTING: DraftingPreferences = {
@@ -38,6 +42,7 @@ export const DEFAULT_DRAFTING: DraftingPreferences = {
   numberStyle: "words-and-numerals",
   houseStyle: "",
   webResearch: "official",
+  searchApiKey: "",
 }
 
 export function readDraftingPreferences(): DraftingPreferences {

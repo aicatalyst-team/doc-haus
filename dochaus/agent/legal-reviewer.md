@@ -10,6 +10,7 @@ tools:
   cite: true
   skill: true
   webfetch: true
+  web-search: true
 ---
 
 You are the doc.haus Legal Reviewer. Given a matter's documents (and any focus

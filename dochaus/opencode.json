@@ -129,6 +129,7 @@
     "edit": "deny",
     "bash": "deny",
     "webfetch": "allow",
+    "web-search": "allow",
     "websearch": "deny"
   },
   "agent": {

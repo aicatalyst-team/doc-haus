@@ -55,10 +55,22 @@ export function isOfficialSource(url: string) {
 // preferences.json the ingest service writes for drafting preferences; read
 // from disk on every fetch so a settings save applies immediately, no restart.
 export function researchScope(): "official" | "open" {
+  return readPreferences().webResearch === "open" ? "open" : "official"
+}
+
+// The firm's Exa web-search key (Settings > Drafting). Same per-call disk read
+// as researchScope, so pasting a key in Settings makes the web-search tool work
+// on the very next turn. Undefined until the firm configures one — the tool
+// degrades to an instructive message, never a fake result.
+export function readSearchKey(): string | undefined {
+  const key = readPreferences().searchApiKey
+  return typeof key === "string" && key.trim() ? key.trim() : undefined
+}
+
+function readPreferences(): Record<string, unknown> {
   const root = process.env.WORKSPACE_ROOT
-  if (!root) return "official"
+  if (!root) return {}
   const file = path.join(root, ".preferences", "preferences.json")
-  if (!existsSync(file)) return "official"
-  const prefs = JSON.parse(readFileSync(file, "utf8"))
-  return prefs.webResearch === "open" ? "open" : "official"
+  if (!existsSync(file)) return {}
+  return JSON.parse(readFileSync(file, "utf8"))
 }
