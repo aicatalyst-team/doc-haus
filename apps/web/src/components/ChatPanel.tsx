@@ -164,6 +164,17 @@ function partsToSteps(parts: Part[], matter: string, pool?: Part[]): Step[] {
       const raw =
         p.state.status === "completed" ? p.state.output : p.state.status === "error" ? p.state.error : undefined
       const detail = !children && raw?.trim() ? raw.trim() : undefined
+      // A read that finds no .dochaus/profile.md is the firm-profile skill's
+      // expected "no profile yet" branch, not a failure — settle it as a
+      // neutral step instead of an error.
+      const input = "input" in p.state ? (p.state.input as Record<string, unknown> | undefined) : undefined
+      if (
+        status === "error" &&
+        p.tool === "read" &&
+        typeof input?.filePath === "string" &&
+        input.filePath.endsWith(".dochaus/profile.md")
+      )
+        return [{ kind: "tool", label: "No practice profile on file", status: "done", detail }]
       return [{ kind: "tool", label: stepLabel(p, matter), status, detail, children }]
     }
     return []
@@ -209,6 +220,7 @@ const isEmptyAnswer = (text?: string) => !text || !/[\p{L}\p{N}]/u.test(text)
 const INTERNAL_FILES: Record<string, string> = {
   "matter.json": "Reviewed the matter details",
   "grid.json": "Reviewed the document grid",
+  "profile.md": "Reviewed the practice profile",
 }
 
 // The reviewers a workflow spawns, named by legal role rather than subagent id.
