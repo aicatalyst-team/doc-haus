@@ -6,8 +6,11 @@
 // carrying the house style set (Title, Heading 1-3, List Paragraph), so markdown
 // inserted by Docxodus lands as real Word styles. It is assembled from raw OOXML
 // parts zipped with the system `zip` (Docxodus can edit a .docx but not create
-// one from nothing). `nda.docx` is then drafted from that seed through the same
-// Docxodus insert pipeline the draft-document tool uses.
+// one from nothing). `demo/templates/nda.docx` is then drafted from that seed
+// through the same Docxodus insert pipeline the draft-document tool uses. It is
+// demo content only: the ingest seed script copies it into the firm library
+// (WORKSPACE_ROOT/.templates) when start.sh runs with --demo; a non-demo install
+// starts with no templates.
 //
 // Template placeholder convention: every placeholder is a UNIQUE descriptive
 // instruction, `[insert effective date]` — never a bare `[___]`. draft-document
@@ -165,7 +168,8 @@ const seed = Object.keys(session.project().anchorIndex).find((id) => id.startsWi
 const inserted = session.insertParagraph(seed, "after", NDA_BODY)
 if (!inserted.success) throw new Error(`nda insert failed: ${inserted.error?.message}`)
 session.deleteBlock(seed)
-const nda = path.join(here, "nda.docx")
+const nda = path.join(here, "..", "..", "demo", "templates", "nda.docx")
+mkdirSync(path.dirname(nda), { recursive: true })
 await Bun.write(nda, session.save())
 session.close()
 console.log(`built ${nda}`)

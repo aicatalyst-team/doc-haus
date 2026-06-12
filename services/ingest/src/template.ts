@@ -26,16 +26,20 @@ export function templatePath(name: string) {
   return path.join(TEMPLATES_DIR, path.basename(name))
 }
 
-// Seed the library from the repo's nda.docx on first run. The directory's own
-// existence is the first-run marker: idempotent across restarts, and it never
-// resurrects a template the user has deleted (a present dir means we already
-// seeded). _base.docx stays repo-internal — it is the from-scratch seed, never a
+// Seed the library from repo demo/templates on first demo run. Demo-gated: only
+// the seed script (`start.sh --demo`) calls this — a non-demo install starts with
+// an empty library. The directory's own existence is the first-run marker:
+// idempotent across restarts, and it never resurrects a template the user has
+// deleted (a present dir means we already seeded). _base.docx stays repo-internal
+// under dochaus/templates — it is the from-scratch drafting seed, never a
 // user-visible template.
 export function seedTemplates() {
   if (existsSync(TEMPLATES_DIR)) return
   mkdirSync(TEMPLATES_DIR, { recursive: true })
-  const seed = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "dochaus", "templates", "nda.docx")
-  copyFileSync(seed, templatePath("nda.docx"))
+  const demoTemplates = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "demo", "templates")
+  readdirSync(demoTemplates)
+    .filter((name) => name.endsWith(".docx"))
+    .forEach((name) => copyFileSync(path.join(demoTemplates, name), templatePath(name)))
 }
 
 export async function listTemplates() {

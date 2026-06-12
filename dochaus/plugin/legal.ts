@@ -158,7 +158,9 @@ export const LegalPlugin: Plugin = async (input) => {
         `unenforceable in this jurisdiction, terms that conflict with a controlling source document ` +
         `(an executed agreement beats a template), and terms the draft references but never defines. ` +
         `Fold every finding into your memo or summary for the user, with proposed corrected language ` +
-        `for each Must-fix item. One review round; do not loop. Separately, read the new draft ` +
+        `for each Must-fix item. Apply Must-fix corrections as tracked redlines on this same document, ` +
+        `or present them as proposals in the memo — NEVER call draft-document again to produce another ` +
+        `version of this draft. One review round; do not loop. Separately, read the new draft ` +
         `(read-document) and verify every term-sheet item landed in it exactly — template mode only ` +
         `changes what fills/replaces anchored, so a term you intended is not necessarily a term in ` +
         `the document. Describe the draft to the user only from its verified text, never from intent.`

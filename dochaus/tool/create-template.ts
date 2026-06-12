@@ -2,6 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
+import { splitHeadingBlocks } from "../lib/markdown"
 
 // doc.haus create-template tool. Adds a new reusable drafting template to the
 // firm's global library. A template carries NO real client data: every variable
@@ -42,7 +43,7 @@ export default tool({
     // The seed's single empty paragraph is the insertion anchor; the whole markdown
     // body goes in as one multi-block insert, then the seed paragraph is dropped.
     const anchor = Object.keys(session.project().anchorIndex).find((id) => id.startsWith("p:"))!
-    const inserted = session.insertParagraph(anchor, "after", args.content)
+    const inserted = session.insertParagraph(anchor, "after", splitHeadingBlocks(args.content))
     if (!inserted.success) {
       session.close()
       return `Template build failed: ${inserted.error?.message ?? JSON.stringify(inserted.error)}`

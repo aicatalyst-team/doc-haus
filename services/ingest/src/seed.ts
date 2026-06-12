@@ -315,7 +315,7 @@ export async function seedDemo() {
   mkdirSync(demoDir, { recursive: true })
   writeFileSync(path.join(demoDir, "Letter-of-Engagement-Aldgate-Mills.docx"), buffer)
 
-  // Seed the firm's template library from the repo's nda.docx. Demo-only: a non-demo
+  // Seed the firm's template library from repo demo/templates. Demo-only: a non-demo
   // boot ships an empty template library so first-run users start with nothing seeded.
   seedTemplates()
 

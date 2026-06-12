@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
 
-const ndaBytes = await Bun.file(path.join(path.dirname(fileURLToPath(import.meta.url)), "nda.docx")).bytes()
+const ndaBytes = await Bun.file(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "demo", "templates", "nda.docx"),
+).bytes()
 const dx = await docxodus()
 
 describe("optional clause markers", () => {

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
+import { splitHeadingBlocks } from "../lib/markdown"
 
 // doc.haus draft-document tool. Creates a NEW Word (.docx) document in the
 // current matter — either by filling a template from dochaus/templates, or from
@@ -21,7 +22,7 @@ const ingestUrl = process.env.INGEST_URL ?? "http://127.0.0.1:4500"
 
 export default tool({
   description:
-    'Create a new Word (.docx) document in this matter. Two modes: pass "template" (a name from list-templates) plus "fills" — and "omit" for any optional clauses to leave out — to draft from a template, or pass "content" (full document body as markdown — headings, paragraphs, lists, one blank line between blocks) to draft from scratch. Template clauses that are wrong for this matter (unenforceable in the jurisdiction, contradicted by a controlling source document, below market) should be rewritten in the same call via "replaces" — never ship template language you know is wrong just because it is in the template. Returns any placeholders still unfilled so they can be completed with the editing tools.',
+    'Create a new Word (.docx) document in this matter. Two modes: pass "template" (a name from list-templates) plus "fills" — and "omit" for any optional clauses to leave out — to draft from a template, or pass "content" (full document body as markdown — headings, paragraphs, lists, one blank line between blocks) to draft from scratch. Template clauses that are wrong for this matter (unenforceable in the jurisdiction, contradicted by a controlling source document, below market) should be rewritten in this one call via "replaces" — never ship template language you know is wrong just because it is in the template. Call this tool at most ONCE per requested document: anything to change after the draft exists goes through the redline/tracked-changes editing tools on that document, never a second draft-document call producing another version. Returns any placeholders still unfilled so they can be completed with the editing tools.',
   args: {
     name: tool.schema
       .string()
@@ -95,7 +96,7 @@ export default tool({
       // The seed's single empty paragraph is the insertion anchor; the whole
       // markdown body goes in as one multi-block insert, then the seed is dropped.
       const seed = Object.keys(session.project().anchorIndex).find((id) => id.startsWith("p:"))!
-      const inserted = session.insertParagraph(seed, "after", args.content)
+      const inserted = session.insertParagraph(seed, "after", splitHeadingBlocks(args.content))
       if (!inserted.success) {
         session.close()
         return `Draft failed: ${inserted.error?.message ?? JSON.stringify(inserted.error)}`
@@ -134,7 +135,7 @@ export default tool({
         missedReplaces.push(r.clause)
         continue
       }
-      const inserted = session.insertParagraph(anchor.id, "after", r.replacement)
+      const inserted = session.insertParagraph(anchor.id, "after", splitHeadingBlocks(r.replacement))
       if (!inserted.success) {
         missedReplaces.push(r.clause)
         continue
