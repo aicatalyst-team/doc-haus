@@ -694,7 +694,9 @@ input[type="checkbox"]:checked::before {
 
 /* ---------- List rows: full-row click target, hover wash, actions on demand */
 
-.list-row {
+/* li.list-row outranks the base .matter-list li rule, which would otherwise
+   zero out the horizontal padding that keeps the hover wash off the text. */
+li.list-row {
   display: flex;
   align-items: center;
   gap: 12px;
