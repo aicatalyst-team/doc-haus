@@ -11,6 +11,8 @@ import {
   getInjectionReport,
 } from "./db"
 import { ingestDocument, extractDocumentText } from "./ingest"
+import { migrateEmbeddings } from "./embed"
+import { migrateStructure } from "./structure"
 import { pdfToDocx } from "./convert"
 import { buildRedlined, bake } from "./redline"
 import { listMatters, createMatter, getMatter, renameMatter, deleteMatter, matterDir, listJurisdictions, listPlaybooks, updatePlaybook, deletePlaybook, PlaybookError, WORKSPACE_ROOT } from "./matter"
@@ -499,15 +501,22 @@ const { seedPlaybooks } = await import("./seed")
 seedPlaybooks()
 
 // Matters indexed before the lexical FTS channel existed (issue #67) get their
-// chunks_fts table built and backfilled by openDb's migration here, so the
-// search-document tool never opens a legal.db without it. Matters created from
-// now on carry the table from first ingest.
+// chunks_fts table built and backfilled by openDb's migration here, and matters
+// embedded by an older model get every chunk vector rewritten, so the
+// search-document tool never opens a legal.db that is missing the index or
+// serving incomparable vectors. Matters created from now on carry both from
+// first ingest.
 for (const matter of listMatters()) {
   if (!existsSync(path.join(matter.dir, ".dochaus", "legal.db"))) continue
   // One corrupt or externally-locked matter DB must not abort the whole
   // service; that matter just stays un-migrated until its next ingest.
   try {
-    openDb(matter.dir).close()
+    const db = openDb(matter.dir)
+    const reembedded = await migrateEmbeddings(db)
+    const restructured = migrateStructure(db)
+    db.close()
+    if (reembedded) console.log(`re-embedded ${reembedded} chunks in ${matter.dir}`)
+    if (restructured) console.log(`extracted structure for ${restructured} documents in ${matter.dir}`)
   } catch (e) {
     console.error(`failed to migrate ${matter.dir}: ${e instanceof Error ? e.message : e}`)
   }

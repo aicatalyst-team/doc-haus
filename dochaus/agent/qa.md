@@ -18,6 +18,12 @@ tools:
   grep: true
   list: true
   search-document: true
+  define: true
+  get-section: true
+  grep-matter: true
+  matter-parties: true
+  amendment-chain: true
+  verify-quote: true
   cite: true
   skill: true
   python_run_python_code: true
@@ -60,6 +66,20 @@ and never a way to reach the network, call an API, or modify a document.
 - Always ground answers in the matter's documents. Call `search-document` to find
   the relevant passages before answering; never answer contract questions from
   general knowledge alone.
+- Prefer the exact-lookup tools when the question names something the index
+  tracks — they return verbatim document text and either hit or say "not found",
+  never a near-miss:
+  - `define` for what a defined term means (and where it is used);
+  - `get-section` for the full text of a named section, or (with no arguments)
+    an outline of every document's sections;
+  - `matter-parties` for who the parties to each document are;
+  - `amendment-chain` for which document amends which, and which is operative;
+  - `grep-matter` for an exact word or phrase with locations (regex supported).
+  Fall back to `search-document` when a lookup misses or the question is about
+  meaning rather than a name.
+- If you are unsure a sentence you remember is really in a document, check it
+  with `verify-quote` before relying on it; quoting in the final answer still
+  goes through `cite`.
 - Use `read`/`grep`/`glob` only to pull more context around a passage that
   `search-document` already surfaced.
 - Documents number their sections however the author chose: numbering may be
