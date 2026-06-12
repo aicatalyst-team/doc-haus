@@ -21,7 +21,7 @@ const ingestUrl = process.env.INGEST_URL ?? "http://127.0.0.1:4500"
 
 export default tool({
   description:
-    'Create a new Word (.docx) document in this matter. Two modes: pass "template" (a name from list-templates) plus "fills" — and "omit" for any optional clauses to leave out — to draft from a template, or pass "content" (full document body as markdown — headings, paragraphs, lists, one blank line between blocks) to draft from scratch. Returns any placeholders still unfilled so they can be completed with the editing tools.',
+    'Create a new Word (.docx) document in this matter. Two modes: pass "template" (a name from list-templates) plus "fills" — and "omit" for any optional clauses to leave out — to draft from a template, or pass "content" (full document body as markdown — headings, paragraphs, lists, one blank line between blocks) to draft from scratch. Template clauses that are wrong for this matter (unenforceable in the jurisdiction, contradicted by a controlling source document, below market) should be rewritten in the same call via "replaces" — never ship template language you know is wrong just because it is in the template. Returns any placeholders still unfilled so they can be completed with the editing tools.',
   args: {
     name: tool.schema
       .string()
@@ -43,6 +43,21 @@ export default tool({
       .optional()
       .describe(
         'For template mode: optional clause names to leave OUT of the draft, exactly as listed by list-templates (e.g. "non-solicitation"). Each named clause is removed whole; every other optional clause is kept with its marker stripped.',
+      ),
+    replaces: tool.schema
+      .array(
+        tool.schema.object({
+          clause: tool.schema
+            .string()
+            .describe("Text from the template clause to rewrite — a distinctive sentence or phrase within it. Used to locate the paragraph."),
+          replacement: tool.schema
+            .string()
+            .describe("The new clause text. Replaces the whole located paragraph; markdown is supported."),
+        }),
+      )
+      .optional()
+      .describe(
+        "For template mode: clauses to rewrite in the new draft as clean text (not tracked changes). Each entry locates the paragraph containing `clause` and replaces its entire text with `replacement`. Use for template language that must change for this matter — jurisdiction-invalid clauses, terms the source documents override, missing standard definitions.",
       ),
     content: tool.schema.string().optional().describe("For from-scratch mode: the complete document body as markdown"),
   },
@@ -107,6 +122,26 @@ export default tool({
       session.fillPlaceholders((p) => fills[p.match.text] ?? null)
     }
 
+    // Clause rewrites run after fills so a `clause` anchor can include filled-in
+    // text, and before the optional-marker strip so a rewrite may target a kept
+    // optional clause by its visible text. Same locate semantics as the redline
+    // tool: match the block's flat text whitespace-tolerantly, then swap the
+    // whole paragraph (insert the replacement after it, delete the original).
+    const missedReplaces: string[] = []
+    for (const r of args.replaces ?? []) {
+      const anchor = session.findByText(r.clause, { ignoreWhitespace: true })
+      if (!anchor) {
+        missedReplaces.push(r.clause)
+        continue
+      }
+      const inserted = session.insertParagraph(anchor.id, "after", r.replacement)
+      if (!inserted.success) {
+        missedReplaces.push(r.clause)
+        continue
+      }
+      session.deleteBlock(anchor.id)
+    }
+
     // Kept optional clauses lose their marker so it never reaches the draft.
     session.fillPlaceholders((p) => (p.match.text.startsWith("[optional:") ? "" : null), {
       kinds: dx.PlaceholderKinds.AlternativeClause,
@@ -135,10 +170,20 @@ export default tool({
         missingOmits.length
           ? `Optional clauses not found (left as-is): ${missingOmits.join(", ")}. Check the names against list-templates.`
           : "",
+        missedReplaces.length
+          ? `Clause rewrites whose anchor text was not found (template language kept as-is): ${missedReplaces.map((c) => JSON.stringify(c)).join(", ")}. Locate the exact clause text with read-document and retry, or fix the draft with the editing tools.`
+          : "",
       ]
         .filter(Boolean)
         .join(" "),
-      metadata: { document: target, template: args.template, remainingPlaceholders: remaining, omitted: args.omit },
+      metadata: {
+        document: target,
+        template: args.template,
+        remainingPlaceholders: remaining,
+        omitted: args.omit,
+        replaced: (args.replaces ?? []).filter((r) => !missedReplaces.includes(r.clause)).map((r) => r.clause),
+        missedReplaces,
+      },
     }
   },
 })
