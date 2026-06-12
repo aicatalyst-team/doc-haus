@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { deleteWorkflow, listMatters, listWorkflows, type CustomWorkflow, type Matter } from "../api/ingest"
+import { deleteWorkflow, listWorkflows, type CustomWorkflow, type Matter } from "../api/ingest"
 import { useToast } from "../components/Toast"
 import ChatPanel from "../components/ChatPanel"
+import MatterPicker from "../components/MatterPicker"
 import { DocMarkdown } from "../components/Markdown"
 import { WORKFLOW_BUILDER, WORKFLOWS, type WorkflowMeta } from "../agents"
 
@@ -25,7 +26,6 @@ export default function Workflows() {
   // The workflow being launched — either a built-in WorkflowMeta or a custom one.
   const [using, setUsing] = useState<WorkflowMeta | CustomWorkflow>()
   const [viewing, setViewing] = useState<WorkflowMeta | CustomWorkflow>()
-  const [matters, setMatters] = useState<Matter[]>([])
   const navigate = useNavigate()
   const createdRef = useRef<string | undefined>(undefined)
   const toast = useToast()
@@ -86,7 +86,12 @@ export default function Workflows() {
         ) : (
           <ul className="matter-list">
             {WORKFLOWS.map((wf) => (
-              <li key={wf.name} className="list-row">
+              <li
+                key={wf.name}
+                className="list-row list-row-clickable"
+                title="View what this workflow does"
+                onClick={() => setViewing(wf)}
+              >
                 <div className="list-row-main">
                   <span className="list-row-title">
                     {wf.label}
@@ -103,7 +108,6 @@ export default function Workflows() {
                     onClick={(e) => {
                       e.stopPropagation()
                       setUsing(wf)
-                      listMatters().then(setMatters)
                     }}
                   >
                     Use
@@ -124,7 +128,12 @@ export default function Workflows() {
             {sortedCustom.map((wf) => {
               const stepSummary = wf.steps.map((s) => s.agent).join(" → ")
               return (
-                <li key={wf.name} className="list-row">
+                <li
+                  key={wf.name}
+                  className="list-row list-row-clickable"
+                  title="View what this workflow does"
+                  onClick={() => setViewing(wf)}
+                >
                   <div className="list-row-main">
                     <span className="list-row-title">{wf.label}</span>
                     <span className="list-row-meta">
@@ -139,7 +148,6 @@ export default function Workflows() {
                       onClick={(e) => {
                         e.stopPropagation()
                         setUsing(wf)
-                        listMatters().then(setMatters)
                       }}
                     >
                       Use
@@ -213,28 +221,11 @@ export default function Workflows() {
       )}
 
       {using && (
-        <div className="viewer-overlay" onClick={() => setUsing(undefined)}>
-          <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="viewer-bar">
-              <span className="viewer-title">Use "{using.label}" in a matter</span>
-              <button onClick={() => setUsing(undefined)}>Close</button>
-            </div>
-            <div className="picker-body">
-              {matters.length === 0 ? (
-                <p className="muted">No matters yet. Create one from the sidebar first.</p>
-              ) : (
-                matters.map((m) => (
-                  <button key={m.id} className="assistant-option" onClick={() => useWorkflow(using, m)}>
-                    <span className="assistant-name">
-                      {m.reference ? `${m.reference} — ` : ""}
-                      {m.title}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <MatterPicker
+          title={`Use "${using.label}" in a matter`}
+          onPick={(m) => useWorkflow(using, m)}
+          onClose={() => setUsing(undefined)}
+        />
       )}
 
       {viewing && (

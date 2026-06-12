@@ -148,7 +148,12 @@ export default function Skills() {
         ) : (
           <ul className="matter-list">
             {visible.map((s) => (
-              <li key={s.name} className="list-row">
+              <li
+                key={s.name}
+                className="list-row list-row-clickable"
+                title="View this skill"
+                onClick={() => setViewing(s)}
+              >
                 <div className="list-row-main">
                   <span className="list-row-title">
                     {s.name}

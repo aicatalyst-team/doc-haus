@@ -4,6 +4,7 @@ import { getMatter } from "../api/ingest"
 import { deleteSession, listSessions, matterClient } from "../api/opencode"
 import logo from "../assets/dochaus-logo.svg"
 import { useToast } from "./Toast"
+import { Tooltip } from "./Tooltip"
 
 type Convo = { id: string; title: string; updated: number }
 
@@ -155,7 +156,11 @@ export default function Sidebar({
 
       {matterId && (
         <div className="sidebar-surfaces">
-          {!collapsed && matterTitle && <div className="sidebar-matter">{matterTitle}</div>}
+          {!collapsed && matterTitle && (
+            <Tooltip label={matterTitle}>
+              <div className="sidebar-matter">{matterTitle}</div>
+            </Tooltip>
+          )}
           {SURFACES.map((s) => (
             <Link
               key={s.view}
@@ -195,13 +200,14 @@ export default function Sidebar({
             <ul className="convo-list">
               {convos.map((c) => (
                 <li key={c.id} className="convo-row">
-                  <Link
-                    to={`/matter/${matterId}?session=${c.id}`}
-                    className={`convo-item${c.id === activeSession ? " active" : ""}`}
-                    title={c.title}
-                  >
-                    {c.title}
-                  </Link>
+                  <Tooltip label={c.title}>
+                    <Link
+                      to={`/matter/${matterId}?session=${c.id}`}
+                      className={`convo-item${c.id === activeSession ? " active" : ""}`}
+                    >
+                      {c.title}
+                    </Link>
+                  </Tooltip>
                   {confirmId === c.id ? (
                     <button
                       className="convo-confirm"

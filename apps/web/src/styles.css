@@ -572,6 +572,14 @@ input[type="checkbox"]:checked::before {
   animation: convo-confirm-in 160ms var(--ease-out);
 }
 
+/* Override the global button:hover (which washes the bg light) so the danger
+   pill keeps its red fill — white text on white was unreadable. */
+.convo-confirm:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  filter: brightness(1.1);
+}
+
 .convo-confirm:focus-visible {
   outline-color: var(--danger);
   box-shadow: var(--focus-ring-danger);
@@ -709,6 +717,11 @@ li.list-row {
 
 .list-row:last-child {
   border-bottom: none;
+}
+
+/* Whole row opens the template viewer; inner buttons stop propagation. */
+.list-row-clickable {
+  cursor: pointer;
 }
 
 .list-row:hover {
@@ -1403,8 +1416,87 @@ li.list-row {
   text-overflow: ellipsis;
 }
 
+/* Instant hover tooltip (components/Tooltip.tsx). Fixed + body-portaled so it
+   escapes the sidebar scroll clip; pinned to the right of the hovered item. */
+.tip-bubble {
+  position: fixed;
+  transform: translateY(-50%);
+  z-index: var(--z-toast);
+  max-width: 280px;
+  padding: 6px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--text);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  word-break: break-word;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
 /* Click-to-rename matter title: the heading reads as plain text but invites a
    click; the input it swaps to inherits the heading's size so nothing shifts. */
+/* Title-area meta: a reference chip, the title, then the jurisdiction picker,
+   stacked tight so the whole block reads as one editable matter identity. */
+.matter-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.matter-head h1 {
+  margin: 0;
+}
+
+.matter-head-jx {
+  flex-shrink: 0;
+}
+
+/* Jurisdictions read as badges in the header; the bare trigger resets button
+   chrome so the chips sit flush, then opens the same picker popover on click. */
+.jx-trigger-bare {
+  border: none;
+  background: none;
+  padding: 4px;
+  margin: -4px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.jx-trigger-bare:hover {
+  background: var(--accent-soft);
+}
+
+.matter-jx-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.matter-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.matter-jx-add {
+  font-size: 13px;
+  color: var(--muted);
+  border-radius: 4px;
+  padding: 2px 8px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
 .matter-title {
   cursor: text;
   display: inline-block;
@@ -1418,13 +1510,45 @@ li.list-row {
 
 .matter-title-input {
   margin: 0;
-  font-size: 1.5em;
+  width: min(560px, 60vw);
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 2px 6px;
+}
+
+/* Reference chip as a click-to-edit button: reuses .matter-ref's look but resets
+   button chrome and keeps a hover affordance like the title. */
+.matter-ref.matter-field {
+  margin: 0;
+  border: none;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.matter-ref.matter-field:hover {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.matter-ref.matter-field.empty {
+  color: var(--muted);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.matter-ref-input {
+  width: 220px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
 }
 
 /* ---------- Tabular review: documents (rows) x questions (columns) ---------- */

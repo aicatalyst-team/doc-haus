@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
-import { getMatter, listPlaybooks, listWorkflows, renameMatter, type CustomWorkflow, type MatterDetail as Detail, type Playbook } from "../api/ingest"
+import { getMatter, listJurisdictions, listPlaybooks, listWorkflows, renameMatter, type CustomWorkflow, type Jurisdiction, type MatterDetail as Detail, type Playbook } from "../api/ingest"
 import { disposeInstance, listAgents, matterClient } from "../api/opencode"
 import { AUTO, WORKFLOWS } from "../agents"
 import DocumentUpload from "../components/DocumentUpload"
 import DocumentViewer from "../components/DocumentViewer"
 import ChatPanel from "../components/ChatPanel"
 import ReviewGrid from "../components/ReviewGrid"
+import JurisdictionSelect from "../components/JurisdictionSelect"
 
 type Agent = { name: string; description?: string; mode?: string; hidden?: boolean }
 
@@ -22,6 +23,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   const session = params.get("session") ?? undefined
   const [matter, setMatter] = useState<Detail>()
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
+  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([])
   const [custom, setCustom] = useState<CustomWorkflow[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [agent, setAgent] = useState(AUTO)
@@ -30,10 +32,14 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   // follows a chat redline preview's "View in document" link (undefined otherwise).
   const [focusRedline, setFocusRedline] = useState<number>()
   const [docsOpen, setDocsOpen] = useState(() => localStorage.getItem("dh.docs") !== "0")
-  // Click the title to rename: swap the heading for an input seeded with the
-  // current title. Commit persists via the ingest service and updates in place.
+  // The title-area fields are inline-click-editable: clicking one swaps its label
+  // for an input (or, for jurisdictions, the shared multi-select) seeded with the
+  // current value. Each commit persists the whole matter via the ingest service
+  // and updates in place. Reference and title each track their own edit flag/draft.
   const [renaming, setRenaming] = useState(false)
   const [draftTitle, setDraftTitle] = useState("")
+  const [editingRef, setEditingRef] = useState(false)
+  const [draftRef, setDraftRef] = useState("")
   // The session id the composer just minted. The first send flips the `session`
   // param, remounting ChatPanel under the new id; this lets that remount know it
   // is the same composer (not a rail reopen) so it keeps the cursor seated.
@@ -45,6 +51,7 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
 
   useEffect(() => {
     listPlaybooks().then(setPlaybooks)
+    listJurisdictions().then(setJurisdictions)
   }, [])
 
   function refresh() {
@@ -121,25 +128,66 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
   const available = new Set(agents.map((a) => a.name))
   const workflows = [...WORKFLOWS, ...custom]
 
+  // One persist path for every title-area field: merge the changed fields over the
+  // current matter, write the whole record, and reflect what came back. Sessions
+  // refresh too so the sidebar/picker pick up a renamed or re-referenced matter.
+  async function patch(fields: Partial<Pick<Detail, "title" | "reference" | "jurisdictions" | "playbook">>) {
+    if (!matter) return
+    const next = { ...matter, ...fields }
+    const updated = await renameMatter(matter.id, next.title, next.reference, next.jurisdictions, next.playbook)
+    setMatter((m) => m && { ...m, title: updated.title, reference: updated.reference, jurisdictions: updated.jurisdictions, playbook: updated.playbook })
+    onSessionsChanged()
+  }
+
   async function commitRename() {
     setRenaming(false)
     const next = draftTitle.trim()
     if (!matter || !next || next === matter.title) return
-    const updated = await renameMatter(matter.id, next, matter.reference, matter.jurisdictions, matter.playbook)
-    setMatter((m) => m && { ...m, title: updated.title })
-    onSessionsChanged()
+    await patch({ title: next })
   }
 
-  async function changePlaybook(next?: string) {
-    if (!matter) return
-    const updated = await renameMatter(matter.id, matter.title, matter.reference, matter.jurisdictions, next)
-    setMatter((m) => m && { ...m, playbook: updated.playbook })
+  async function commitRef() {
+    setEditingRef(false)
+    const next = draftRef.trim()
+    if (!matter || next === (matter.reference ?? "")) return
+    await patch({ reference: next || undefined })
+  }
+
+  function changePlaybook(next?: string) {
+    return patch({ playbook: next })
   }
 
   return (
     <>
       <header className="page-head">
-        <div>
+        <div className="matter-head">
+          {editingRef ? (
+            <input
+              className="matter-ref-input"
+              autoFocus
+              placeholder="Reference"
+              value={draftRef}
+              onChange={(e) => setDraftRef(e.target.value)}
+              onBlur={commitRef}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRef()
+                if (e.key === "Escape") setEditingRef(false)
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className={`matter-ref matter-field${matter.reference ? "" : " empty"}`}
+              title="Click to edit reference"
+              onClick={() => {
+                setDraftRef(matter.reference ?? "")
+                setEditingRef(true)
+              }}
+            >
+              {matter.reference || "Add reference"}
+            </button>
+          )}
+
           <h1>
             {renaming ? (
               <input
@@ -162,20 +210,32 @@ export default function MatterDetail({ onSessionsChanged }: { onSessionsChanged:
                   setRenaming(true)
                 }}
               >
-                {matter.reference && <span className="matter-ref">{matter.reference}</span>}
                 {matter.title}
               </span>
             )}
           </h1>
-          {(matter.jurisdictions?.length ?? 0) > 0 && (
-            <p className="page-sub">
-              {matter.jurisdictions?.map((code) => (
-                <span key={code} className="matter-ref">
-                  {code}
+        </div>
+
+        <div className="matter-head-jx">
+          <JurisdictionSelect
+            jurisdictions={jurisdictions}
+            selected={matter.jurisdictions ?? []}
+            onChange={(codes) => patch({ jurisdictions: codes })}
+            align="right"
+            trigger={
+              (matter.jurisdictions?.length ?? 0) === 0 ? (
+                <span className="matter-jx-add">Add jurisdiction</span>
+              ) : (
+                <span className="matter-jx-badges">
+                  {matter.jurisdictions?.map((code) => (
+                    <span key={code} className="matter-badge">
+                      {jurisdictions.find((j) => j.code === code)?.name ?? code}
+                    </span>
+                  ))}
                 </span>
-              ))}
-            </p>
-          )}
+              )
+            }
+          />
         </div>
       </header>
 

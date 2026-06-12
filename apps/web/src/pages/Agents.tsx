@@ -103,7 +103,12 @@ export default function Agents() {
         ) : (
           <ul className="matter-list">
             {visible.map((a) => (
-              <li key={a.name} className="list-row">
+              <li
+                key={a.name}
+                className="list-row list-row-clickable"
+                title="View this agent"
+                onClick={() => setViewing(a)}
+              >
                 <div className="list-row-main">
                   <span className="list-row-title">
                     {a.label}

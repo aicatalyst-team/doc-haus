@@ -381,8 +381,8 @@ export default function ChatPanel({
   agent: string
   available: Set<string>
   // A single fixed assistant for this surface (e.g. the Templates page's
-  // template-builder). Replaces the assistant picker and workflow launcher with a
-  // static chip — there is nothing to choose when one agent owns the room.
+  // template-builder). Drops the composer tools row entirely — no assistant
+  // picker, no workflow launcher, nothing to choose when one agent owns the room.
   pinned?: AssistantMeta
   // Surface copy — defaults read for a matter chat; other surfaces (the template
   // library) pass their own heading, empty-state hint, starters, and placeholder.
@@ -936,36 +936,29 @@ export default function ChatPanel({
       {permissions.map((p) => (
         <PermissionCard key={p.id} request={p} onReply={onPermissionReply} />
       ))}
-      <div className="composer-tools">
-        {pinned ? (
-          <span className="assistant-trigger" style={{ cursor: "default" }} title={pinned.description}>
-            <svg className="assistant-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-              <path d="M20 3v4M22 5h-4M4 17v2M5 18H3" />
-            </svg>
-            <span className="assistant-trigger-label">{pinned.label}</span>
-          </span>
-        ) : (
-          <>
-            <ModelSelector
-              available={available}
-              value={agent}
-              resolvedLabel={isAuto(agent) && resolvedAgent ? agentLabel(resolvedAgent) : undefined}
-              onChange={(a) => {
-                onAgentChange(a)
-                // Leaving Auto drops the last routing so the chip does not keep showing
-                // a resolved label under a manually-picked assistant.
-                if (!isAuto(a)) setResolvedAgent(undefined)
-                inputRef.current?.focus()
-              }}
-            />
-            <WorkflowLauncher available={available} onLaunch={runWorkflow} workflows={workflows} />
-            {onPlaybookChange && (
-              <PlaybookSelector playbooks={playbooks ?? []} value={playbook} onChange={onPlaybookChange} />
-            )}
-          </>
-        )}
-      </div>
+      {!pinned && (
+        // A pinned surface (the template library) owns its one assistant — no
+        // picker, no workflow launcher, nothing to choose. Drop the whole tools
+        // row so the composer reads clean.
+        <div className="composer-tools">
+          <ModelSelector
+            available={available}
+            value={agent}
+            resolvedLabel={isAuto(agent) && resolvedAgent ? agentLabel(resolvedAgent) : undefined}
+            onChange={(a) => {
+              onAgentChange(a)
+              // Leaving Auto drops the last routing so the chip does not keep showing
+              // a resolved label under a manually-picked assistant.
+              if (!isAuto(a)) setResolvedAgent(undefined)
+              inputRef.current?.focus()
+            }}
+          />
+          <WorkflowLauncher available={available} onLaunch={runWorkflow} workflows={workflows} />
+          {onPlaybookChange && (
+            <PlaybookSelector playbooks={playbooks ?? []} value={playbook} onChange={onPlaybookChange} />
+          )}
+        </div>
+      )}
       <div className="composer">
         <textarea
           ref={inputRef}

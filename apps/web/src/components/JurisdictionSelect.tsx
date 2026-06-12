@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import type { Jurisdiction } from "../api/ingest"
 
@@ -11,11 +11,15 @@ export default function JurisdictionSelect({
   selected,
   onChange,
   align = "left",
+  trigger,
 }: {
   jurisdictions: Jurisdiction[]
   selected: string[]
   onChange: (codes: string[]) => void
   align?: "left" | "right"
+  // When given, replaces the default dropdown trigger with custom content (e.g.
+  // jurisdiction badges) wrapped in a bare button that still opens the popover.
+  trigger?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState("")
@@ -73,10 +77,16 @@ export default function JurisdictionSelect({
 
   return (
     <div className="jx-select" ref={ref}>
-      <button type="button" className="assistant-trigger jx-trigger" onClick={toggleOpen} title="Jurisdiction — steers reasoning and citation style">
-        <span className="assistant-trigger-label">{label}</span>
-        <svg className={`assistant-caret${open ? " open" : ""}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </button>
+      {trigger ? (
+        <button type="button" className="jx-trigger-bare" onClick={toggleOpen} title="Click to edit jurisdiction">
+          {trigger}
+        </button>
+      ) : (
+        <button type="button" className="assistant-trigger jx-trigger" onClick={toggleOpen} title="Jurisdiction — steers reasoning and citation style">
+          <span className="assistant-trigger-label">{label}</span>
+          <svg className={`assistant-caret${open ? " open" : ""}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+      )}
       {open &&
         createPortal(
           <div

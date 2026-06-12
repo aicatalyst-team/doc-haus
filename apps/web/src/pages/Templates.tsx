@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   deleteTemplate,
-  listMatters,
   listTemplates,
   updateTemplateDescription,
   uploadTemplate,
@@ -11,6 +10,7 @@ import {
 } from "../api/ingest"
 import { useToast } from "../components/Toast"
 import TemplateViewer from "../components/TemplateViewer"
+import MatterPicker from "../components/MatterPicker"
 import ChatPanel from "../components/ChatPanel"
 import { TEMPLATE_BUILDER } from "../agents"
 
@@ -32,9 +32,8 @@ export default function Templates() {
   const [confirmName, setConfirmName] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [viewing, setViewing] = useState<Template>()
-  // "Use" flow: the template being assembled, and the matters to pick from.
+  // "Use" flow: the template being assembled into a matter the lawyer picks.
   const [using, setUsing] = useState<Template>()
-  const [matters, setMatters] = useState<Matter[]>([])
   const navigate = useNavigate()
   const input = useRef<HTMLInputElement>(null)
   // The session id the composer just minted, so the remount that follows the first
@@ -165,7 +164,12 @@ export default function Templates() {
               const optional = t.placeholders.filter((p) => p.text.startsWith("[optional:")).length
               const fills = t.placeholders.length - optional
               return (
-                <li key={t.name} className="list-row">
+                <li
+                  key={t.name}
+                  className="list-row list-row-clickable"
+                  title="View template"
+                  onClick={() => setViewing(t)}
+                >
                   <div className="list-row-main">
                     <span className="list-row-title">{t.name}</span>
                     <span className="list-row-meta">
@@ -207,7 +211,6 @@ export default function Templates() {
                       onClick={(e) => {
                         e.stopPropagation()
                         setUsing(t)
-                        listMatters().then(setMatters)
                       }}
                     >
                       Use
@@ -285,28 +288,11 @@ export default function Templates() {
       )}
 
       {using && (
-        <div className="viewer-overlay" onClick={() => setUsing(undefined)}>
-          <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="viewer-bar">
-              <span className="viewer-title">Use "{using.name}" in a matter</span>
-              <button onClick={() => setUsing(undefined)}>Close</button>
-            </div>
-            <div className="picker-body">
-              {matters.length === 0 ? (
-                <p className="muted">No matters yet. Create one from the sidebar first.</p>
-              ) : (
-                matters.map((m) => (
-                  <button key={m.id} className="assistant-option" onClick={() => useTemplate(using, m)}>
-                    <span className="assistant-name">
-                      {m.reference ? `${m.reference} — ` : ""}
-                      {m.title}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <MatterPicker
+          title={`Use "${using.name}" in a matter`}
+          onPick={(m) => useTemplate(using, m)}
+          onClose={() => setUsing(undefined)}
+        />
       )}
     </>
   )
