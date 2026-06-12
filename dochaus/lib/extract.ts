@@ -1,4 +1,5 @@
 import { statSync } from "node:fs"
+import { normalizeExtractedText } from "./untrusted"
 
 // Live-document extraction shared by the citation plugin (which re-checks every
 // citation's span against the current file) and the `cite` tool (which anchors a
@@ -15,10 +16,10 @@ export async function liveText(docPath: string) {
   const hit = textCache.get(docPath)
   if (hit && hit.mtimeMs === mtimeMs) return hit.text
   const buffer = Buffer.from(await Bun.file(docPath).arrayBuffer())
-  // Ingest computes offsets by accumulating `line + "\n"` over the extracted
-  // text, which equals the raw extraction plus exactly one trailing newline —
-  // mirror that here or the final chunk of every document fails verification.
-  const text = (await extract(docPath, buffer)) + "\n"
+  // Ingest computes offsets by accumulating `line + "\n"` over the normalized
+  // extracted text, which equals the normalized raw extraction plus exactly one
+  // trailing newline — mirror both steps here or every chunk fails verification.
+  const text = normalizeExtractedText(await extract(docPath, buffer)) + "\n"
   if (!textCache.has(docPath) && textCache.size >= CACHE_LIMIT) {
     const oldest = textCache.keys().next().value
     if (oldest !== undefined) textCache.delete(oldest)

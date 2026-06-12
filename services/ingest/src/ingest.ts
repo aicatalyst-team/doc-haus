@@ -4,6 +4,7 @@ import mammoth from "mammoth"
 import { openDb, upsertDocument, insertChunk } from "./db"
 import { embed } from "./embed"
 import { pdfToText } from "./pdf"
+import { detectInjection, normalizeExtractedText, scanDocxHiddenContent } from "./sanitize"
 
 // ~500 tokens at roughly 4 chars/token.
 const CHUNK_CHARS = 2000
@@ -60,16 +61,37 @@ export async function ingestDocument(matterDir: string, fileName: string, buffer
   const docPath = path.join(matterDir, fileName)
   writeFileSync(docPath, buffer)
 
-  const text = await extractDocumentText(fileName, buffer)
+  // Untrusted-document defense (issue #17): normalize away invisible Unicode, then
+  // scan the visible text and the raw DOCX for injected instructions. Findings are
+  // stored on the document and flag overlapping chunks — the text itself is never
+  // rewritten, so the lawyer always reviews exactly what the counterparty wrote.
+  const extraction = normalizeExtractedText(await extractRawText(fileName, buffer))
+  const text = extraction.text
+  const findings = [
+    ...extraction.findings,
+    ...detectInjection(text),
+    ...(fileName.toLowerCase().endsWith(".docx") ? scanDocxHiddenContent(buffer) : []),
+  ]
   const sections = sectionize(text)
 
   const db = openDb(matterDir)
-  const documentId = upsertDocument(db, docPath, fileName, Date.now())
+  const documentId = upsertDocument(
+    db,
+    docPath,
+    fileName,
+    Date.now(),
+    findings.length ? JSON.stringify({ findings }) : null,
+  )
 
   let chunkIndex = 0
+  let flaggedChunks = 0
   for (const section of sections) {
     for (const chunk of chunkSection(section)) {
       const embedding = await embed(chunk.text)
+      const flagged = findings.some(
+        (f) => f.charStart !== undefined && f.charEnd !== undefined && f.charStart < chunk.charEnd && f.charEnd > chunk.charStart,
+      )
+      if (flagged) flaggedChunks++
       insertChunk(db, {
         documentId,
         docPath,
@@ -80,19 +102,31 @@ export async function ingestDocument(matterDir: string, fileName: string, buffer
         charStart: chunk.charStart,
         charEnd: chunk.charEnd,
         embedding,
+        flagged,
       })
     }
   }
   db.close()
 
-  return { name: fileName, docPath, sections: sections.length, chunks: chunkIndex }
+  return {
+    name: fileName,
+    docPath,
+    sections: sections.length,
+    chunks: chunkIndex,
+    injection: findings.length ? { findings, flaggedChunks } : null,
+  }
 }
 
-// Pull plain text from a source document for indexing. DOCX goes through mammoth;
-// PDF through markitdown/unpdf with an OCR fallback for flat scans (see pdf.ts).
-// Both feed the same sectionize/chunk/embed path, so the rest of ingestion is
-// format-agnostic.
+// Pull plain text from a source document. DOCX goes through mammoth; PDF through
+// markitdown/unpdf with an OCR fallback for flat scans (see pdf.ts). Always
+// normalized (see sanitize.ts) so every consumer — indexing, the document/template
+// text routes, and through them the agents' read-document tool — sees the same
+// instruction-stripped text that chunk offsets were computed over.
 export async function extractDocumentText(fileName: string, buffer: Buffer) {
+  return normalizeExtractedText(await extractRawText(fileName, buffer)).text
+}
+
+async function extractRawText(fileName: string, buffer: Buffer) {
   if (fileName.toLowerCase().endsWith(".pdf")) return pdfToText(buffer)
   return (await mammoth.extractRawText({ buffer })).value
 }

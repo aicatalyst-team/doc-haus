@@ -68,7 +68,7 @@ export default tool({
 
     const db = new Database(dbPath, { readonly: true })
     const sql =
-      "SELECT doc_name, doc_path, section, text, char_start, char_end, embedding FROM chunks" +
+      "SELECT doc_name, doc_path, section, text, char_start, char_end, embedding, flagged FROM chunks" +
       (args.document ? " WHERE doc_name = ?" : "")
     const rows = (args.document ? db.query(sql).all(args.document) : db.query(sql).all()) as Array<{
       doc_name: string
@@ -78,6 +78,7 @@ export default tool({
       char_start: number
       char_end: number
       embedding: Uint8Array
+      flagged: number
     }>
     db.close()
 
@@ -112,6 +113,9 @@ export default tool({
       charStart: row.char_start,
       charEnd: row.char_end,
       score,
+      // Carried through to formatCitations, which warns the model before the
+      // excerpt that ingest flagged this passage as instruction-like (issue #17).
+      flagged: row.flagged === 1,
     }))
 
     // Surface proposals already pending on the cited documents. The retrieved

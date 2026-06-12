@@ -10,14 +10,20 @@ export function openDb(matterDir: string): Database {
   mkdirSync(dir, { recursive: true })
   const db = new Database(path.join(dir, "legal.db"))
   db.run("PRAGMA journal_mode = WAL")
+  // injection_report: JSON-encoded prompt-injection findings from ingest-time
+  // scanning (see sanitize.ts), NULL when the document came up clean.
   db.run(`
     CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       doc_path TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
-      created_at INTEGER NOT NULL
+      created_at INTEGER NOT NULL,
+      injection_report TEXT
     )
   `)
+  // flagged: 1 when the chunk overlaps an ingest-time injection finding, so the
+  // search-document tool can mark the passage as adversarial when handing it to
+  // the model.
   db.run(`
     CREATE TABLE IF NOT EXISTS chunks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,9 +35,14 @@ export function openDb(matterDir: string): Database {
       text TEXT NOT NULL,
       char_start INTEGER NOT NULL,
       char_end INTEGER NOT NULL,
-      embedding BLOB NOT NULL
+      embedding BLOB NOT NULL,
+      flagged INTEGER NOT NULL DEFAULT 0
     )
   `)
+  // Databases created before the injection-defense columns existed (issue #17)
+  // gain them here; their documents read as clean until re-ingested.
+  if (!hasColumn(db, "documents", "injection_report")) db.run("ALTER TABLE documents ADD COLUMN injection_report TEXT")
+  if (!hasColumn(db, "chunks", "flagged")) db.run("ALTER TABLE chunks ADD COLUMN flagged INTEGER NOT NULL DEFAULT 0")
   // Pending redline proposals. The canonical .docx stays clean (the accepted
   // state); each redline a tool proposes is a row here until a reviewer accepts
   // it (baked into the doc) or rejects it. scope drives how the edit is replayed:
@@ -54,6 +65,10 @@ export function openDb(matterDir: string): Database {
     )
   `)
   return db
+}
+
+function hasColumn(db: Database, table: string, column: string) {
+  return (db.query(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === column)
 }
 
 export type RedlineRow = {
@@ -108,11 +123,31 @@ export function deleteDocument(db: Database, docPath: string) {
 }
 
 // Re-ingesting a document replaces its rows so the index never holds stale chunks.
-export function upsertDocument(db: Database, docPath: string, name: string, createdAt: number): number {
+export function upsertDocument(
+  db: Database,
+  docPath: string,
+  name: string,
+  createdAt: number,
+  injectionReport: string | null,
+): number {
   db.run("DELETE FROM chunks WHERE doc_path = ?", [docPath])
   db.run("DELETE FROM documents WHERE doc_path = ?", [docPath])
-  const result = db.run("INSERT INTO documents (doc_path, name, created_at) VALUES (?, ?, ?)", [docPath, name, createdAt])
+  const result = db.run("INSERT INTO documents (doc_path, name, created_at, injection_report) VALUES (?, ?, ?, ?)", [
+    docPath,
+    name,
+    createdAt,
+    injectionReport,
+  ])
   return Number(result.lastInsertRowid)
+}
+
+// The ingest-time injection findings for one document, for the document text route
+// (so read-document can warn the model alongside the full text). NULL means clean.
+export function getInjectionReport(db: Database, docPath: string) {
+  const row = db.query("SELECT injection_report FROM documents WHERE doc_path = ?").get(docPath) as {
+    injection_report: string | null
+  } | null
+  return row?.injection_report ? (JSON.parse(row.injection_report) as { findings: unknown[] }) : null
 }
 
 export function insertChunk(
@@ -127,10 +162,11 @@ export function insertChunk(
     charStart: number
     charEnd: number
     embedding: Float32Array
+    flagged: boolean
   },
 ) {
   db.run(
-    "INSERT INTO chunks (document_id, doc_path, doc_name, section, chunk_index, text, char_start, char_end, embedding) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO chunks (document_id, doc_path, doc_name, section, chunk_index, text, char_start, char_end, embedding, flagged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       chunk.documentId,
       chunk.docPath,
@@ -141,6 +177,7 @@ export function insertChunk(
       chunk.charStart,
       chunk.charEnd,
       Buffer.from(chunk.embedding.buffer, chunk.embedding.byteOffset, chunk.embedding.byteLength),
+      chunk.flagged ? 1 : 0,
     ],
   )
 }

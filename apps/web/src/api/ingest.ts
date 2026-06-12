@@ -37,7 +37,17 @@ export type TemplatePlaceholder = { text: string; kind: string; hint?: string }
 // description is a one-line summary of what the template is for, stored in the
 // ingest-owned manifest beside the .docx (empty string when none was set).
 export type Template = { name: string; description: string; placeholders: TemplatePlaceholder[] }
-export type IngestResult = { name: string; docPath: string; sections: number; chunks: number }
+// A prompt-injection finding from ingest-time scanning: invisible Unicode, hidden
+// DOCX formatting, or instruction-like text (see services/ingest/src/sanitize.ts).
+export type InjectionFinding = { rule: string; detail: string; snippet?: string; charStart?: number; charEnd?: number }
+export type IngestResult = {
+  name: string
+  docPath: string
+  sections: number
+  chunks: number
+  // null when the document came up clean.
+  injection: { findings: InjectionFinding[]; flaggedChunks: number } | null
+}
 
 // Tabular-review grid. Columns are questions; cells are keyed `<docName>::<colId>`.
 // Rows are the matter's documents, so they are not stored here.
