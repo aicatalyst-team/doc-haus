@@ -128,7 +128,7 @@
     "redaction-log": "allow",
     "edit": "deny",
     "bash": "deny",
-    "webfetch": "deny",
+    "webfetch": "allow",
     "websearch": "deny"
   },
   "agent": {
