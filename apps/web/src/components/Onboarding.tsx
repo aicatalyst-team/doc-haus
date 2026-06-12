@@ -227,6 +227,29 @@ export default function Onboarding({ onClose, onOpenSettings }: { onClose: () =>
                 </div>
               </section>
 
+              <section className="settings-section">
+                <h3>Live legal research</h3>
+                <p className="settings-hint muted">
+                  Assistants look law up instead of remembering it: they read statutes from official legislation
+                  sources, and with a search key they can also discover citations they don't already know. Add an Exa
+                  API key (exa.ai has a free tier) to enable search — change anytime in Settings → Drafting.
+                </p>
+                <div className="row settings-row">
+                  <input
+                    type="password"
+                    placeholder="Exa API key"
+                    value={drafting?.searchApiKey ?? ""}
+                    onChange={(e) => setDrafting((d) => d && { ...d, searchApiKey: e.target.value })}
+                  />
+                </div>
+                {!(drafting?.searchApiKey ?? "").trim() && (
+                  <p className="settings-hint settings-warning">
+                    Without a search key, assistants can read law they can already cite but cannot search for sources —
+                    a key part of live legal research.
+                  </p>
+                )}
+              </section>
+
               <div className="row" style={{ justifyContent: "space-between", marginTop: 12 }}>
                 <button onClick={() => setStep("setup")}>Back</button>
                 <button

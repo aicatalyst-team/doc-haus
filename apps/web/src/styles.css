@@ -3665,6 +3665,15 @@ button.linklike:hover:not(:disabled) {
   max-width: 60ch;
 }
 
+/* Callout variant for a hint the firm should act on (e.g. missing search key). */
+.settings-warning {
+  padding: 8px 10px;
+  border: 1px solid var(--danger-border);
+  border-radius: 6px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .settings-row {
   gap: 8px;
   align-items: center;

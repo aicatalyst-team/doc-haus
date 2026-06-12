@@ -134,6 +134,7 @@ export type DraftingPreferences = {
   numberStyle: "words-and-numerals" | "numerals"
   houseStyle: string
   webResearch: "official" | "open"
+  searchApiKey: string
 }
 
 export async function getPreferences(): Promise<DraftingPreferences> {

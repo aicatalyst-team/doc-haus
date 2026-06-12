@@ -578,6 +578,24 @@ function DraftingTab({ onSaved }: { onSaved: (text: string) => void }) {
           { value: "open", label: "Entire web" },
         ]}
       />
+      <label className="settings-label">Web search key</label>
+      <p className="settings-hint muted">
+        Web search lets the assistants discover a citation they do not already know — which statute governs, the
+        section number, the official page — before reading the law itself from the official source. Uses Exa
+        (exa.ai has a free tier); the key takes effect immediately after saving.
+      </p>
+      <input
+        type="password"
+        placeholder="Exa API key"
+        value={prefs.searchApiKey}
+        onChange={(e) => set({ searchApiKey: e.target.value })}
+      />
+      {!prefs.searchApiKey.trim() && (
+        <p className="settings-hint settings-warning">
+          No search key set. Assistants can still fetch law they can already cite from official sources, but they
+          cannot discover citations they do not know — a key part of live legal research.
+        </p>
+      )}
       <label className="settings-label">House style notes</label>
       <textarea
         className="settings-textarea"
