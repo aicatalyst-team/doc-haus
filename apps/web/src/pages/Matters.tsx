@@ -171,12 +171,12 @@ export default function Matters() {
                     {m.title}
                   </span>
                   <span className="list-row-meta">
+                    <span className="list-row-date">Opened {new Date(m.created_at).toLocaleDateString()}</span>
                     {m.jurisdictions?.map((code) => (
-                      <span key={code} className="matter-ref">
-                        {code}
+                      <span key={code} className="matter-jurisdiction">
+                        {jurisdictions.find((j) => j.code === code)?.name ?? code}
                       </span>
                     ))}
-                    <span className="list-row-date">Opened {new Date(m.created_at).toLocaleDateString()}</span>
                   </span>
                 </Link>
                 <div className="list-row-actions">

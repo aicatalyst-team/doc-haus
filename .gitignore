@@ -38,3 +38,4 @@ tsconfig.tsbuildinfo
 services/ingest/workspace/
 /workspace/
 .playwright-mcp/
+/.claude

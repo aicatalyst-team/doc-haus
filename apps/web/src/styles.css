@@ -803,6 +803,11 @@ li.list-row {
   margin-right: 8px;
 }
 
+/* Jurisdiction — plain text fact, darker than the muted date beside it. */
+.matter-jurisdiction {
+  color: var(--text);
+}
+
 /* Template row: file name stacked above a clickable description (turns into an
    input on click), with a quiet placeholder count beside the View/Delete controls. */
 .template-info {
