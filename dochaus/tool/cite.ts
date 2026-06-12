@@ -1,5 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
+import path from "node:path"
 import { formatCitations, type DocumentCitation } from "../lib/citations"
 import { findQuote, liveText } from "../lib/extract"
 
@@ -16,7 +17,9 @@ export default tool({
   args: {
     docPath: tool.schema
       .string()
-      .describe("Absolute path of the matter document, exactly as returned by search-document or read-document."),
+      .describe(
+        "Path of the matter document, exactly as returned by search-document or read-document. A bare document name is resolved against the matter root.",
+      ),
     documentName: tool.schema.string().describe("Human-readable name of the document."),
     quote: tool.schema
       .string()
@@ -37,19 +40,23 @@ export default tool({
       .optional()
       .describe("Optional: the sentence(s) immediately around the quote, for the reader."),
   },
-  async execute(args) {
-    if (!existsSync(args.docPath)) {
-      return `${args.documentName} is not in this matter (no file at ${args.docPath}). Do not use this quotation. Confirm the document with search-document or read-document before quoting it.`
+  async execute(args, ctx) {
+    // Models routinely pass the document's display name instead of the absolute
+    // path search-document returned; resolve it against the matter root rather
+    // than failing the citation and forcing a browse-and-retry loop.
+    const docPath = path.isAbsolute(args.docPath) ? args.docPath : path.resolve(ctx.directory, args.docPath)
+    if (!existsSync(docPath)) {
+      return `${args.documentName} is not in this matter (no file at ${docPath}). Do not use this quotation. Confirm the document with search-document or read-document before quoting it.`
     }
 
-    const match = findQuote(await liveText(args.docPath), args.quote)
+    const match = findQuote(await liveText(docPath), args.quote)
     if (!match) {
       return `The quoted text does not appear in ${args.documentName}. Do not use this quotation — re-read the document with read-document or search-document and quote only text it returns verbatim.`
     }
 
     const citation: DocumentCitation = {
       documentName: args.documentName,
-      docPath: args.docPath,
+      docPath,
       section: "cited passage",
       // Store the raw matched span, not the model's input, so the plugin's exact
       // slice check against the live document passes on the way out.

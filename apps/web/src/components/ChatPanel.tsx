@@ -684,17 +684,23 @@ export default function ChatPanel({
 
   // Resolve which real agent answers this message. With Auto selected, a cheap
   // model routes the message to one of the real assistants; otherwise the picked
-  // agent is used as-is. `prior` is the user turns before this one, newest last —
-  // the last two seed the router with conversational context. The result stamps
-  // the user message, so it must be a real agent id: routing never returns "auto",
-  // and any failure or timeout falls back to "qa". The resolved agent drives
-  // the "Auto · <label>" chip and the in-flight bubble's byline.
+  // agent is used as-is. `prior` is the turns before this one, newest last — the
+  // last few exchanges seed the router, each labelled with its role and (for
+  // assistant turns) the agent that answered, so a follow-up like "I confirm"
+  // routes to the assistant whose action is pending rather than whoever spoke
+  // last. The result stamps the user message, so it must be a real agent id:
+  // routing never returns "auto", and any failure or timeout falls back to
+  // "qa". The resolved agent drives the "Auto · <label>" chip and the
+  // in-flight bubble's byline.
   async function resolveAgent(text: string, prior: Turn[]) {
     if (!isAuto(agent)) return agent
     const history = prior
-      .filter((t) => t.role === "user")
-      .slice(-2)
-      .map((t) => t.text)
+      .filter((t) => t.text)
+      .slice(-6)
+      .map((t) => {
+        const who = t.role === "user" ? "user" : `assistant (${t.agent ?? "qa"})`
+        return `${who}: ${t.text.length > 240 ? `${t.text.slice(0, 240)}…` : t.text}`
+      })
     // Like routeAgent, this read must not block the send: a stalled fetch would
     // never reject, so cap it and fall back to the default small model.
     const config = await Promise.race([
