@@ -789,19 +789,6 @@ li.list-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-.list-row:hover .list-row-actions,
-.list-row-actions:focus-within {
-  opacity: 1;
-}
-
-/* Persistent state controls (On/Off switch) stay visible. */
-.list-row-actions .switch,
-.list-row-actions .settings-switch {
-  opacity: 1;
 }
 
 /* Firm client-matter number — monospace chip so it reads as a reference code. */
@@ -3937,10 +3924,6 @@ button.linklike:hover:not(:disabled) {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-  }
-
-  .list-row-actions {
-    opacity: 1;
   }
 
   .viewer-overlay {

@@ -27,6 +27,7 @@ import {
 } from "../api/ingest"
 import { isGated, loadVerified, saveVerified } from "../providers"
 import { loadPrefs, savePrefs, type Prefs } from "../prefs"
+import { useToast } from "./Toast"
 import JurisdictionSelect from "./JurisdictionSelect"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
@@ -52,6 +53,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
   // First run is about getting a provider connected, so land there; otherwise
   // open on the models people come back to tweak.
   const [tab, setTab] = useState<Tab>(firstRun ? "providers" : "models")
+  const toast = useToast()
   const client = useMemo<Client>(() => settingsClient(), [])
   const [all, setAll] = useState<Provider[]>([])
   const [connected, setConnected] = useState<Set<string>>(new Set())
@@ -64,7 +66,6 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
   // chat's "Auto" assistant. Picked from the same provider models as the default.
   const [smallModel, setSmallModelValue] = useState("")
   const [disabled, setDisabled] = useState<string[]>([])
-  const [notice, setNotice] = useState("")
 
   // Host-credential providers (Vertex/Bedrock) report "connected" on project/region
   // presence alone — the engine never checks the sign-in actually resolves. So we
@@ -117,11 +118,8 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // A tab switch is a context switch — a stale "Models saved." under the
-  // Drafting form reads as that form being saved.
   function switchTab(next: Tab) {
     setTab(next)
-    setNotice("")
   }
 
   const connectedProviders = all.filter((p) => connected.has(p.id))
@@ -195,7 +193,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
       saveVerified(next)
       return next
     })
-    setNotice(`${passed.map((r) => r.p.name).join(", ")} verified.`)
+    toast("success", `${passed.map((r) => r.p.name).join(", ")} verified.`)
     await load()
   }
 
@@ -279,7 +277,6 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                 local endpoint — then pick your default model under Models.
               </p>
             )}
-            {notice && <p className="settings-notice">{notice}</p>}
 
             {tab === "models" && (
               <section className="settings-section">
@@ -341,7 +338,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                       // On first run, picking a model is the whole point of the modal —
                       // close once it's saved so the user lands straight in the app.
                       if (firstRun) return onClose()
-                      setNotice(`Models saved.`)
+                      toast("success", "Models saved.")
                     }}
                   >
                     Save
@@ -465,7 +462,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                       onClick={async () => {
                         const name = all.find((p) => p.id === pick)?.name ?? pick
                         await setProviderKey(client, pick, key.trim())
-                        setNotice(`Connected ${name}.`)
+                        toast("success", `Connected ${name}.`)
                         setPick("")
                         setKey("")
                         await load()
@@ -479,14 +476,14 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
                 <LocalEndpoint
                   onAdd={async (input) => {
                     await addLocalProvider(input)
-                    setNotice(`Added ${input.name}. Restart the engine if its models don't appear.`)
+                    toast("success", `Added ${input.name}. Restart the engine if its models don't appear.`)
                     await load()
                   }}
                 />
               </>
             )}
 
-            {tab === "drafting" && <DraftingTab onNotice={setNotice} />}
+            {tab === "drafting" && <DraftingTab onSaved={(m) => toast("success", m)} />}
             {tab === "matters" && <MatterDefaultsTab />}
             {tab === "approvals" && <ApprovalsTab />}
             {tab === "appearance" && <AppearanceTab />}
@@ -500,7 +497,7 @@ export default function Settings({ onClose, firstRun = false }: { onClose: () =>
 // Firm-wide drafting preferences. Saved through the ingest service, which
 // renders them into the standing-instructions file the engine reads on every
 // turn — so a save here changes how every assistant drafts from its next reply.
-function DraftingTab({ onNotice }: { onNotice: (text: string) => void }) {
+function DraftingTab({ onSaved }: { onSaved: (text: string) => void }) {
   const [prefs, setPrefs] = useState<DraftingPreferences | null>(null)
   const [saving, setSaving] = useState(false)
   useEffect(() => {
@@ -587,7 +584,7 @@ function DraftingTab({ onNotice }: { onNotice: (text: string) => void }) {
             setSaving(true)
             setPrefs(await savePreferences(prefs))
             setSaving(false)
-            onNotice("Drafting preferences saved. They apply from the assistant's next reply.")
+            onSaved("Drafting preferences saved. They apply from the assistant's next reply.")
           }}
         >
           Save
