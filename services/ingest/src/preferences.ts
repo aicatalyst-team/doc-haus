@@ -103,6 +103,8 @@ const PLAN_FIRST = [
   "An empty matter does not skip the phases: the facts table comes from the conversation, and the issue spotting covers the standard provisions of the document type under the governing law.",
   "When drafting from a template whose body you cannot read before the draft call, the phases still come first: research the governing jurisdiction's constraints on the document type before drafting, plan every placeholder and optional-clause decision, then draft — and phase 4's read-back is where each template clause you could not see gets the phase-2 assessment, with defects fixed by redline before you report.",
   "Do not skip or merge phases, and do not start the document until the action plan is complete.",
+  "Scale the phases to the task. New work product and revisions that touch several clauses get all four phases. A bounded edit the lawyer has fully specified — one clause, stated change — needs only the relevant slice: confirm the governing law's constraint on that clause, make the change, read it back. When in doubt, run the full phases.",
+  "Plan once per conversation. When an action plan already exists in this conversation, a follow-up refinement updates that plan's decisions and runs the read-back on what changed; it does not restart the inventory.",
   "</plan_first_drafting>",
 ].join("\n")
 
