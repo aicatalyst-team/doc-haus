@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
-import { splitHeadingBlocks } from "../lib/markdown"
+import { lintTemplateBody, splitHeadingBlocks } from "../lib/markdown"
 
 // doc.haus create-template tool. Adds a new reusable drafting template to the
 // firm's global library. A template carries NO real client data: every variable
@@ -17,7 +17,7 @@ const ingestUrl = process.env.INGEST_URL ?? "http://127.0.0.1:4500"
 
 export default tool({
   description:
-    'Create a new reusable drafting template in the firm template library. Pass "name" (the template file name, e.g. "consulting-agreement.docx"), "content" (the full template body as markdown — # title, ## numbered clause headings, one blank line between blocks), and "description" (a one-line summary of what the template is for). A good description helps future template selection — list-templates surfaces it so the right base is picked by purpose, not filename. A template contains NO real client data: replace every party name, individual, date, monetary amount, address, email/phone, and reference number with a UNIQUE descriptive placeholder like "[insert consultant name]" or "[insert effective date]" — never a bare "[___]", and never an identical placeholder twice. Returns the placeholders the new template exposes.',
+    'Create a new reusable drafting template in the firm template library. Pass "name" (the template file name, e.g. "consulting-agreement.docx"), "content" (the full template body as markdown — # title, ## numbered clause headings, one blank line between blocks), and "description" (a one-line summary of what the template is for). A good description helps future template selection — list-templates surfaces it so the right base is picked by purpose, not filename. A template contains NO real client data: replace every party name, individual, date, monetary amount, address, email/phone, and reference number with a UNIQUE descriptive placeholder like "[insert consultant name]" or "[insert effective date]" — never a bare "[___]", and never an identical placeholder twice. A template is drafted from many times, so it must be right BEFORE it enters the library: have the legal-reviewer subagent (task tool) review the proposed body once before calling this tool — structure must match the stated document type and title (a mutual NDA defines both parties\' obligations, not one side\'s), the standard clauses for the type must be present, and jurisdiction-specific language must not be baked in unless the template is for that jurisdiction. Apply its Must-fix findings to the body first; one review round, do not loop. Returns the placeholders the new template exposes.',
   args: {
     name: tool.schema
       .string()
@@ -29,6 +29,11 @@ export default tool({
   },
   async execute(args, ctx) {
     const name = path.basename(args.name.endsWith(".docx") ? args.name : `${args.name}.docx`)
+
+    // Deterministic gate: defects that multiply into every future draft are
+    // rejected before anything is built or asked of the user.
+    const problems = lintTemplateBody(args.content)
+    if (problems.length) return `Template body fails lint — fix the body and retry: ${problems.join("; ")}.`
 
     const existing = (await (await fetch(`${ingestUrl}/templates`)).json()) as { templates: { name: string }[] }
     if (existing.templates.some((t) => t.name === name)) return `A template named ${name} already exists. Pick a different name.`

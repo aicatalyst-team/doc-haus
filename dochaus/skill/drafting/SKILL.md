@@ -92,6 +92,14 @@ for: party/company names, individual names, dates, money amounts, percentages,
 addresses, emails, phone numbers, and any reference/matter/account numbers. None
 may survive into the template — only `[insert ...]` placeholders.
 
+**Review before creating.** A template is drafted from many times, so it must be
+right before it enters the library. Spawn the legal-reviewer subagent (task
+tool) over the proposed body once: structure must match the document type and
+title (a mutual NDA defines both parties' obligations, not one side's), the
+type's standard clauses must be present, and jurisdiction-specific language must
+not be baked in unless the template is for that jurisdiction. Apply Must-fix
+findings to the body before calling `create-template`; one round, do not loop.
+
 **Report.** After `create-template`, name the template and list the placeholders
 it exposes, so the user knows what every future draft will be asked to fill.
 </template-creation>
