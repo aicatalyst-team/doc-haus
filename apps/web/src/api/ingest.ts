@@ -136,6 +136,7 @@ export type DraftingPreferences = {
   houseStyle: string
   webResearch: "official" | "open"
   searchApiKey: string
+  approvedSources: string[]
 }
 
 export async function getPreferences(): Promise<DraftingPreferences> {

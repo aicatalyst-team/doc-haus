@@ -48,7 +48,16 @@ const SUFFIXES = [
 
 export function isOfficialSource(url: string) {
   const host = new URL(url).hostname
-  return HOSTS.some((h) => host === h || host.endsWith("." + h)) || SUFFIXES.some((s) => host.endsWith(s))
+  if (HOSTS.some((h) => host === h || host.endsWith("." + h)) || SUFFIXES.some((s) => host.endsWith(s))) return true
+  // Firm-added approved hosts (Settings > Research) extend the built-in list,
+  // matched the same way. Read from preferences.json per call so a settings save
+  // applies on the next fetch, no restart.
+  return approvedSources().some((h) => host === h || host.endsWith("." + h))
+}
+
+function approvedSources(): string[] {
+  const list = readPreferences().approvedSources
+  return Array.isArray(list) ? list.filter((h): h is string => typeof h === "string" && h.trim().length > 0) : []
 }
 
 // The firm-wide web-research scope set in the web settings. Lives in the same

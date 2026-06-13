@@ -3477,6 +3477,31 @@ button.linklike:hover:not(:disabled) {
   color: var(--muted);
 }
 
+/* Hover-help badge beside a label (components Settings InfoTip), so dense guidance
+   lives in a tooltip instead of a paragraph under every field. */
+.info-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.info-tip:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
 .settings-connected {
   display: flex;
   flex-direction: column;

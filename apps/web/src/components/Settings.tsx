@@ -28,6 +28,7 @@ import {
 import { isGated, loadVerified, saveVerified } from "../providers"
 import { loadPrefs, savePrefs, type Prefs } from "../prefs"
 import { useToast } from "./Toast"
+import { Tooltip } from "./Tooltip"
 import JurisdictionSelect from "./JurisdictionSelect"
 
 type Provider = Awaited<ReturnType<typeof listProviders>>["all"][number]
@@ -621,8 +622,7 @@ function ResearchTab({ onSaved }: { onSaved: (text: string) => void }) {
     <section className="settings-section">
       <h3>Research</h3>
       <p className="settings-hint muted">
-        How the assistants read the live web when a question turns on current law. Saved as standing instructions on
-        the engine; changes apply from the next reply.
+        How the assistants read the live web. Changes apply from the next reply.
       </p>
       <SegRow
         label="Web research"
@@ -634,12 +634,21 @@ function ResearchTab({ onSaved }: { onSaved: (text: string) => void }) {
           { value: "open", label: "Entire web" },
         ]}
       />
-      <label className="settings-label">Exa API key</label>
-      <p className="settings-hint muted">
-        Web search is provided by Exa (exa.ai) — paste an Exa API key here. It lets the assistants discover a citation
-        they do not already know — which statute governs, the section number, the official page — before reading the law
-        itself from the official source. Exa has a free tier; the key takes effect immediately after saving.
-      </p>
+      <label className="settings-label">
+        Additional approved sources
+        <InfoTip label="Hosts the firm trusts as primary sources, one per line (e.g. justia.com). Always allowed for web fetch even in official-sources-only mode — matched as the exact host or any subdomain. Government and court sites are built in and need not be listed." />
+      </label>
+      <textarea
+        className="settings-textarea"
+        rows={3}
+        placeholder={"justia.com\nyour-regulator.org"}
+        value={prefs.approvedSources.join("\n")}
+        onChange={(e) => set({ approvedSources: e.target.value.split("\n") })}
+      />
+      <label className="settings-label">
+        Exa API key
+        <InfoTip label="Web search is provided by Exa (exa.ai). It lets the assistants discover a citation they do not already know — which statute governs, the section number, the official page — before reading the law from the official source. Exa has a free tier; the key takes effect immediately after saving." />
+      </label>
       <PasswordInput
         placeholder="Exa API key (exa.ai)"
         value={prefs.searchApiKey}
@@ -657,7 +666,16 @@ function ResearchTab({ onSaved }: { onSaved: (text: string) => void }) {
           disabled={saving}
           onClick={async () => {
             setSaving(true)
-            setPrefs(await savePreferences(prefs))
+            // Reduce typed lines to bare hostnames (drop scheme/path, lowercase),
+            // so the fence's host match in research.ts is exact.
+            const approvedSources = [
+              ...new Set(
+                prefs.approvedSources
+                  .map((s) => s.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase())
+                  .filter(Boolean),
+              ),
+            ]
+            setPrefs(await savePreferences({ ...prefs, approvedSources }))
             setSaving(false)
             onSaved("Research preferences saved. They apply from the assistant's next reply.")
           }}
@@ -835,7 +853,10 @@ function SegRow({
 }) {
   return (
     <div className="settings-seg-row">
-      <label className="settings-label">{label}</label>
+      <label className="settings-label">
+        {label}
+        {hint && <InfoTip label={hint} />}
+      </label>
       <div className="settings-seg">
         {options.map((o) => (
           <button key={o.value} className={value === o.value ? "active" : ""} onClick={() => onChange(o.value)}>
@@ -843,8 +864,19 @@ function SegRow({
           </button>
         ))}
       </div>
-      {hint && <p className="settings-hint muted">{hint}</p>}
     </div>
+  )
+}
+
+// A small "i" badge that reveals a longer explanation on hover, so dense help
+// text can sit beside a label instead of as a paragraph under every field.
+function InfoTip({ label }: { label: string }) {
+  return (
+    <Tooltip label={label}>
+      <span className="info-tip" role="img" tabIndex={0} aria-label={label}>
+        i
+      </span>
+    </Tooltip>
   )
 }
 

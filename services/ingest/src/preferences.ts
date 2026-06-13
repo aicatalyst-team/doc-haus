@@ -34,6 +34,10 @@ export type DraftingPreferences = {
   // it from preferences.json per call). Never rendered into drafting.md — the
   // key must not enter the model's context.
   searchApiKey: string
+  // Extra hosts the firm trusts as primary sources, on top of the built-in
+  // official list (dochaus/lib/research.ts). Enforced by the webfetch fence,
+  // not rendered into drafting.md. Bare hostnames, matched as host or subdomain.
+  approvedSources: string[]
 }
 
 export const DEFAULT_DRAFTING: DraftingPreferences = {
@@ -48,6 +52,7 @@ export const DEFAULT_DRAFTING: DraftingPreferences = {
   houseStyle: "",
   webResearch: "official",
   searchApiKey: "",
+  approvedSources: [],
 }
 
 export function readDraftingPreferences(): DraftingPreferences {
