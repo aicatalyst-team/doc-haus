@@ -87,12 +87,15 @@ export function openDb(matterDir: string): Database {
     END
   `)
   // Backfill databases that predate the FTS table, and self-heal any drift (a
-  // crash between table creation and indexing, or chunks written while the
-  // triggers did not exist yet) — a row-count mismatch is the one observable
-  // symptom of every such state, and 'rebuild' atomically reindexes from chunks.
-  const chunkCount = (db.query("SELECT COUNT(*) AS n FROM chunks").get() as { n: number }).n
-  const ftsCount = (db.query("SELECT COUNT(*) AS n FROM chunks_fts").get() as { n: number }).n
-  if (ftsCount !== chunkCount) db.run("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')")
+  // crash between table creation and indexing, or chunks written or updated
+  // while the triggers did not exist or did not match the index). Drift is not
+  // always a row-count mismatch: a desynced external-content index can hold the
+  // right number of rows with the wrong tokens, and then any trigger-driven
+  // 'delete' (e.g. the embedding-migration UPDATE) throws SQLITE_CORRUPT
+  // ("database disk image is malformed") even though the file is intact. FTS5's
+  // own 'integrity-check' command compares the index against the chunks table
+  // and is the only complete drift probe; 'rebuild' atomically reindexes.
+  if (!ftsInSync(db)) db.run("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')")
   // Contract-structure tables: deterministic, regex-extracted facts about each
   // document (see structure.ts). Every row is a pointer (offsets) into the
   // document's extracted text plus the verbatim text at that pointer — nothing
@@ -170,6 +173,18 @@ export function openDb(matterDir: string): Database {
     )
   `)
   return db
+}
+
+// FTS5 reports an index/content mismatch only by throwing SQLITE_CORRUPT from
+// its 'integrity-check' command (rank=1 verifies against the content table);
+// there is no boolean API, so the catch is the result.
+function ftsInSync(db: Database) {
+  try {
+    db.run("INSERT INTO chunks_fts(chunks_fts, rank) VALUES ('integrity-check', 1)")
+    return true
+  } catch {
+    return false
+  }
 }
 
 function hasColumn(db: Database, table: string, column: string) {
