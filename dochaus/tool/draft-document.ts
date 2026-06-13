@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
-import { splitHeadingBlocks } from "../lib/markdown"
+import { renumberHeadings, splitHeadingBlocks } from "../lib/markdown"
 
 // doc.haus draft-document tool. Creates a NEW Word (.docx) document in the
 // current matter — either by filling a template from dochaus/templates, or from
@@ -34,7 +34,11 @@ export default tool({
           placeholder: tool.schema
             .string()
             .describe('Exact placeholder text from list-templates, e.g. "[insert state]"'),
-          value: tool.schema.string().describe("Replacement text (replaces the whole bracketed placeholder)"),
+          value: tool.schema
+            .string()
+            .describe(
+              "Replacement text (replaces the whole bracketed placeholder). Must be final document text: never put a bracketed placeholder inside a value — a part you cannot fill stays as its own unfilled placeholder.",
+            ),
         }),
       )
       .optional()
@@ -148,6 +152,10 @@ export default tool({
       kinds: dx.PlaceholderKinds.AlternativeClause,
       coalesceWhitespaceAroundEmptyFill: true,
     })
+
+    // An omitted clause leaves a hole in the manually numbered headings ("8."
+    // followed by "10."); close the sequence up.
+    if ((args.omit?.length ?? 0) > missingOmits.length) renumberHeadings(session)
 
     const remaining = session.findPlaceholders().map((p) => p.match.text)
     const bytes = session.save()

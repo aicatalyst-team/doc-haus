@@ -1,3 +1,5 @@
+import type { DocxSession } from "docxodus"
+
 // Docxodus's insertParagraph splits markdown into blocks on blank lines only,
 // but in markdown an ATX heading line is its own block even when the body
 // starts on the very next line. Without this, "## 1. Term\nThe term is..."
@@ -11,4 +13,19 @@ export function splitHeadingBlocks(markdown: string) {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
+}
+
+// Templates number their clause headings in the heading text itself ("9.
+// Non-Solicitation"), so deleting an optional clause leaves a hole in the
+// sequence ("8." followed by "10."). Renumber every such heading to its
+// position in document order. Body cross-references by section number are not
+// rewritten.
+export function renumberHeadings(session: DocxSession) {
+  session
+    .findByKind("h")
+    .filter((h) => /^\d+\. /.test(h.textPreview))
+    .forEach((h, i) => {
+      const current = h.textPreview.match(/^(\d+)\./)![1]
+      if (current !== `${i + 1}`) session.replaceTextRange(h.id, `${current}.`, `${i + 1}.`, { maxReplacements: 1 })
+    })
 }

@@ -6,6 +6,7 @@ import { describe, expect, test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { docxodus } from "../lib/docxodus"
+import { renumberHeadings } from "../lib/markdown"
 
 const ndaBytes = await Bun.file(
   path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "demo", "templates", "nda.docx"),
@@ -39,6 +40,18 @@ describe("optional clause markers", () => {
     expect(text).not.toContain("solicit for employment")
     expect(text).toContain("Entire Agreement")
     expect(placeholders).not.toContain("[insert non-solicit period in months]")
+  })
+
+  test("omit then renumber closes the heading-number hole", () => {
+    const session = dx.openDocxSession(ndaBytes, {})
+    const anchor = session.findByText("[optional: non-solicitation]", { ignoreWhitespace: true })!
+    session.deleteSection(anchor.id)
+    renumberHeadings(session)
+    const text = session.project().markdown.replaceAll("\\", "")
+    session.close()
+    expect(text).toContain("9. Entire Agreement")
+    expect(text).not.toContain("10. Entire Agreement")
+    expect(text).toContain("8. Governing Law")
   })
 
   test("keep strips the marker but leaves the clause", () => {

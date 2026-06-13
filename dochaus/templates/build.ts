@@ -96,15 +96,15 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 const NDA_BODY = `# MUTUAL NON-DISCLOSURE AGREEMENT
 
-This Mutual Non-Disclosure Agreement (this "Agreement") is entered into as of [insert effective date] (the "Effective Date") by and between [insert full legal name of first party], a [insert state] [insert entity type] ("Disclosing Party"), and [insert full legal name of second party] ("Receiving Party") (each a "Party" and together the "Parties").
+This Mutual Non-Disclosure Agreement (this "Agreement") is entered into as of [insert effective date] (the "Effective Date") by and between [insert full legal name of first party], a [insert state] [insert entity type], and [insert full legal name of second party] (each a "Party" and together the "Parties"). A Party disclosing Confidential Information is the "Disclosing Party" and a Party receiving it is the "Receiving Party"; each Party may act in either capacity.
 
 ## 1. Purpose
 
-The Parties wish to explore [insert description of the business opportunity] (the "Purpose"), and in connection with the Purpose each Party may disclose to the other certain confidential technical and business information that the disclosing Party desires to be treated as confidential.
+The Parties wish to explore [insert description of the business opportunity] (the "Purpose"), and in connection with the Purpose each Party may disclose to the other certain confidential technical and business information that the Disclosing Party desires to be treated as confidential.
 
 ## 2. Confidential Information
 
-"Confidential Information" means any information disclosed by either Party to the other Party, either directly or indirectly, in writing, orally, or by inspection of tangible objects, that is designated as confidential or that reasonably should be understood to be confidential given the nature of the information and the circumstances of disclosure. Confidential Information shall not include information that: (a) was publicly known prior to the time of disclosure; (b) becomes publicly known after disclosure through no action or inaction of the receiving Party; (c) is already in the possession of the receiving Party at the time of disclosure; (d) is obtained by the receiving Party from a third party without a breach of any obligation of confidentiality; or (e) is independently developed by the receiving Party without use of or reference to the disclosing Party's Confidential Information.
+"Confidential Information" means any information disclosed by either Party to the other Party, either directly or indirectly, in writing, orally, or by inspection of tangible objects, that is designated as confidential or that reasonably should be understood to be confidential given the nature of the information and the circumstances of disclosure. Confidential Information shall not include information that: (a) was publicly known prior to the time of disclosure; (b) becomes publicly known after disclosure through no action or inaction of the Receiving Party; (c) is already in the possession of the Receiving Party at the time of disclosure; (d) is obtained by the Receiving Party from a third party without a breach of any obligation of confidentiality; or (e) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information.
 
 ## 3. Non-Use and Non-Disclosure
 
@@ -116,7 +116,7 @@ This Agreement shall remain in effect for a period of [insert term in years] yea
 
 ## 5. Return of Materials
 
-All documents and other tangible objects containing or representing Confidential Information shall be and remain the property of the disclosing Party. Upon the disclosing Party's written request, the receiving Party shall promptly return or destroy all Confidential Information and certify such return or destruction in writing.
+All documents and other tangible objects containing or representing Confidential Information shall be and remain the property of the Disclosing Party. Upon the Disclosing Party's written request, the Receiving Party shall promptly return or destroy all Confidential Information and certify such return or destruction in writing.
 
 ## 6. No License
 
