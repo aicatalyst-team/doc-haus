@@ -9,8 +9,10 @@ import MatterDetail from "./pages/MatterDetail"
 import Settings from "./components/Settings"
 import Onboarding from "./components/Onboarding"
 import Sidebar from "./components/Sidebar"
+import BootScreen from "./components/BootScreen"
 import { ToastProvider } from "./components/Toast"
 import { getConfig } from "./api/opencode"
+import { listMatters } from "./api/ingest"
 import { applyAppearance } from "./prefs"
 
 export default function App() {
@@ -25,31 +27,46 @@ export default function App() {
   // onboarding modal — it auto-detects connected providers and asks only for the
   // primary + fast models, falling back to a connect step when none are found.
   const [onboarding, setOnboarding] = useState(false)
+  // Both backends ('opencode serve' and the ingest document service) are separate
+  // processes that may still be booting when the web app loads, so their probes
+  // reject until reachable. Poll each until it answers and hold the app behind a
+  // boot screen until both are up — otherwise the list pages fetch a dead socket
+  // and fall through to a misleading empty state. Gate onboarding on the real
+  // engine config rather than silently skipping it on the first failed call.
+  const [engineReady, setEngineReady] = useState(false)
+  const [ingestReady, setIngestReady] = useState(false)
   useEffect(() => {
     let cancelled = false
-    // The engine ('opencode serve') may still be booting when the web app loads,
-    // so getConfig rejects until it's reachable. Poll until it answers, then gate
-    // onboarding on the real config rather than silently skipping it on the first
-    // failed call.
-    async function check() {
+    async function poll<T>(probe: () => Promise<T>, onReady: (value: T) => void) {
       while (!cancelled) {
         try {
-          const cfg = await getConfig()
-          if (!cancelled && !cfg.model) setOnboarding(true)
+          const value = await probe()
+          if (!cancelled) onReady(value)
           return
         } catch {
           await new Promise((resolve) => setTimeout(resolve, 1000))
         }
       }
     }
-    check()
+    poll(getConfig, (cfg) => {
+      setEngineReady(true)
+      if (!cfg.model) setOnboarding(true)
+    })
+    poll(listMatters, () => setIngestReady(true))
     return () => {
       cancelled = true
     }
   }, [])
+  const booted = engineReady && ingestReady
   // Bumped when a matter mints a new conversation, so the sidebar re-lists its
   // chats the instant one starts rather than waiting for the turn to settle.
   const [sessionsVersion, setSessionsVersion] = useState(0)
+  if (!booted)
+    return (
+      <ToastProvider>
+        <BootScreen engineReady={engineReady} ingestReady={ingestReady} />
+      </ToastProvider>
+    )
   return (
     <ToastProvider>
       <div className="shell">
