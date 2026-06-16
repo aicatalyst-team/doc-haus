@@ -1,0 +1,53 @@
+# doc-haus UBI-based Dockerfile for OpenShift deployment
+# Three co-located processes: OpenCode engine (4096), ingest (4500), web (5173)
+FROM registry.access.redhat.com/ubi9/nodejs-22
+
+# Install system dependencies as root:
+#   - python3 + gcc/make: native node-gyp modules (tree-sitter-*)
+#   - lsof + procps-ng: start.sh process management
+#   - poppler-utils + tesseract: PDF and OCR document processing
+USER 0
+RUN dnf install -y \
+    python3 python3-pip gcc gcc-c++ make \
+    lsof procps-ng \
+    poppler-utils tesseract \
+  && dnf clean all \
+  && pip3 install --no-cache-dir "markitdown[pdf]"
+
+# Install bun globally via npm (UBI has no native bun image)
+RUN npm install -g bun@1.3.14
+
+WORKDIR /opt/app-root/src
+
+# Copy source code
+COPY . .
+
+# Install dependencies for each workspace
+# Each subdirectory has its own lockfile
+RUN for dir in . dochaus services/ingest apps/web; do \
+      echo "doc.haus: installing dependencies ($dir)" && \
+      (cd "$dir" && bun install --frozen-lockfile); \
+    done
+
+# Create workspace directory for persistent data
+RUN mkdir -p /data/workspace
+
+# OpenShift compatibility: group 0 permissions for arbitrary UID
+RUN chgrp -R 0 /opt/app-root /data/workspace && \
+    chmod -R g=u /opt/app-root /data/workspace
+
+# Expose all three process ports
+EXPOSE 4096 4500 5173
+
+# Switch to non-root user
+USER 1001
+
+# Environment for container operation
+ENV SKIP_INSTALL=1 \
+    NO_OPEN=1 \
+    OPENCODE_HOSTNAME=0.0.0.0 \
+    WEB_HOST=0.0.0.0 \
+    INGEST_HOST=0.0.0.0 \
+    WORKSPACE_ROOT=/data/workspace
+
+CMD ["./start.sh"]
