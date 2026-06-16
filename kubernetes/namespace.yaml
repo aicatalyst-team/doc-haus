@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: poc-doc-haus
+  labels:
+    app.kubernetes.io/name: doc-haus
+    app.kubernetes.io/managed-by: autopoc

@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dochaus
+  namespace: poc-doc-haus
+  labels:
+    app: dochaus
+    autopoc.io/project: doc-haus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dochaus
+  template:
+    metadata:
+      labels:
+        app: dochaus
+    spec:
+      containers:
+        - name: dochaus
+          image: quay.io/aicatalyst/doc-haus:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5173
+              name: web
+            - containerPort: 4096
+              name: engine
+            - containerPort: 4500
+              name: ingest
+          env:
+            - name: WORKSPACE_ROOT
+              value: "/data/workspace"
+            - name: SKIP_INSTALL
+              value: "1"
+            - name: NO_OPEN
+              value: "1"
+            - name: OPENCODE_HOSTNAME
+              value: "0.0.0.0"
+            - name: WEB_HOST
+              value: "0.0.0.0"
+            - name: INGEST_HOST
+              value: "0.0.0.0"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: workspace
+              mountPath: /data/workspace
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5173
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5173
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: dochaus-workspace
