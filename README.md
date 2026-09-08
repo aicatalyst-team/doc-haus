@@ -1,4 +1,10 @@
-<h1 align="center">doc.haus</h1>
+> [!WARNING]
+> **This repository is archived.**
+>
+> Archived on 2026-09-08 by the AI Catalyst Platform Team.
+> It is read-only and no longer maintained.
+
+---<h1 align="center">doc.haus</h1>
 
 <p align="center"><strong>Not a chatbot. A legal team that works on your machine.</strong><br />Open-source multi-agent legal AI — your documents stay on your machine; the redlines land in Word.</p>
 
